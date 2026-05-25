@@ -81,16 +81,12 @@ wp-config.php
 # AI Tools & MCPs (Code Assistants)
 
 # Context Exclusion Files
-.aiexclude
 .aignore
 .aiignore
-.geminiignore
 .cursorignore
 .code-review-graphignore
 
 # Rule and Instruction Files (Local)
-.cursorrules
-.windsurfrules
 aider.conf.yml
 
 # Agent Data Directories
