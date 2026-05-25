@@ -1,0 +1,69 @@
+name: Release
+
+on:
+  push:
+    tags:
+      - 'v*'
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    name: Build and publish release
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Go
+        uses: actions/setup-go@v5
+        with:
+          go-version-file: go.mod
+
+      - name: Run tests
+        run: go test -race ./...
+
+      - name: Build release binaries
+        run: make release VERSION=${{ github.ref_name }}
+
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          name: Lumina Tools ${{ github.ref_name }}
+          draft: false
+          prerelease: false
+          files: |
+            dist/lumina-linux-amd64
+            dist/lumina-linux-arm64
+          body: |
+            ## Lumina Tools ${{ github.ref_name }}
+
+            ### Instalação rápida
+
+            ```bash
+            curl -fsSL https://raw.githubusercontent.com/kaduvelasco/lumina-tools/main/install.sh | bash
+            ```
+
+            ### Instalação manual
+
+            Baixe o binário para sua arquitetura, torne-o executável e mova para o `$PATH`:
+
+            ```bash
+            chmod +x lumina-linux-amd64
+            sudo mv lumina-linux-amd64 /usr/local/bin/lumina
+            ```
+
+            ### Compilar do código-fonte
+
+            ```bash
+            git clone https://github.com/kaduvelasco/lumina-tools.git
+            cd lumina-tools
+            go build -ldflags "-X github.com/kaduvelasco/lumina-tools/internal/version.Version=${{ github.ref_name }}" -o lumina ./cmd/lumina
+            sudo mv lumina /usr/local/bin/lumina
+            ```
+
+            ---
+
+            Veja o [CHANGELOG.md](https://github.com/kaduvelasco/lumina-tools/blob/main/CHANGELOG.md) para a lista completa de mudanças.

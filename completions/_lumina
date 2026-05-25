@@ -1,0 +1,194 @@
+#compdef lumina
+# Zsh completion for lumina
+# Install: copy to a directory in $fpath (e.g. /usr/local/share/zsh/site-functions/_lumina)
+
+_lumina() {
+    local line state
+
+    _arguments -C \
+        '1: :_lumina_cmds' \
+        '*:: :->cmd_args'
+
+    case $state in
+        cmd_args)
+            case $line[1] in
+                system)  _lumina_system  ;;
+                stack)   _lumina_stack   ;;
+                dev)     _lumina_dev     ;;
+                db)      _lumina_db      ;;
+                repo)    _lumina_repo    ;;
+                set)     _lumina_set     ;;
+            esac
+            ;;
+    esac
+}
+
+_lumina_cmds() {
+    local -a cmds
+    cmds=(
+        'system:Gerenciamento Linux (pós-install, fontes, apps, update)'
+        'stack:DevStack Docker (config, lifecycle, banco)'
+        'dev:Ferramentas de desenvolvimento (LLMs, IDEs, terminais, MCP)'
+        'ai:Gerar contexto AI (CLAUDE.md, GEMINI.md, AGENTS.md…)'
+        'gitignore:Criar/atualizar .gitignore com base na stack detectada'
+        'db:Operações MariaDB (backup, restore, otimizar)'
+        'repo:Identidade Git (global, init, clone, ident)'
+        'set:Configurar Lumina (workspace, docker, theme)'
+        'self-update:Verificar e instalar atualizações'
+        'self-uninstall:Remover o binário e as configurações'
+        'version:Exibir a versão instalada'
+        'help:Exibir referência de comandos'
+    )
+    _describe 'comando' cmds
+}
+
+# ── system ────────────────────────────────────────────────────────────────────
+
+_lumina_system() {
+    local line state
+
+    _arguments -C \
+        '1: :_lumina_system_cmds' \
+        '*:: :->args'
+
+    case $state in
+        args)
+            case $line[1] in
+                pos)  _values 'distro' 'mint' 'zorin' 'ubuntu' 'fedora' ;;
+                apps) _values 'ação' 'install' 'uninstall' ;;
+            esac
+            ;;
+    esac
+}
+
+_lumina_system_cmds() {
+    local -a cmds
+    cmds=(
+        'pos:Pós-instalação (mint, zorin, ubuntu, fedora)'
+        'fonts:Gerenciar fontes'
+        'templates:Templates de arquivos em ~/Templates'
+        'apps:Instalar/desinstalar aplicativos Flatpak'
+        'update:Atualizar sistema completo'
+        'ulauncher:Instalar Ulauncher e temas'
+    )
+    _describe 'subcomando' cmds
+}
+
+# ── stack ─────────────────────────────────────────────────────────────────────
+
+_lumina_stack() {
+    local line state
+
+    _arguments -C \
+        '1: :_lumina_stack_cmds' \
+        '*:: :->args'
+
+    case $state in
+        args)
+            case $line[1] in
+                config) _values 'etapa' 'pre' 'docker' 'workspace' 'stack' ;;
+            esac
+            ;;
+    esac
+}
+
+_lumina_stack_cmds() {
+    local -a cmds
+    cmds=(
+        'config:Configurar stack (pre, docker, workspace, stack)'
+        'start:Iniciar stack de containers'
+        'end:Finalizar stack de containers'
+        'log:Visualizar logs em tempo real'
+        'status:Status e uso de recursos'
+        'db:Exibir dados de conexão do banco'
+        'fix-perm:Corrigir permissões do workspace'
+    )
+    _describe 'subcomando' cmds
+}
+
+# ── dev ───────────────────────────────────────────────────────────────────────
+
+_lumina_dev() {
+    local -a cmds
+    cmds=(
+        'pre:Instalar pré-requisitos (git, libsecret, gnome-keyring)'
+        'llm:Gerenciar CLIs LLM (Claude Code, Gemini, Codex, OpenCode)'
+        'ide:Gerenciar IDEs (Zed, Windsurf, VS Code, VSCodium)'
+        'term:Gerenciar terminais (Kitty, Alacritty, Black Box)'
+        'mcp:Gerenciar servidores MCP'
+        'update:Atualizar todas as ferramentas instaladas'
+    )
+    _describe 'subcomando' cmds
+}
+
+# ── db ────────────────────────────────────────────────────────────────────────
+
+_lumina_db() {
+    local -a cmds
+    cmds=(
+        'backup:Backup de todos os bancos'
+        'restore:Restaurar a partir de backup'
+        'remove:Remover banco de dados'
+        'optimize:Verificar e otimizar todas as tabelas'
+        'moodle:Otimizar configuração do MariaDB para Moodle'
+    )
+    _describe 'subcomando' cmds
+}
+
+# ── repo ──────────────────────────────────────────────────────────────────────
+
+_lumina_repo() {
+    local -a cmds
+    cmds=(
+        'global:Configurar identidade Git global'
+        'init:Iniciar novo repositório'
+        'clone:Clonar repositório'
+        'ident:Aplicar identidade local ao repositório atual'
+    )
+    _describe 'subcomando' cmds
+}
+
+# ── set ───────────────────────────────────────────────────────────────────────
+
+_lumina_set() {
+    local line state
+
+    _arguments -C \
+        '1: :_lumina_set_cmds' \
+        '*:: :->args'
+
+    case $state in
+        args)
+            case $line[1] in
+                theme)
+                    _values 'tema' \
+                        'lumina'  \
+                        'light'   \
+                        'dracula' \
+                        'nord'    \
+                        'tokyo'   \
+                        'gruvbox'
+                    ;;
+                flatpak)
+                    _values 'escopo' 'user' 'system'
+                    ;;
+                workspace|docker)
+                    _files -/
+                    ;;
+            esac
+            ;;
+    esac
+}
+
+_lumina_set_cmds() {
+    local -a cmds
+    cmds=(
+        'workspace:Definir o caminho do workspace'
+        'docker:Definir o diretório do docker-compose'
+        'theme:Definir o tema da TUI (lumina, light, dracula, nord, tokyo, gruvbox)'
+        'flatpak:Definir o escopo de instalação do Flatpak (user ou system)'
+    )
+    _describe 'subcomando' cmds
+}
+
+_lumina "$@"

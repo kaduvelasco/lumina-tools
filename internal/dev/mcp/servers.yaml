@@ -1,0 +1,17 @@
+# MCP Server Catalogue — Lumina Tools
+#
+# Format:
+#   - name: "Display Name"
+#     package: "npm-package-name"
+#     cmd: "binary-name"          # used to detect if installed
+#     description: "Short description"
+
+servers:
+  - name: "Lumina Vault"
+    package: "lumina-vault"
+    cmd: "lumina-vault"
+    description: "Servidor MCP para gerenciamento de memória"
+  - name: "Lumina Moodle Dev"
+    package: "lumina-mdle-dev"
+    cmd: "lumina-mdle-dev"
+    description: "Servidor MCP para desenvolvimento Moodle"

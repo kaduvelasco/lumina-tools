@@ -1,0 +1,15 @@
+# MCP Server Catalogue — Lumina Tools
+#
+# Format:
+#   - name: "Display Name"
+#     package: "npm-package-name"
+#     cmd: "binary-name"          # used to detect if installed
+#     description: "Short description"
+#
+# Example (uncomment to add):
+#   - name: "Filesystem MCP"
+#     package: "@modelcontextprotocol/server-filesystem"
+#     cmd: "mcp-server-filesystem"
+#     description: "Access local files via MCP"
+
+servers: []

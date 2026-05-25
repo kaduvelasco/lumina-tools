@@ -1,0 +1,738 @@
+# .cursorrules
+
+This file defines the rules and conventions that AI agents must follow when working in this repository.
+
+---
+
+## Rule Priority
+
+When rules conflict, follow this order:
+
+1. **User instructions** — always take precedence.
+2. **This file** — applies to all tasks.
+3. Existing project conventions.
+4. Default AI behavior.
+
+Never override explicit user instructions. If something is unclear, **ask before proceeding**.
+
+---
+
+## Language
+
+| Context | Language |
+|---|---|
+| Responses to the user | Brazilian Portuguese (pt-BR) |
+| Documentation (`*.md`) | English |
+| Code comments | English |
+
+Do **not** mix languages inside the same file.
+
+---
+
+## Agent Behavior
+
+- Make **minimal and precise changes**.
+- Modify **only files relevant to the task**.
+- Respect the **existing project structure**.
+- Prefer **simple and readable** solutions.
+- Avoid unnecessary refactoring or large rewrites unless explicitly requested.
+- If a task requires a large refactor, **ask the user before proceeding**.
+
+---
+
+## Git Operations
+
+AI agents must **never** perform or simulate Git operations. Do not:
+
+- Run `git` commands
+- Generate commit messages
+- Suggest commits, branches, or pull requests
+
+Version control is handled **manually by the user**. Agents may only **create or modify files**.
+
+---
+
+## Dependencies
+
+Before adding any dependency:
+
+1. Check if the functionality exists in the standard library.
+2. Prefer built-in language features.
+3. If a dependency is truly required, explain why a built-in solution is insufficient.
+
+Dependencies must be **minimal and justified**.
+
+---
+
+## Code Quality
+
+Generated code must:
+
+- Follow existing project conventions.
+- Use clear and consistent naming.
+- Prioritize readability over cleverness.
+- Avoid unnecessary abstractions and overengineering.
+
+---
+
+## Documentation
+
+### GitHub Documentation
+
+Public-facing documents published to the repository root. These follow GitHub Markdown conventions and must be kept bilingual.
+
+**Required files:**
+
+| File | Language | Description |
+|---|---|---|
+| `README.md` | English | Main project documentation |
+| `LEIAME.md` | Portuguese (pt-BR) | Portuguese translation of README |
+| `CONTRIBUTING.md` | English | Contribution guidelines |
+| `CONTRIBUINDO.md` | Portuguese (pt-BR) | Portuguese translation of CONTRIBUTING |
+
+**Cross-linking:** every public doc must link to its counterpart:
+
+```md
+📄 Portuguese version: see LEIAME.md   <!-- README.md / CONTRIBUTING.md -->
+📄 English version: see README.md      <!-- LEIAME.md / CONTRIBUINDO.md -->
+```
+
+**README structure:**
+
+1. Project title and description
+2. Badges (language version, CI, license — no decorative badges)
+3. Features
+4. Installation
+5. Usage
+6. Configuration
+7. Contributing
+8. License
+
+**Signature:** every GitHub doc (`*.md` created for the repository) must end with this block, exactly once:
+
+```md
+---
+
+Made with ❤️ and AI by [Kadu Velasco](https://github.com/kaduvelasco)
+```
+
+### General Documentation
+
+Internal documents for planning, architecture notes, decisions and technical reference.
+
+**Rules:**
+
+- Always in **English**, regardless of other language settings.
+- No signature required.
+- No strict structure — use whatever format suits the content.
+- Suitable for: implementation plans, architecture decisions, research notes, changelogs, meeting notes.
+- Not required to follow GitHub public conventions (no bilingual copies, no README structure).
+
+**Placement:** `docs/` directory or project root, depending on scope.
+
+**Examples:** `docs/architecture.md`, `docs/decisions.md`, `CHANGELOG.md`, `implementation-plan.md`
+
+---
+
+## Security
+
+AI agents must never:
+
+- Expose credentials, secrets, or API keys.
+- Generate or hardcode sensitive information.
+- Introduce insecure patterns.
+
+If a task appears to require sensitive information, **ask the user instead of generating it**.
+
+---
+
+## General Principles
+
+- Implement **only what was requested** — avoid scope creep.
+- Keep solutions **simple and maintainable**.
+- Preserve the existing architecture.
+- When in doubt, **ask the user before proceeding**.
+
+
+## Language-Specific Standards
+
+# Go Development — Lumina Standard
+
+Go development standards for the Lumina ecosystem.
+Focused on idiomatic code, robust error handling, and safe concurrency.
+Use for CLI tools, backend services, and system utilities.
+
+---
+
+## Language
+
+| Context | Language |
+|---|---|
+| Responses to the user | Brazilian Portuguese (pt-BR) |
+| Code comments | English |
+
+---
+
+## Project Structure
+
+Standard layout for Go projects:
+
+```text
+cmd/
+  myapp/
+    main.go           # Entry point — calls app.Run()
+internal/
+  app/                # Wiring: arg dispatch and top-level coordination
+  config/             # Configuration load/save
+  executor/           # Single point of privilege escalation (sudo)
+  domain/             # One package per domain area
+pkg/                  # Public packages safe to import externally
+assets/               # Embedded files (go:embed)
+go.mod
+go.sum
+Makefile
+```
+
+**Key invariants:**
+- `main.go` does nothing except parse args and call into `internal/app`.
+- No domain package calls `sudo` directly — all privileged commands go through `executor`.
+- Embedded assets require `all:` prefix when the tree contains dot-files.
+
+---
+
+## Golden Rules
+
+**1. Make the zero value useful.**
+
+```go
+// Good: ready to use without initialization
+var buf bytes.Buffer
+buf.WriteString("hello")
+
+// Bad: nil map panics
+type Bad struct{ counts map[string]int }
+```
+
+**2. Accept interfaces, return structs.**
+
+```go
+// Good
+func Process(r io.Reader) (*Result, error) { ... }
+
+// Bad: hides implementation, forces callers to use interface
+func Process(r io.Reader) (io.Reader, error) { ... }
+```
+
+**3. Return early — keep the happy path unindented.**
+
+```go
+// Good
+if err != nil {
+    return fmt.Errorf("load config: %w", err)
+}
+// continue happy path...
+
+// Bad: deeply nested happy path
+if err == nil {
+    // ... 30 lines of logic
+}
+```
+
+**4. Never ignore errors.**
+
+```go
+// Bad
+result, _ := doSomething()
+
+// Good
+result, err := doSomething()
+if err != nil {
+    return err
+}
+```
+
+**5. Avoid package-level mutable state.**
+
+```go
+// Bad: global mutable DB
+var db *sql.DB
+
+// Good: inject dependencies
+type Server struct{ db *sql.DB }
+func NewServer(db *sql.DB) *Server { return &Server{db: db} }
+```
+
+---
+
+## Error Handling
+
+### Wrap errors with context
+
+```go
+func LoadConfig(path string) (*Config, error) {
+    data, err := os.ReadFile(path)
+    if err != nil {
+        return nil, fmt.Errorf("load config %s: %w", path, err)
+    }
+    var cfg Config
+    if err := json.Unmarshal(data, &cfg); err != nil {
+        return nil, fmt.Errorf("parse config %s: %w", path, err)
+    }
+    return &cfg, nil
+}
+```
+
+### Sentinel errors and custom types
+
+```go
+var (
+    ErrNotFound     = errors.New("not found")
+    ErrUnauthorized = errors.New("unauthorized")
+)
+
+type ValidationError struct {
+    Field   string
+    Message string
+}
+
+func (e *ValidationError) Error() string {
+    return fmt.Sprintf("validation failed on %s: %s", e.Field, e.Message)
+}
+```
+
+### Inspect errors with errors.Is / errors.As
+
+```go
+if errors.Is(err, sql.ErrNoRows) {
+    return nil, ErrNotFound
+}
+
+var ve *ValidationError
+if errors.As(err, &ve) {
+    fmt.Fprintf(stderr, "field %s: %s\n", ve.Field, ve.Message)
+}
+```
+
+---
+
+## Concurrency
+
+### Always pass context as the first parameter
+
+```go
+func Fetch(ctx context.Context, url string) ([]byte, error) {
+    req, err := http.NewRequestWithContext(ctx, "GET", url, nil)
+    if err != nil {
+        return nil, fmt.Errorf("create request: %w", err)
+    }
+    resp, err := http.DefaultClient.Do(req)
+    if err != nil {
+        return nil, fmt.Errorf("fetch %s: %w", url, err)
+    }
+    defer resp.Body.Close()
+    return io.ReadAll(resp.Body)
+}
+```
+
+### Worker pool
+
+```go
+func WorkerPool(ctx context.Context, jobs <-chan Job, results chan<- Result, n int) {
+    var wg sync.WaitGroup
+    for range n {
+        wg.Add(1)
+        go func() {
+            defer wg.Done()
+            for job := range jobs {
+                results <- process(ctx, job)
+            }
+        }()
+    }
+    wg.Wait()
+    close(results)
+}
+```
+
+### Coordinated goroutines with errgroup
+
+```go
+import "golang.org/x/sync/errgroup"
+
+func FetchAll(ctx context.Context, urls []string) ([][]byte, error) {
+    g, ctx := errgroup.WithContext(ctx)
+    results := make([][]byte, len(urls))
+    for i, url := range urls {
+        i, url := i, url
+        g.Go(func() error {
+            data, err := Fetch(ctx, url)
+            if err != nil {
+                return err
+            }
+            results[i] = data
+            return nil
+        })
+    }
+    return results, g.Wait()
+}
+```
+
+### Avoid goroutine leaks
+
+```go
+// Bad: blocks forever if no receiver
+func leaky(url string) <-chan []byte {
+    ch := make(chan []byte)
+    go func() { ch <- fetch(url) }()
+    return ch
+}
+
+// Good: buffered channel + context cancellation
+func safe(ctx context.Context, url string) <-chan []byte {
+    ch := make(chan []byte, 1)
+    go func() {
+        data, err := Fetch(ctx, url)
+        if err != nil {
+            return
+        }
+        select {
+        case ch <- data:
+        case <-ctx.Done():
+        }
+    }()
+    return ch
+}
+```
+
+---
+
+## Interface Design
+
+### Keep interfaces small
+
+```go
+// Good: single-method interfaces compose well
+type Storer interface{ Store(key string, val []byte) error }
+type Loader interface{ Load(key string) ([]byte, error) }
+type Cache interface {
+    Storer
+    Loader
+}
+```
+
+### Define interfaces in the consumer package
+
+```go
+// In the service package — not in the storage package
+package service
+
+type UserStore interface {
+    GetUser(id string) (*User, error)
+    SaveUser(user *User) error
+}
+
+type Service struct{ store UserStore }
+```
+
+### Functional options for configurable types
+
+```go
+type Server struct {
+    addr    string
+    timeout time.Duration
+}
+
+type Option func(*Server)
+
+func WithTimeout(d time.Duration) Option {
+    return func(s *Server) { s.timeout = d }
+}
+
+func NewServer(addr string, opts ...Option) *Server {
+    s := &Server{addr: addr, timeout: 30 * time.Second}
+    for _, o := range opts {
+        o(s)
+    }
+    return s
+}
+```
+
+---
+
+## Performance
+
+### Preallocate slices when size is known
+
+```go
+// Bad: grows slice multiple times
+var results []Result
+for _, item := range items {
+    results = append(results, process(item))
+}
+
+// Good: single allocation
+results := make([]Result, 0, len(items))
+for _, item := range items {
+    results = append(results, process(item))
+}
+```
+
+### Use strings.Builder for concatenation in loops
+
+```go
+// Bad: O(n²) allocations
+var s string
+for _, p := range parts { s += p }
+
+// Good
+var sb strings.Builder
+for _, p := range parts { sb.WriteString(p) }
+return sb.String()
+```
+
+### Reuse allocations with sync.Pool
+
+```go
+var pool = sync.Pool{New: func() any { return new(bytes.Buffer) }}
+
+func handle(data []byte) []byte {
+    buf := pool.Get().(*bytes.Buffer)
+    defer func() { buf.Reset(); pool.Put(buf) }()
+    buf.Write(data)
+    return buf.Bytes()
+}
+```
+
+---
+
+## Anti-Patterns
+
+| Anti-pattern | Why |
+|---|---|
+| Naked returns in long functions | Impossible to tell what is being returned |
+| `panic` for control flow | Crashes the program; use errors instead |
+| Context stored in a struct field | Context belongs as a function parameter |
+| Mixed value and pointer receivers | Inconsistent; pick one per type |
+| Separate declaration and immediate assignment without reason | Use `:=` directly unless preserving exit code |
+| Importing a package only for side effects without a comment | Silent `init()` calls are hard to trace |
+
+---
+
+## Quality
+
+```bash
+go build ./...
+go test -race ./...
+go vet ./...
+golangci-lint run
+gofmt -w .
+go mod tidy
+```
+
+- **gofmt** — non-negotiable; run before every commit.
+- **go vet** — catches correctness issues gofmt does not.
+- **golangci-lint** — enable at minimum: `errcheck`, `govet`, `staticcheck`, `unused`, `gofmt`.
+- **-race** — always run the test suite with the race detector.
+
+
+# Bash/Shell Development — Lumina Standard
+
+Bash/Shell development standards for the Lumina ecosystem.
+Focused on defensive scripts, performance, and a consistent interface.
+Use for creating automation scripts, CLI tools, and installers.
+
+---
+
+## Language
+
+| Context | Language |
+|---|---|
+| Responses to the user | Brazilian Portuguese (pt-BR) |
+| Code comments | English |
+
+---
+
+## Boilerplate
+
+Every script must start with this exact structure.
+
+```bash
+#!/usr/bin/env bash
+# =============================================================================
+# Script Name : script-name.sh
+# Description : Brief description of the purpose
+# Version     : 1.0.0
+# =============================================================================
+set -Eeuo pipefail
+shopt -s inherit_errexit
+
+readonly SCRIPT_DIR="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd -P)"
+
+# --- Cleanup and Errors ---
+trap 'printf "\n\033[0;31m❌ Error at %s:%d\033[0m\n" "${BASH_SOURCE[0]}" "$LINENO" >&2' ERR
+trap '[[ -n "${_tmpdir:-}" ]] && rm -rf -- "$_tmpdir"' EXIT
+
+# --- Dependency Loading ---
+for _lib in utils.sh system.sh; do
+    if [[ ! -f "$SCRIPT_DIR/lib/$_lib" ]]; then
+        printf '\033[0;31m❌ Fatal error: lib/%s not found.\033[0m\n' "$_lib" >&2
+        exit 1
+    fi
+    # shellcheck source=/dev/null
+    source "$SCRIPT_DIR/lib/$_lib"
+done
+unset _lib
+
+# --- Functions ---
+main() {
+    detect_pkg_manager
+    show_header "Optional Subtitle"
+    # Logic here
+}
+
+main "$@"
+```
+
+---
+
+## Defensive Shell — Golden Rules
+
+1. **Always quote variables:** `"$var"`, `"${array[@]}"`, `"$(command)"`.
+
+2. **Local scope in functions:** use `local` for variables, `local -r` for constants.
+
+3. **Preserve exit codes** — separate declaration from assignment:
+   ```bash
+   local result
+   result=$(command_that_might_fail)
+   ```
+
+4. **Flag protection** — terminate options with `--` before variable arguments:
+   ```bash
+   rm -rf -- "$path"
+   grep -F -- "$search" "$file"
+   ```
+
+5. **Printf over echo** — use `printf '%b\n'` for colorized output, `printf '%s\n'` for literal text.
+
+---
+
+## Lumina Interface (`lib/utils.sh`)
+
+### Color palette
+
+Never redefine colors. Use the variables exported by `utils.sh`:
+
+| Variable | Color | Usage |
+|---|---|---|
+| `${C1}` | Red | Error |
+| `${C2}` | Green | Success |
+| `${C3}` | Yellow | Warning |
+| `${C4}` | Gray (#999999) | Info |
+| `${H1}`, `${H2}` | Default terminal | Headers |
+| `${RESET}` | — | Reset |
+
+### Output functions
+
+| Function | Description |
+|---|---|
+| `die "msg"` | Fatal error + exit |
+| `warn "msg"` | Warning to stderr |
+| `info "msg"` | Information to stdout |
+| `success "msg"` | Success confirmation |
+
+### Confirmations
+
+Standard: `y` or `s` confirms, any other key cancels.
+
+```bash
+printf '%s' "Continue? (${C3}y${RESET}/N): "
+read -r confirm
+[[ ! "$confirm" =~ ^[yYsS]$ ]] && return 0
+```
+
+### Default header
+
+```bash
+# =============================================================================
+# Exibe o cabeçalho ASCII padrão Lumina. $1 = subtítulo (opcional).
+# =============================================================================
+show_lumina_header() {
+    local subtitle="${1:-LUMINA CLI ENGINE}"
+    clear
+    printf '%b\n' ""
+    printf '%b\n' "░██                            ░██                      "
+    printf '%b\n' "░██                                                     "
+    printf '%b\n' "░██ ░██    ░██ ░█████████████  ░██░████████   ░██████   "
+    printf '%b\n' "░██ ░██    ░██ ░██   ░██   ░██ ░██░██    ░██       ░██  "
+    printf '%b\n' "░██ ░██    ░██ ░██   ░██   ░██ ░██░██    ░██  ░███████  "
+    printf '%b\n' "░██ ░██   ░███ ░██   ░██   ░██ ░██░██    ░██ ░██   ░██  "
+    printf '%b\n' "░██  ░█████░██ ░██   ░██   ░██ ░██░██    ░██  ░█████░██ "
+    printf '%b\n' ""
+    printf '%b\n' "${H2}${subtitle}${RESET} "
+    printf '%b\n' ""
+}
+```
+
+```bash
+show_header() {
+    show_lumina_header "LuminaDev — Workstation Setup"
+}
+```
+
+---
+
+## Production Patterns
+
+### Atomic write
+
+Prevents file corruption on write failures.
+
+```bash
+atomic_write() {
+    local tmp; tmp=$(mktemp)
+    cat > "$tmp"
+    mv -- "$tmp" "$1"
+    chmod 644 "$1"
+}
+
+generate_config | atomic_write "/etc/app/config.conf"
+```
+
+### Safe iteration (NUL-delimited)
+
+Handles filenames containing spaces or newlines.
+
+```bash
+while IFS= read -r -d '' f; do
+    process "$f"
+done < <(find . -type f -name "*.log" -print0)
+```
+
+### Dependency check
+
+```bash
+require_cmd() {
+    command -v "$1" &>/dev/null || die "Missing dependency: $1"
+}
+```
+
+### Sensitive files (credentials)
+
+Create with restricted permissions **before** writing data.
+
+```bash
+local secret_file="$HOME/.secrets"
+(umask 077; touch "$secret_file")
+printf 'TOKEN=%q\n' "$user_token" >> "$secret_file"
+```
+
+---
+
+## Quality
+
+- **ShellCheck:** `--severity=warning --shell=bash --exclude=SC1091`
+  - Suppress SC1091 only where sourcing is dynamic.
+- **shfmt:** `shfmt -i 4 -ci` for consistent formatting.
+- All scripts must pass ShellCheck with zero warnings before being considered complete.
+
+

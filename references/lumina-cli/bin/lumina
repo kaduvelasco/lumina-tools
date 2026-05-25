@@ -1,0 +1,70 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+LIBEXEC_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/../lib/lumina/libexec" && pwd)"
+readonly LIBEXEC_DIR
+# shellcheck source=/dev/null
+source "$(dirname "${BASH_SOURCE[0]}")/../lib/lumina/lib/utils.sh"
+
+show_help() {
+    show_lumina_header
+    printf "Uso: lumina <comando> [args]\n\nComandos disponíveis:\n"
+    for file in "$LIBEXEC_DIR"/*.sh; do
+        if [[ -f "$file" ]]; then
+            local cmd
+            cmd=$(basename "$file" .sh)
+            local desc
+            desc=$(grep -m1 '^# DESC:' "$file" | cut -d: -f2-)
+            printf "  %-12s %s\n" "$cmd" "${desc:-Sem descrição}"
+        fi
+    done
+    printf "\n"
+}
+
+_run_menu() {
+    while true; do
+        show_lumina_header
+        printf '%bO que você deseja fazer?%b\n\n' "$C4" "$NC"
+        printf '  %b1.%b Executar comando stack\n' "$C2" "$NC"
+        printf '  %b2.%b Executar comando db\n' "$C2" "$NC"
+        printf '  %b3.%b Executar comando git\n' "$C2" "$NC"
+        printf '  %b4.%b Executar comando ai\n' "$C2" "$NC"
+        printf '  %b0.%b Sair\n' "$C1" "$NC"
+        printf '\n'
+        read -r -p "Escolha uma opção: " option
+
+        case "$option" in
+            1) bash "$LIBEXEC_DIR/stack.sh" ;;
+            2) bash "$LIBEXEC_DIR/db.sh" ;;
+            3) bash "$LIBEXEC_DIR/git.sh" ;;
+            4) bash "$LIBEXEC_DIR/ai.sh" ;;
+            0)
+                printf '\n%bAté logo!%b\n\n' "$C2" "$NC"
+                exit 0
+                ;;
+            *)
+                warn "Opção inválida. Digite um número de 0 a 4."
+                sleep 1
+                ;;
+        esac
+    done
+}
+
+if [[ $# -eq 0 ]]; then
+    _run_menu
+    exit 0
+fi
+
+cmd="$1"; shift
+
+case "$cmd" in
+    -h|--help) show_help; exit 0 ;;
+esac
+
+if [[ -f "$LIBEXEC_DIR/$cmd.sh" ]]; then
+    exec "$LIBEXEC_DIR/$cmd.sh" "$@"
+else
+    warn "Comando desconhecido: $cmd"
+    show_help
+    exit 1
+fi
