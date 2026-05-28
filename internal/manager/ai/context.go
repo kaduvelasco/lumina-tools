@@ -297,4 +297,3 @@ func readTpl(path string) (string, error) {
 	}
 	return string(data), nil
 }
-

@@ -44,7 +44,48 @@ This project targets **Moodle {{MOODLE_VERSION}}+** (`requires = {{MOODLE_FULLVE
 
 - Use only APIs compatible with Moodle {{MOODLE_VERSION}} or later.
 - **Strictly avoid** functions deprecated in previous versions.
-- **Note:** Hook API is **NOT** available in this version — use `lib.php` callbacks instead.
+
+### Hook API vs lib.php Callbacks
+
+The Hook API is available from **Moodle 4.3+**. Before implementing any event hook or plugin callback, ask the user:
+
+> "Does this plugin need to support Moodle versions earlier than 4.3?"
+
+Based on the answer:
+
+- **Only 4.3+** — use the Hook API exclusively (`classes/hook/` + `db/hooks.php`).
+- **Only < 4.3** — use `lib.php` callbacks exclusively.
+- **Both versions** — implement both and guard the `lib.php` callback to avoid double execution on 4.3+:
+
+```php
+// lib.php — executed only on Moodle < 4.3
+function local_example_before_standard_html_head(): string {
+    global $CFG;
+    if ($CFG->version >= 2023100900) { // 4.3+ uses Hook API
+        return '';
+    }
+    return local_example_render_head_content();
+}
+
+// classes/hook/before_standard_html_head.php — for Moodle 4.3+
+namespace local_example\hook;
+
+class before_standard_html_head {
+    public static function callback(\core\hook\output\before_standard_html_head $hook): void {
+        $hook->add_html(local_example_render_head_content());
+    }
+}
+```
+
+```php
+// db/hooks.php — registers the Hook API callback (Moodle 4.3+)
+$callbacks = [
+    [
+        'hook'     => \core\hook\output\before_standard_html_head::class,
+        'callback' => \local_example\hook\before_standard_html_head::class . '::callback',
+    ],
+];
+```
 
 ---
 
@@ -56,7 +97,9 @@ Every plugin must include these files at a minimum:
 version.php
 lang/en/[component].php
 db/install.xml
+db/upgrade.php
 db/access.php
+classes/privacy/provider.php
 ```
 
 **Optional (recommended):** `settings.php`, `lib.php`, `index.php`, `classes/`, `templates/`, `amd/src/`, `tests/`, `tests/behat/`
@@ -71,7 +114,7 @@ db/access.php
 defined('MOODLE_INTERNAL') || die();
 
 $plugin->component = 'local_example';
-$plugin->version   = 2025010100;
+$plugin->version   = 2026010100; // Format: YYYYMMDDNN (NN = daily increment, starting at 00)
 $plugin->requires  = 2022112800; // Matches {{MOODLE_FULLVERSION}}
 $plugin->maturity  = MATURITY_STABLE;
 $plugin->release   = '1.0';
@@ -95,6 +138,30 @@ All user-facing strings must be defined here. Never hardcode strings in PHP or M
 - Every table **must** have a primary key.
 - Define indexes for columns used in `WHERE` or `JOIN` clauses.
 - Supported types: `INT`, `CHAR`, `TEXT`, `NUMBER`, `FLOAT`.
+
+### db/upgrade.php
+
+Required for all schema migrations after the initial install. Each version bump must have a corresponding upgrade block.
+
+```php
+defined('MOODLE_INTERNAL') || die();
+
+function xmldb_local_example_upgrade(int $oldversion): bool {
+    global $DB;
+    $dbman = $DB->get_manager();
+
+    if ($oldversion < 2026010100) {
+        $table = new xmldb_table('example_table');
+        $field = new xmldb_field('newfield', XMLDB_TYPE_CHAR, '255', null, XMLDB_NOTNULL, null, '');
+        if (!$dbman->field_exists($table, $field)) {
+            $dbman->add_field($table, $field);
+        }
+        upgrade_plugin_savepoint(true, 2026010100, 'local', 'example');
+    }
+
+    return true;
+}
+```
 
 ### db/access.php
 
@@ -129,6 +196,8 @@ namespace local_example\output;
 namespace local_example\external;
 namespace local_example\task;
 namespace local_example\event;
+namespace local_example\hook;
+namespace local_example\privacy;
 ```
 
 ---
@@ -143,8 +212,12 @@ classes/
   external/       → Web service endpoints
   task/           → Scheduled and ad-hoc tasks
   event/          → Event classes
+  hook/           → Hook API callbacks (Moodle 4.3+)
+  privacy/        → Privacy API — GDPR compliance (required)
 db/
   events.php      → Event observers
+  hooks.php       → Hook API registrations (Moodle 4.3+)
+  services.php    → Web service definitions
 templates/        → Mustache templates
 amd/src/          → AMD JavaScript modules
 tests/            → PHPUnit tests
@@ -170,6 +243,180 @@ $output  = $PAGE->get_renderer('local_example');
 echo $output->header();
 echo $output->render_from_template('local_example/main', $data);
 echo $output->footer();
+```
+
+---
+
+## Privacy API (GDPR)
+
+Every plugin that stores personal data must implement `classes/privacy/provider.php`. Plugins that store no personal data must still declare a null provider.
+
+### Null provider (no personal data)
+
+```php
+namespace local_example\privacy;
+
+class provider implements \core_privacy\local\metadata\null_provider {
+    public static function get_reason(): string {
+        return get_string('privacy:metadata', 'local_example');
+    }
+}
+```
+
+### Full provider (stores personal data)
+
+```php
+namespace local_example\privacy;
+
+use core_privacy\local\metadata\collection;
+use core_privacy\local\request\contextlist;
+use core_privacy\local\request\approved_contextlist;
+
+class provider implements
+    \core_privacy\local\metadata\provider,
+    \core_privacy\local\request\plugin\provider {
+
+    public static function get_metadata(collection $collection): collection {
+        $collection->add_database_table('example_table', [
+            'userid'      => 'privacy:metadata:example_table:userid',
+            'data'        => 'privacy:metadata:example_table:data',
+            'timecreated' => 'privacy:metadata:example_table:timecreated',
+        ], 'privacy:metadata:example_table');
+        return $collection;
+    }
+
+    public static function get_contexts_for_userid(int $userid): contextlist {
+        $contextlist = new contextlist();
+        $sql = "SELECT ctx.id
+                  FROM {example_table} et
+                  JOIN {context} ctx ON ctx.instanceid = et.courseid
+                       AND ctx.contextlevel = :contextlevel
+                 WHERE et.userid = :userid";
+        $contextlist->add_from_sql($sql, ['contextlevel' => CONTEXT_COURSE, 'userid' => $userid]);
+        return $contextlist;
+    }
+
+    public static function export_user_data(approved_contextlist $contextlist): void {
+        // Export user data for GDPR subject access requests.
+    }
+
+    public static function delete_data_for_all_users_in_context(\context $context): void {
+        global $DB;
+        // Delete all personal data stored in this context.
+    }
+
+    public static function delete_data_for_user(approved_contextlist $contextlist): void {
+        global $DB;
+        // Delete data for a specific user across their approved contexts.
+    }
+}
+```
+
+---
+
+## External API (Web Services)
+
+Declare each endpoint as a class under `classes/external/` and register it in `db/services.php`.
+
+```php
+// classes/external/get_example.php
+namespace local_example\external;
+
+use external_api;
+use external_function_parameters;
+use external_value;
+use external_single_structure;
+
+class get_example extends external_api {
+
+    public static function execute_parameters(): external_function_parameters {
+        return new external_function_parameters([
+            'id' => new external_value(PARAM_INT, 'Record ID'),
+        ]);
+    }
+
+    public static function execute(int $id): array {
+        $params = self::validate_parameters(self::execute_parameters(), ['id' => $id]);
+        self::validate_context(\context_system::instance());
+        require_capability('local/example:view', \context_system::instance());
+
+        $record = \local_example\repository\example_repository::get($params['id']);
+        return ['id' => $record->id, 'name' => $record->name];
+    }
+
+    public static function execute_returns(): external_single_structure {
+        return new external_single_structure([
+            'id'   => new external_value(PARAM_INT, 'Record ID'),
+            'name' => new external_value(PARAM_TEXT, 'Record name'),
+        ]);
+    }
+}
+```
+
+```php
+// db/services.php
+defined('MOODLE_INTERNAL') || die();
+
+$functions = [
+    'local_example_get_example' => [
+        'classname'    => \local_example\external\get_example::class,
+        'methodname'   => 'execute',
+        'description'  => 'Returns a single example record.',
+        'type'         => 'read',
+        'ajax'         => true,
+        'capabilities' => 'local/example:view',
+    ],
+];
+```
+
+---
+
+## Events
+
+### Defining an event
+
+```php
+// classes/event/example_created.php
+namespace local_example\event;
+
+class example_created extends \core\event\base {
+
+    protected function init(): void {
+        $this->data['crud']        = 'c'; // c=create, r=read, u=update, d=delete
+        $this->data['edulevel']    = self::LEVEL_OTHER;
+        $this->data['objecttable'] = 'example_table';
+    }
+
+    public static function get_name(): string {
+        return get_string('event:example_created', 'local_example');
+    }
+
+    public function get_description(): string {
+        return "User {$this->userid} created example record {$this->objectid}.";
+    }
+}
+```
+
+### Dispatching an event
+
+```php
+$event = \local_example\event\example_created::create([
+    'objectid' => $record->id,
+    'context'  => \context_system::instance(),
+]);
+$event->trigger();
+```
+
+### Observing an event
+
+```php
+// db/events.php
+$observers = [
+    [
+        'eventname' => \local_example\event\example_created::class,
+        'callback'  => \local_example\observer\example_observer::class . '::on_created',
+    ],
+];
 ```
 
 ---
@@ -222,13 +469,25 @@ echo get_string('save', 'local_example');
 
 ### JavaScript — Use AMD Modules
 
-Never use inline `<script>` tags.
+Never use inline `<script>` tags. Avoid importing jQuery — use Moodle core modules or native DOM APIs instead.
 
 ```javascript
 // amd/src/example.js
-define(["jquery"], function ($) {
+define(['core/log', 'core/ajax'], function (Log, Ajax) {
     return {
-        init: function () { /* ... */ },
+        init: function (config) {
+            Log.debug('local_example: module initialized', config);
+
+            document.querySelector('[data-action="example-submit"]')
+                ?.addEventListener('click', function () {
+                    Ajax.call([{
+                        methodname: 'local_example_get_example',
+                        args: { id: config.recordId },
+                    }])[0].done(function (result) {
+                        Log.debug('local_example: result', result);
+                    });
+                });
+        },
     };
 });
 ```

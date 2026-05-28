@@ -105,9 +105,9 @@ func Stats(ctx context.Context, exe *executor.Executor, stdout io.Writer) error 
 }
 
 var (
-	composeOnce     sync.Once
-	composeCmdName  string
-	composeCmdBase  []string
+	composeOnce    sync.Once
+	composeCmdName string
+	composeCmdBase []string
 )
 
 // composeCmd returns the compose command and its base args, preferring

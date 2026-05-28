@@ -36,8 +36,17 @@ func Remove(ctx context.Context, exe *executor.Executor, stdout io.Writer) error
 		return err
 	}
 
-	out, err := exe.Output(ctx, executor.Options{Env: []string{"MYSQL_PWD=" + dbPass}},
-		"docker", "exec", "-e", "MYSQL_PWD", container, "mariadb", "-u", dbUser, "-e", "SHOW DATABASES;")
+	envPath, cleanupEnv, err := writeTempSecret("MYSQL_PWD="+dbPass+"\n", "lumina-db-*.env")
+	if err != nil {
+		ui.Err(stdout, "Falha ao criar credencial temporária: "+err.Error())
+		ui.WaitEnter(stdout)
+		return fmt.Errorf("credencial: %w", err)
+	}
+	defer cleanupEnv()
+
+	out, err := exe.Output(ctx, executor.Options{},
+		"docker", "exec", "-i", "--env-file", envPath, container,
+		"mariadb", "-u", dbUser, "-e", "SHOW DATABASES;")
 	if err != nil {
 		ui.Err(stdout, "Falha ao listar bancos: "+err.Error())
 		ui.WaitEnter(stdout)
@@ -71,8 +80,9 @@ func Remove(ctx context.Context, exe *executor.Executor, stdout io.Writer) error
 		}
 		query := "DROP DATABASE `" + strings.ReplaceAll(db, "`", "``") + "`;"
 		if err := exe.Run(ctx,
-			executor.Options{Stdout: stdout, Stderr: stdout, Env: []string{"MYSQL_PWD=" + dbPass}},
-			"docker", "exec", "-e", "MYSQL_PWD", container, "mariadb", "-u", dbUser, "-e", query,
+			executor.Options{Stdout: stdout, Stderr: stdout},
+			"docker", "exec", "-i", "--env-file", envPath, container,
+			"mariadb", "-u", dbUser, "-e", query,
 		); err != nil {
 			ui.Warning(stdout, "Falha ao remover '"+db+"': "+err.Error())
 		} else {

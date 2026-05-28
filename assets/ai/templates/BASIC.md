@@ -72,6 +72,8 @@ Generated code must:
 - Use clear and consistent naming.
 - Prioritize readability over cleverness.
 - Avoid unnecessary abstractions and overengineering.
+- Do not remove or disable existing tests unless explicitly requested.
+- If the project has a test suite, new logic should include corresponding tests.
 
 ---
 
@@ -118,7 +120,7 @@ Made with ❤️ and AI by [Kadu Velasco](https://github.com/kaduvelasco)
 
 ### General Documentation
 
-Internal documents for planning, architecture notes, decisions and technical reference.
+Internal documents for planning, architecture notes, decisions, and technical reference.
 
 **Rules:**
 
@@ -128,7 +130,10 @@ Internal documents for planning, architecture notes, decisions and technical ref
 - Suitable for: implementation plans, architecture decisions, research notes, changelogs, meeting notes.
 - Not required to follow GitHub public conventions (no bilingual copies, no README structure).
 
-**Placement:** `docs/` directory or project root, depending on scope.
+**Placement:**
+
+- `docs/` — internal technical documents not meant for GitHub display.
+- Project root — documents relevant to contributors (e.g., `CHANGELOG.md`, ADRs).
 
 **Examples:** `docs/architecture.md`, `docs/decisions.md`, `CHANGELOG.md`, `implementation-plan.md`
 

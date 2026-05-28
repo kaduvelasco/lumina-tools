@@ -201,6 +201,52 @@ server.setRequestHandler(ListPromptsRequestSchema, async () => ({
 }));
 ```
 
+### Server bootstrap
+
+Wire everything together in `src/index.ts`. This is the only file that creates the server, registers handlers, and starts the transport.
+
+```typescript
+import { Server } from '@modelcontextprotocol/sdk/server/index.js';
+import { StdioServerTransport } from '@modelcontextprotocol/sdk/server/stdio.js';
+import {
+  CallToolRequestSchema,
+  ListToolsRequestSchema,
+  McpError,
+  ErrorCode,
+} from '@modelcontextprotocol/sdk/types.js';
+import { toolDefinition, handleVerbNoun } from './tools/verb-noun.js';
+
+const server = new Server(
+  { name: 'my-server', version: '1.0.0' },
+  { capabilities: { tools: {}, resources: {}, prompts: {} } }
+);
+
+server.setRequestHandler(ListToolsRequestSchema, async () => ({
+  tools: [toolDefinition],
+}));
+
+server.setRequestHandler(CallToolRequestSchema, async (request) => {
+  const { name, arguments: args } = request.params;
+  switch (name) {
+    case 'verb-noun':
+      return handleVerbNoun(args);
+    default:
+      throw new McpError(ErrorCode.MethodNotFound, `Unknown tool: ${name}`);
+  }
+});
+
+async function main() {
+  const transport = new StdioServerTransport();
+  await server.connect(transport);
+  console.error('Server running on stdio');
+}
+
+main().catch((err) => {
+  console.error('Fatal error:', err);
+  process.exit(1);
+});
+```
+
 ---
 
 ## Security Rules
@@ -250,15 +296,15 @@ Use strict mode without exceptions.
 ## Required Dependencies
 
 ```bash
-npm install @modelcontextprotocol/sdk zod
+npm install @modelcontextprotocol/sdk@^1.29.0 zod
 npm install -D typescript @types/node
 ```
 
-| Package | Purpose |
-|---|---|
-| `@modelcontextprotocol/sdk` | MCP server/transport/types |
-| `zod` | Input validation and schema inference |
-| `typescript` | Language (strict mode required) |
+| Package | Version | Purpose |
+|---|---|---|
+| `@modelcontextprotocol/sdk` | `^1.29.0` | MCP server/transport/types |
+| `zod` | latest | Input validation and schema inference |
+| `typescript` | latest | Language (strict mode required) |
 
 ---
 

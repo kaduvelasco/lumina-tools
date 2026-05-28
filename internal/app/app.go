@@ -23,6 +23,7 @@ import (
 	stackconfig "github.com/kaduvelasco/lumina-tools/internal/stack/config"
 	"github.com/kaduvelasco/lumina-tools/internal/system/apps"
 	"github.com/kaduvelasco/lumina-tools/internal/system/fonts"
+	"github.com/kaduvelasco/lumina-tools/internal/system/gnome"
 	"github.com/kaduvelasco/lumina-tools/internal/system/postinstall"
 	"github.com/kaduvelasco/lumina-tools/internal/system/templates"
 	"github.com/kaduvelasco/lumina-tools/internal/system/ulauncher"
@@ -96,7 +97,7 @@ func dispatch(ctx context.Context, args []string, stdin io.Reader, stdout, stder
 
 func dispatchSystem(ctx context.Context, args []string, stdin io.Reader, stdout, stderr io.Writer) error {
 	if len(args) == 0 {
-		return fmt.Errorf("uso: lumina system <pos|fonts|templates|apps|update|ulauncher>")
+		return fmt.Errorf("uso: lumina system <pos|gnome|fonts|templates|apps|update|ulauncher>")
 	}
 	exe := executor.New(stdout, stderr)
 	switch args[0] {
@@ -116,6 +117,8 @@ func dispatchSystem(ctx context.Context, args []string, stdin io.Reader, stdout,
 		default:
 			return fmt.Errorf("distro desconhecida: %s\nuso: lumina system pos [mint|zorin|ubuntu|fedora]", args[1])
 		}
+	case "gnome":
+		return dispatchGnome(ctx, args[1:], stdin, stdout, stderr)
 	case "fonts":
 		return fonts.Select(ctx, exe, stdin, stdout)
 	case "templates":
@@ -137,7 +140,28 @@ func dispatchSystem(ctx context.Context, args []string, stdin io.Reader, stdout,
 	case "ulauncher":
 		return ulauncher.Install(ctx, exe, stdout)
 	default:
-		return fmt.Errorf("subcomando desconhecido: %s\nuso: lumina system <pos|fonts|templates|apps|update|ulauncher>", args[0])
+		return fmt.Errorf("subcomando desconhecido: %s\nuso: lumina system <pos|gnome|fonts|templates|apps|update|ulauncher>", args[0])
+	}
+}
+
+func dispatchGnome(ctx context.Context, args []string, stdin io.Reader, stdout, _ io.Writer) error {
+	if len(args) == 0 {
+		return fmt.Errorf("uso: lumina system gnome <pre|ext|themes|icons|cursors>")
+	}
+	exe := executor.New(stdout, stdout)
+	switch args[0] {
+	case "pre":
+		return gnome.InstallPrereqs(ctx, exe, stdout)
+	case "ext":
+		return gnome.ShowExtensions(ctx, exe, stdout)
+	case "themes":
+		return gnome.ManageThemes(ctx, exe, stdin, stdout)
+	case "icons":
+		return gnome.ManageIcons(ctx, exe, stdin, stdout)
+	case "cursors":
+		return gnome.ManageCursors(ctx, exe, stdin, stdout)
+	default:
+		return fmt.Errorf("subcomando desconhecido: %s\nuso: lumina system gnome <pre|ext|themes|icons|cursors>", args[0])
 	}
 }
 
@@ -261,7 +285,7 @@ var themeAliases = map[string]string{
 
 func dispatchSet(args []string, stdout io.Writer) error {
 	if len(args) == 0 {
-		return fmt.Errorf("uso: lumina set <workspace|docker|theme> <valor>")
+		return fmt.Errorf("uso: lumina set <workspace|docker|theme|flatpak> <valor>")
 	}
 	cfg, err := config.Load()
 	if err != nil {
@@ -304,7 +328,7 @@ func dispatchSet(args []string, stdout io.Writer) error {
 		}
 		cfg.FlatpakScope = args[1]
 	default:
-		return fmt.Errorf("campo desconhecido: %s\nuso: lumina set <workspace|docker|theme> <valor>", args[0])
+		return fmt.Errorf("campo desconhecido: %s\nuso: lumina set <workspace|docker|theme|flatpak> <valor>", args[0])
 	}
 	if err := config.Save(cfg); err != nil {
 		return fmt.Errorf("salvar config: %w", err)
@@ -331,6 +355,7 @@ GERENCIAMENTO LINUX
   lumina system apps uninstall
   lumina system update
   lumina system ulauncher
+  lumina system gnome [pre|ext|themes|icons|cursors]
 
 DEVSTACK
   lumina stack config [pre|docker|workspace|stack]

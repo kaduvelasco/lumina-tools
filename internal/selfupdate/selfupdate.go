@@ -18,7 +18,7 @@ const githubRepo = "kaduvelasco/lumina-tools"
 
 // Release holds information about a GitHub release.
 type Release struct {
-	Version    string
+	Version     string
 	DownloadURL string
 }
 

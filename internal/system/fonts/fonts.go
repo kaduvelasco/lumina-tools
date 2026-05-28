@@ -158,12 +158,12 @@ func installJetBrainsMono(ctx context.Context, exe *executor.Executor, stdout io
 	fontDir := "$HOME/.local/share/fonts"
 	script := fmt.Sprintf(`
 set -e
-mkdir -p %s
+mkdir -p "%s"
 TMP=$(mktemp -d)
 trap 'rm -rf "$TMP"' EXIT
 curl -fsSL %q -o "$TMP/fonts.zip"
 unzip -q "$TMP/fonts.zip" -d "$TMP"
-find "$TMP" -maxdepth 3 -name "*.ttf" -exec cp -- {} %s/ \;
+find "$TMP" -maxdepth 3 -name "*.ttf" -exec cp -- {} "%s/" \;
 `, fontDir, url, fontDir)
 
 	return exe.Run(ctx,
@@ -176,4 +176,3 @@ func removeJetBrainsMono(ctx context.Context, exe *executor.Executor, stdout io.
 	script := `find "$HOME/.local/share/fonts" -name "JetBrainsMono-*.ttf" -delete 2>/dev/null; true`
 	return exe.Run(ctx, executor.Options{Stdout: stdout, Stderr: stdout}, "bash", "-c", script)
 }
-

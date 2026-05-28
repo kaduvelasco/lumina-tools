@@ -30,6 +30,19 @@ func New(stdout, stderr io.Writer) *Executor {
 	return &Executor{Stdout: stdout, Stderr: stderr}
 }
 
+// CurrentUser returns the real user running the process.
+// When invoked through sudo, SUDO_USER is preferred so actions
+// target the original user rather than root.
+func CurrentUser() string {
+	if u := os.Getenv("SUDO_USER"); u != "" {
+		return u
+	}
+	if u := os.Getenv("USER"); u != "" {
+		return u
+	}
+	return os.Getenv("LOGNAME")
+}
+
 // Run executes name with args, escalating to sudo when opts.RequiresSudo is true.
 // Output writers in opts take precedence over the Executor defaults.
 func (e *Executor) Run(ctx context.Context, opts Options, name string, args ...string) error {

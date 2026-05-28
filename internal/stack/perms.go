@@ -10,17 +10,6 @@ import (
 	"github.com/kaduvelasco/lumina-tools/internal/ui"
 )
 
-// currentUser returns the real user, preferring SUDO_USER when running under sudo.
-func currentUser() string {
-	if u := os.Getenv("SUDO_USER"); u != "" {
-		return u
-	}
-	if u := os.Getenv("USER"); u != "" {
-		return u
-	}
-	return os.Getenv("LOGNAME")
-}
-
 // FixPerms corrects ownership and permissions on the workspace directories.
 func FixPerms(ctx context.Context, exe *executor.Executor, stdout io.Writer, workspace string) error {
 	ui.PrintHeader(stdout, "Corrigir Permissões")
@@ -31,7 +20,7 @@ func FixPerms(ctx context.Context, exe *executor.Executor, stdout io.Writer, wor
 		return fmt.Errorf("workspace nao encontrado: %s", workspace)
 	}
 
-	user := currentUser()
+	user := executor.CurrentUser()
 	if user == "" {
 		ui.Err(stdout, "Não foi possível detectar o usuário atual.")
 		ui.WaitEnter(stdout)

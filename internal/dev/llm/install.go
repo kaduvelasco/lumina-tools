@@ -79,7 +79,7 @@ func installOne(ctx context.Context, exe *executor.Executor, stdout io.Writer, l
 		script := `curl -fsSL https://antigravity.google/cli/install.sh | bash`
 		return exe.Run(ctx, opts, "bash", "-c", script)
 	case "codex":
-		return npmInstall(ctx, exe, stdout, "codex-cli")
+		return npmInstall(ctx, exe, stdout, "@openai/codex")
 	case "opencode":
 		return npmInstall(ctx, exe, stdout, "opencode-ai@latest")
 	}

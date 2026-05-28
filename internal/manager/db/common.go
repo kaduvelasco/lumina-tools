@@ -69,4 +69,3 @@ func writeTempSecret(content, pattern string) (string, func(), error) {
 	name := f.Name()
 	return name, func() { os.Remove(name) }, nil
 }
-

@@ -120,7 +120,7 @@ func (m msModel) View() string {
 type ssModel struct {
 	items   []SelectItem
 	cursor  int
-	chosen  int  // -1 = nothing chosen yet
+	chosen  int // -1 = nothing chosen yet
 	aborted bool
 }
 

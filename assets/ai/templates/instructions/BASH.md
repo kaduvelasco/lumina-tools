@@ -15,9 +15,9 @@ Use for creating automation scripts, CLI tools, and installers.
 
 ---
 
-## Boilerplate
+## Boilerplate — Lumina Ecosystem Scripts
 
-Every script must start with this exact structure.
+Use for scripts that belong to the Lumina library ecosystem and depend on `lib/utils.sh` and `lib/system.sh`. For standalone scripts, see the minimal boilerplate below.
 
 ```bash
 #!/usr/bin/env bash
@@ -46,10 +46,44 @@ for _lib in utils.sh system.sh; do
 done
 unset _lib
 
+# --- Temp Directory (auto-cleaned on EXIT) ---
+# Uncomment when the script needs a temporary workspace:
+# _tmpdir=$(mktemp -d)
+
 # --- Functions ---
 main() {
     detect_pkg_manager
     show_header "Optional Subtitle"
+    # Logic here
+}
+
+main "$@"
+```
+
+---
+
+## Boilerplate — Standalone Script
+
+Use for scripts that do not depend on Lumina libraries.
+
+```bash
+#!/usr/bin/env bash
+# =============================================================================
+# Script Name : script-name.sh
+# Description : Brief description of the purpose
+# Version     : 1.0.0
+# =============================================================================
+set -Eeuo pipefail
+shopt -s inherit_errexit
+
+readonly SCRIPT_DIR="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd -P)"
+
+trap 'printf "\n\033[0;31mError at %s:%d\033[0m\n" "${BASH_SOURCE[0]}" "$LINENO" >&2' ERR
+trap '[[ -n "${_tmpdir:-}" ]] && rm -rf -- "$_tmpdir"' EXIT
+
+# _tmpdir=$(mktemp -d)   # uncomment when the script needs a temporary workspace
+
+main() {
     # Logic here
 }
 
@@ -95,6 +129,15 @@ Never redefine colors. Use the variables exported by `utils.sh`:
 | `${H1}`, `${H2}` | Default terminal | Headers |
 | `${RESET}` | — | Reset |
 
+Always pair a color variable with `${RESET}` and use `printf '%b\n'` to expand escape sequences:
+
+```bash
+printf '%b\n' "${C1}Error: file not found${RESET}"
+printf '%b\n' "${C2}Done: all packages installed${RESET}"
+printf '%b\n' "${C3}Warning: running as root${RESET}"
+printf '%b\n' "${C4}Info: using apt${RESET}"
+```
+
 ### Output functions
 
 | Function | Description |
@@ -136,6 +179,8 @@ show_lumina_header() {
     printf '%b\n' ""
 }
 ```
+
+Each script defines its own `show_header` wrapper that calls `show_lumina_header` with a custom subtitle:
 
 ```bash
 show_header() {
@@ -182,12 +227,38 @@ require_cmd() {
 
 ### Sensitive files (credentials)
 
-Create with restricted permissions **before** writing data.
+Create with restricted permissions **before** writing data. Always wrap in a function — `local` is only valid inside a function.
 
 ```bash
-local secret_file="$HOME/.secrets"
-(umask 077; touch "$secret_file")
-printf 'TOKEN=%q\n' "$user_token" >> "$secret_file"
+store_secret() {
+    local secret_file="$HOME/.secrets"
+    (umask 077; touch "$secret_file")
+    printf 'TOKEN=%q\n' "$user_token" >> "$secret_file"
+}
+```
+
+### Argument parsing
+
+Use a `while/case` loop for flags and positional arguments. Supports both short and long options.
+
+```bash
+main() {
+    local verbose=0
+    local output=""
+
+    while [[ $# -gt 0 ]]; do
+        case "$1" in
+            -v|--verbose) verbose=1; shift ;;
+            -o|--output)  [[ $# -lt 2 ]] && die "Option $1 requires an argument"
+                          output="$2"; shift 2 ;;
+            --)           shift; break ;;
+            -*)           die "Unknown option: $1" ;;
+            *)            break ;;
+        esac
+    done
+
+    # remaining positional args are now in "$@"
+}
 ```
 
 ---

@@ -14,6 +14,307 @@ Covers PSR standards, architecture patterns, and best practices for modern PHP 8
 
 ---
 
+## Project Structure
+
+Standard layout for PHP projects:
+
+```text
+src/
+  Domain/           # Business rules — no framework dependencies
+    Entity/
+    Repository/     # Interfaces only
+    Event/
+    Exception/
+  Application/      # Use cases, commands, queries, handlers
+  Infrastructure/   # Framework, DB, HTTP, external services
+  Presentation/     # Controllers, CLI commands, templates
+tests/
+  Unit/
+  Integration/
+  Functional/
+config/
+public/             # Web root — index.php only, no business logic
+composer.json
+```
+
+**Key invariants:**
+- Domain layer has zero framework dependencies.
+- Interfaces are defined in Domain; implementations live in Infrastructure.
+- `public/index.php` bootstraps the application — no business logic here.
+
+---
+
+## Typing Rules
+
+`declare(strict_types=1)` is not used by default. Always declare types on parameters, return types, and class properties instead — this enforces intent without requiring strict mode globally.
+
+```php
+class UserService
+{
+    public function __construct(
+        private readonly UserRepositoryInterface $repository,
+        private readonly LoggerInterface $logger,
+    ) {}
+
+    public function findById(int $id): ?User
+    {
+        return $this->repository->find($id);
+    }
+}
+```
+
+Never leave parameters or return types untyped when the type can be declared:
+
+```php
+// Bad
+function process($data) { ... }
+
+// Good
+function process(array $data): ProcessResult { ... }
+```
+
+Use union types when a value can legitimately be more than one type:
+
+```php
+function format(int|float $value): string { ... }
+```
+
+---
+
+## PHP 8.x Features
+
+Use modern PHP features — they improve readability and safety.
+
+### match expression
+
+```php
+// Bad: verbose switch with implicit type coercion and fallthrough risk
+switch ($status) {
+    case 'active':   $label = 'Active';   break;
+    case 'inactive': $label = 'Inactive'; break;
+    default:         $label = 'Unknown';
+}
+
+// Good: match is an expression, strict comparison, no fallthrough
+$label = match($status) {
+    'active'   => 'Active',
+    'inactive' => 'Inactive',
+    default    => 'Unknown',
+};
+```
+
+### Nullsafe operator
+
+```php
+// Bad
+$city = null;
+if ($user !== null && $user->getAddress() !== null) {
+    $city = $user->getAddress()->getCity();
+}
+
+// Good
+$city = $user?->getAddress()?->getCity();
+```
+
+### Named arguments
+
+```php
+// Improves readability for functions with many parameters
+$result = array_slice(array: $items, offset: 2, length: 5, preserve_keys: true);
+```
+
+### Enums
+
+```php
+enum Status: string
+{
+    case Active   = 'active';
+    case Inactive = 'inactive';
+    case Pending  = 'pending';
+
+    public function label(): string
+    {
+        return match($this) {
+            Status::Active   => 'Active',
+            Status::Inactive => 'Inactive',
+            Status::Pending  => 'Pending',
+        };
+    }
+}
+```
+
+### Readonly properties
+
+```php
+class Money
+{
+    public function __construct(
+        public readonly int $amount,
+        public readonly string $currency,
+    ) {}
+}
+```
+
+### First class callable syntax
+
+```php
+$fn  = strlen(...);           // instead of Closure::fromCallable('strlen')
+$arr = array_map($fn, $items);
+```
+
+---
+
+## Error Handling
+
+### Custom exception hierarchy
+
+Define a base exception per domain and derive specific types from it.
+
+```php
+// Domain base
+class DomainException extends \RuntimeException {}
+
+// Specific exceptions
+class UserNotFoundException extends DomainException
+{
+    public function __construct(int $id)
+    {
+        parent::__construct("User with ID {$id} not found.");
+    }
+}
+
+class InsufficientBalanceException extends DomainException
+{
+    public function __construct(int $available, int $required)
+    {
+        parent::__construct("Insufficient balance: available {$available}, required {$required}.");
+    }
+}
+```
+
+### Catching specific types
+
+```php
+try {
+    $user = $this->repository->findOrFail($id);
+} catch (UserNotFoundException $e) {
+    $this->logger->warning($e->getMessage(), ['id' => $id]);
+    return null;
+} catch (DomainException $e) {
+    $this->logger->error($e->getMessage());
+    throw $e;
+}
+```
+
+Never catch `\Throwable` or `\Exception` without re-throwing or logging a specific reason — it silences unexpected failures.
+
+---
+
+## Security
+
+### Database — always use prepared statements
+
+```php
+// Bad — SQL injection
+$db->query("SELECT * FROM users WHERE email = '$email'");
+
+// Good — prepared statement via PDO
+$stmt = $pdo->prepare('SELECT * FROM users WHERE email = :email');
+$stmt->execute(['email' => $email]);
+```
+
+### Output — always escape before rendering
+
+```php
+// Bad
+echo $userInput;
+
+// Good
+echo htmlspecialchars($userInput, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8');
+```
+
+### Never expose raw exceptions to the user
+
+```php
+// Bad — leaks stack trace and internal paths
+echo $e->getMessage();
+
+// Good — wrap with a safe message
+throw new HttpException(500, 'An unexpected error occurred.');
+```
+
+---
+
+## Testing
+
+### PHPUnit — data providers
+
+```php
+final class UserServiceTest extends TestCase
+{
+    /**
+     * @dataProvider provideValidEmails
+     */
+    public function test_accepts_valid_email(string $email): void
+    {
+        $user = User::create($email, 'Test User');
+        self::assertSame($email, $user->email());
+    }
+
+    public static function provideValidEmails(): array
+    {
+        return [
+            'standard'     => ['user@example.com'],
+            'subdomain'    => ['user@mail.example.com'],
+            'plus-address' => ['user+tag@example.com'],
+        ];
+    }
+}
+```
+
+### Test doubles — prefer fake implementations over mocks
+
+```php
+final class InMemoryUserRepository implements UserRepositoryInterface
+{
+    private array $users = [];
+
+    public function save(User $user): void
+    {
+        $this->users[$user->id()->toString()] = $user;
+    }
+
+    public function find(UserId $id): ?User
+    {
+        return $this->users[$id->toString()] ?? null;
+    }
+}
+```
+
+---
+
+## Quality
+
+```bash
+composer phpcs    # PHP_CodeSniffer — PSR-1/PSR-12 compliance
+composer phpstan  # PHPStan — static analysis
+composer phpunit  # PHPUnit — test suite
+```
+
+```json
+"scripts": {
+    "phpcs":   "phpcs --standard=PSR12 src/ tests/",
+    "phpstan": "phpstan analyse src/ tests/ --level=8",
+    "phpunit": "phpunit --coverage-text"
+}
+```
+
+- **phpcs** — enforces PSR-1 and PSR-12 formatting; non-negotiable.
+- **phpstan** — catches type errors, dead code, and incorrect usage without running the code. Aim for level 8; never go below level 6.
+- **phpunit** — run the full test suite before every commit.
+
+---
+
 ## What is PSR?
 
 PSR (PHP Standards Recommendations) are specifications published by the PHP Framework Interoperability Group (PHP-FIG). They establish common standards for PHP code to ensure interoperability between frameworks and libraries.

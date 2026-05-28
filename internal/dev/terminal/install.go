@@ -101,4 +101,3 @@ func installAlacritty(ctx context.Context, exe *executor.Executor, family string
 		return exe.Run(ctx, sudo, "pacman", "-S", "--noconfirm", "--", "alacritty")
 	}
 }
-

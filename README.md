@@ -25,6 +25,7 @@
 | Aplicativos Flatpak | Instalar/remover a partir de um catálogo curado de 28 aplicativos |
 | Atualizar Sistema | Atualiza pacotes (apt/dnf/pacman), Snap e Flatpak em uma única etapa |
 | Ulauncher | Instalar Ulauncher com temas libadwaita |
+| Customizar GNOME | Temas GTK, ícones, cursores, extensões recomendadas e pré-requisitos |
 
 #### O que a pós-instalação configura
 
@@ -44,6 +45,18 @@ Cada script é adaptado à distro alvo e realiza as seguintes etapas:
 | Timeshift (snapshots do sistema) | ✅ | — | ✅ | — |
 | RPM Fusion (free + non-free) | — | — | — | ✅ |
 | Detecção de drivers proprietários | ✅ | — | ✅ | — |
+
+#### Customização GNOME (`lumina system gnome`)
+
+Requer GNOME como desktop ativo. Todas as operações verificam o ambiente antes de executar.
+
+| Funcionalidade | Descrição |
+|---|---|
+| Pré-requisitos | gnome-tweaks, murrine-engine (por distro), sassc, git e extensões Flatpak |
+| Extensões | Lista de extensões recomendadas com links de instalação |
+| Temas GTK | 9 temas: Orchis, WhiteSur, Nordic, Colloid, Fluent, Tokyonight, Everforest, Rose Pine, Gruvbox |
+| Ícones | 5 pacotes: Gruvbox Plus, Kora, Candy Icons, Flatery, Newaita |
+| Cursores | 5 temas: Layan, Oreo, Sweet, Colloid, Future |
 
 ### DevStack (`lumina stack`)
 
@@ -156,6 +169,11 @@ lumina system apps install                     Instalar aplicativos Flatpak
 lumina system apps uninstall                   Desinstalar aplicativos Flatpak
 lumina system update                           Atualizar o sistema completo
 lumina system ulauncher                        Instalar Ulauncher e temas
+lumina system gnome pre                        Instalar pré-requisitos GNOME
+lumina system gnome ext                        Exibir extensões recomendadas
+lumina system gnome themes                     Gerenciar temas GTK (multi-seleção)
+lumina system gnome icons                      Gerenciar pacotes de ícones (multi-seleção)
+lumina system gnome cursors                    Gerenciar temas de cursor (multi-seleção)
 ```
 
 #### DevStack

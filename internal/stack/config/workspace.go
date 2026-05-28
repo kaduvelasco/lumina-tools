@@ -54,7 +54,7 @@ func Workspace(ctx context.Context, exe *executor.Executor, stdout io.Writer) er
 			ui.WaitEnter(stdout)
 			return fmt.Errorf("criar diretorio base: %w", err)
 		}
-		user := currentUser()
+		user := executor.CurrentUser()
 		if user != "" {
 			_ = exe.Run(ctx,
 				executor.Options{RequiresSudo: true, Stdout: stdout, Stderr: stdout},

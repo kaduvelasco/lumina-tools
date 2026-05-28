@@ -68,10 +68,6 @@ func Uninstall(ctx context.Context, exe *executor.Executor, stdout io.Writer) er
 func uninstallOne(ctx context.Context, exe *executor.Executor, stdout io.Writer, l LLM) error {
 	switch l.Cmd {
 	case "claude":
-		_ = exe.Run(ctx,
-			executor.Options{RequiresSudo: true, Stdout: stdout, Stderr: stdout},
-			"env", "PATH="+os.Getenv("PATH"), "npm", "uninstall", "-g", "@anthropic-ai/claude-code",
-		)
 		if claudePath, err := exe.Output(ctx, executor.Options{}, "which", "claude"); err == nil {
 			if p := strings.TrimSpace(claudePath); p != "" {
 				_ = exe.Run(ctx,
@@ -92,7 +88,7 @@ func uninstallOne(ctx context.Context, exe *executor.Executor, stdout io.Writer,
 		}
 		return nil
 	case "codex":
-		return npmUninstall(ctx, exe, stdout, "codex-cli")
+		return npmUninstall(ctx, exe, stdout, "@openai/codex")
 	case "opencode":
 		return npmUninstall(ctx, exe, stdout, "opencode-ai")
 	}

@@ -13,6 +13,7 @@ const (
 	menuManagerDB
 	menuManagerRepo
 	menuLumina
+	menuGnome
 )
 
 type actionID int
@@ -65,6 +66,12 @@ const (
 	actLuminaUpdate
 	actLuminaUninstall
 	actLuminaHelp
+	// GNOME
+	actGnomePrereqs
+	actGnomeExtensions
+	actGnomeThemes
+	actGnomeIcons
+	actGnomeCursors
 )
 
 type menuItem struct {
@@ -84,6 +91,7 @@ var menuLabels = map[menuID]string{
 	menuManagerDB:         "Banco de Dados",
 	menuManagerRepo:       "Repositórios",
 	menuLumina:            "Configurações Lumina",
+	menuGnome:             "Customizar GNOME",
 }
 
 func itemsFor(m menuID) []menuItem {
@@ -99,6 +107,7 @@ func itemsFor(m menuID) []menuItem {
 	case menuSystem:
 		return []menuItem{
 			{label: "Pós Instalação", submenu: menuSystemPostInstall},
+			{label: "Customizar GNOME", submenu: menuGnome},
 			{label: "Instalar Fontes", action: actSystemFonts},
 			{label: "Templates de Arquivos", action: actSystemTemplates},
 			{label: "Instalar Aplicativos", action: actAppsInstall},
@@ -174,6 +183,15 @@ func itemsFor(m menuID) []menuItem {
 			{label: "Atualizar Lumina Tools", action: actLuminaUpdate},
 			{label: "Desinstalar Lumina Tools", action: actLuminaUninstall},
 			{label: "Ajuda", action: actLuminaHelp},
+			{label: "Voltar", action: actBack},
+		}
+	case menuGnome:
+		return []menuItem{
+			{label: "Instalar Pré-requisitos", action: actGnomePrereqs},
+			{label: "Extensões Recomendadas", action: actGnomeExtensions},
+			{label: "Instalar / Remover Temas", action: actGnomeThemes},
+			{label: "Instalar / Remover Ícones", action: actGnomeIcons},
+			{label: "Instalar / Remover Cursores", action: actGnomeCursors},
 			{label: "Voltar", action: actBack},
 		}
 	}

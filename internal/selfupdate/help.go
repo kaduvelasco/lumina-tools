@@ -39,6 +39,7 @@ func ShowHelp(_ context.Context, _ *executor.Executor, stdout io.Writer) error {
 		"    lumina system apps uninstall\n"+
 		"    lumina system update\n"+
 		"    lumina system ulauncher\n"+
+		"    lumina system gnome [pre|ext|themes|icons|cursors]\n"+
 		"\n"+
 		"  DevStack\n"+
 		"    lumina stack config [pre|docker|workspace|stack]\n"+

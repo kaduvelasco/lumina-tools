@@ -12,21 +12,22 @@ import (
 
 	"github.com/kaduvelasco/lumina-tools/internal/config"
 	"github.com/kaduvelasco/lumina-tools/internal/dev/depends"
-	managerai "github.com/kaduvelasco/lumina-tools/internal/manager/ai"
-	managerdb "github.com/kaduvelasco/lumina-tools/internal/manager/db"
-	managergitignore "github.com/kaduvelasco/lumina-tools/internal/manager/gitignore"
-	managerrepo "github.com/kaduvelasco/lumina-tools/internal/manager/repo"
 	"github.com/kaduvelasco/lumina-tools/internal/dev/ide"
 	"github.com/kaduvelasco/lumina-tools/internal/dev/llm"
 	"github.com/kaduvelasco/lumina-tools/internal/dev/mcp"
 	devterminal "github.com/kaduvelasco/lumina-tools/internal/dev/terminal"
 	"github.com/kaduvelasco/lumina-tools/internal/dev/upgrade"
 	"github.com/kaduvelasco/lumina-tools/internal/executor"
+	managerai "github.com/kaduvelasco/lumina-tools/internal/manager/ai"
+	managerdb "github.com/kaduvelasco/lumina-tools/internal/manager/db"
+	managergitignore "github.com/kaduvelasco/lumina-tools/internal/manager/gitignore"
+	managerrepo "github.com/kaduvelasco/lumina-tools/internal/manager/repo"
 	"github.com/kaduvelasco/lumina-tools/internal/selfupdate"
 	"github.com/kaduvelasco/lumina-tools/internal/stack"
 	stackconfig "github.com/kaduvelasco/lumina-tools/internal/stack/config"
 	"github.com/kaduvelasco/lumina-tools/internal/system/apps"
 	"github.com/kaduvelasco/lumina-tools/internal/system/fonts"
+	"github.com/kaduvelasco/lumina-tools/internal/system/gnome"
 	"github.com/kaduvelasco/lumina-tools/internal/system/postinstall"
 	"github.com/kaduvelasco/lumina-tools/internal/system/templates"
 	"github.com/kaduvelasco/lumina-tools/internal/system/ulauncher"
@@ -103,13 +104,13 @@ const (
 
 // Model is the Bubble Tea application model.
 type Model struct {
-	ctx    context.Context
-	cfg    *config.Config
-	nav    []navLevel
-	width  int
-	height int
+	ctx     context.Context
+	cfg     *config.Config
+	nav     []navLevel
+	width   int
+	height  int
 	msgKind msgKind
-	msg    string
+	msg     string
 
 	// theme state
 	theme       Theme
@@ -409,6 +410,18 @@ func (m Model) runAction(a actionID) tea.Cmd {
 		return exec(func(ctx context.Context, exe *executor.Executor, w io.Writer) error {
 			return stack.FixPerms(ctx, exe, w, m.cfg.WorkspacePath)
 		})
+
+	// ── GNOME ────────────────────────────────────────────────────────────────
+	case actGnomePrereqs:
+		return exec(gnome.InstallPrereqs)
+	case actGnomeExtensions:
+		return exec(gnome.ShowExtensions)
+	case actGnomeThemes:
+		return execInteractive(gnome.ManageThemes)
+	case actGnomeIcons:
+		return execInteractive(gnome.ManageIcons)
+	case actGnomeCursors:
+		return execInteractive(gnome.ManageCursors)
 
 	// ── Lumina ───────────────────────────────────────────────────────────────
 	case actLuminaUpdate:

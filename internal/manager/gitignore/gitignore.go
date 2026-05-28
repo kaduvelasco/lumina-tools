@@ -194,14 +194,14 @@ build/
 `
 
 var stackSections = map[string]string{
-	"Go":     sectionGo,
-	"Shell":  sectionShell,
-	"PHP":    sectionPHP,
+	"Go":      sectionGo,
+	"Shell":   sectionShell,
+	"PHP":     sectionPHP,
 	"Node.js": sectionNode,
-	"Python": sectionPython,
-	"Ruby":   sectionRuby,
-	"Rust":   sectionRust,
-	"Java":   sectionJava,
+	"Python":  sectionPython,
+	"Ruby":    sectionRuby,
+	"Rust":    sectionRust,
+	"Java":    sectionJava,
 }
 
 func buildContent(stacks []string) string {

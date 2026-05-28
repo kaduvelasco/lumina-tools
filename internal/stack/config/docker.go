@@ -4,7 +4,6 @@ import (
 	"context"
 	"fmt"
 	"io"
-	"os"
 	"strings"
 
 	"github.com/kaduvelasco/lumina-tools/internal/distro"
@@ -96,19 +95,8 @@ sh "$TMP"
 	return exe.Run(ctx, opts, "bash", "-c", script)
 }
 
-// currentUser returns the real user, preferring SUDO_USER when running under sudo.
-func currentUser() string {
-	if u := os.Getenv("SUDO_USER"); u != "" {
-		return u
-	}
-	if u := os.Getenv("USER"); u != "" {
-		return u
-	}
-	return os.Getenv("LOGNAME")
-}
-
 func addUserToDockerGroup(ctx context.Context, exe *executor.Executor, stdout io.Writer, opts executor.Options) error {
-	user := currentUser()
+	user := executor.CurrentUser()
 	if user == "" {
 		return nil
 	}

@@ -24,7 +24,7 @@ func newFuncCmd(
 	return &funcCmd{ctx: ctx, fn: fn}
 }
 
-func (c *funcCmd) SetStdin(_ io.Reader) {}
+func (c *funcCmd) SetStdin(_ io.Reader)  {}
 func (c *funcCmd) SetStdout(w io.Writer) { c.stdout = w }
 func (c *funcCmd) SetStderr(w io.Writer) { c.stderr = w }
 func (c *funcCmd) Run() error {

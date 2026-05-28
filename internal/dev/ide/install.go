@@ -163,4 +163,3 @@ dnf install -y codium
 		return fmt.Errorf("instale o VSCodium manualmente no Arch via AUR (yay -S vscodium-bin)")
 	}
 }
-

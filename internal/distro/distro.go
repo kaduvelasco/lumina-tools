@@ -15,7 +15,7 @@ const (
 )
 
 var (
-	detectOnce   sync.Once
+	detectOnce     sync.Once
 	detectedFamily string
 )
 
