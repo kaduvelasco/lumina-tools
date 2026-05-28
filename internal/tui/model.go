@@ -8,7 +8,9 @@ import (
 	"strings"
 
 	"github.com/charmbracelet/bubbles/key"
+	"github.com/charmbracelet/bubbles/list"
 	tea "github.com/charmbracelet/bubbletea"
+	"github.com/charmbracelet/lipgloss"
 
 	"github.com/kaduvelasco/lumina-tools/internal/config"
 	"github.com/kaduvelasco/lumina-tools/internal/dev/depends"
@@ -34,6 +36,10 @@ import (
 	"github.com/kaduvelasco/lumina-tools/internal/system/update"
 )
 
+// chromeHeight is the number of lines occupied by fixed UI elements (header,
+// breadcrumb, dividers, footer) that surround the list.
+const chromeHeight = 12
+
 // Run loads config and starts the Bubble Tea TUI program at the main menu.
 func Run(ctx context.Context, stdin io.Reader, stdout, stderr io.Writer) error {
 	return runAt(ctx, stdin, stdout, stderr, []navLevel{{menu: menuMain, cursor: 0}})
@@ -48,12 +54,12 @@ func RunAtSystemPostInstall(ctx context.Context, stdin io.Reader, stdout, stderr
 	})
 }
 
-// RunAtStackConfig starts the TUI positioned at DevStack > Configurar.
+// RunAtStackConfig starts the TUI positioned at DevStuff > Criar Stack.
 func RunAtStackConfig(ctx context.Context, stdin io.Reader, stdout, stderr io.Writer) error {
 	return runAt(ctx, stdin, stdout, stderr, []navLevel{
-		{menu: menuMain, cursor: 0},
-		{menu: menuStack, cursor: 0},
-		{menu: menuStackConfig, cursor: 0},
+		{menu: menuMain, cursor: 1},
+		{menu: menuDev, cursor: 0},
+		{menu: menuDevStack, cursor: 0},
 	})
 }
 
@@ -65,6 +71,9 @@ func runAt(ctx context.Context, stdin io.Reader, stdout, _ io.Writer, nav []navL
 	}
 	m := New(ctx, cfg)
 	m.nav = nav
+	last := nav[len(nav)-1]
+	_ = m.list.SetItems(toListItems(itemsFor(last.menu)))
+	m.list.Select(last.cursor)
 	p := tea.NewProgram(
 		m,
 		tea.WithContext(ctx),
@@ -107,6 +116,7 @@ type Model struct {
 	ctx     context.Context
 	cfg     *config.Config
 	nav     []navLevel
+	list    list.Model
 	width   int
 	height  int
 	msgKind msgKind
@@ -127,20 +137,25 @@ func New(ctx context.Context, cfg *config.Config) Model {
 	} else {
 		t = detectDefaultTheme()
 	}
+
+	l := list.New(toListItems(itemsFor(menuMain)), buildDelegate(t), 80, 20)
+	l.SetShowTitle(false)
+	l.SetShowStatusBar(false)
+	l.SetFilteringEnabled(false)
+	l.SetShowHelp(false)
+	l.DisableQuitKeybindings()
+
 	return Model{
 		ctx:    ctx,
 		cfg:    cfg,
 		nav:    []navLevel{{menu: menuMain, cursor: 0}},
+		list:   l,
 		width:  80,
 		height: 24,
 		theme:  t,
 		styles: buildStyles(t),
 	}
 }
-
-func (m Model) currentMenu() menuID      { return m.nav[len(m.nav)-1].menu }
-func (m Model) currentCursor() int       { return m.nav[len(m.nav)-1].cursor }
-func (m Model) currentItems() []menuItem { return itemsFor(m.currentMenu()) }
 
 func (m Model) breadcrumb() string {
 	parts := make([]string, len(m.nav))
@@ -159,6 +174,11 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	case tea.WindowSizeMsg:
 		m.width = msg.Width
 		m.height = msg.Height
+		listH := msg.Height - chromeHeight
+		if listH < 4 {
+			listH = 4
+		}
+		m.list.SetSize(msg.Width, listH)
 		return m, nil
 
 	case notImplementedMsg:
@@ -180,16 +200,13 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		return m, nil
 
 	case tea.KeyMsg:
-		// Theme selector intercepts all navigation.
+		// Theme selector intercepts all key navigation.
 		if m.themeOpen {
 			return m.updateThemeMode(msg)
 		}
 
 		m.msg = ""
 		m.msgKind = msgNone
-		items := m.currentItems()
-		cursor := m.currentCursor()
-		n := len(items)
 
 		switch {
 		case key.Matches(msg, keys.Quit):
@@ -207,48 +224,47 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			return m, nil
 
 		case key.Matches(msg, keys.Back):
-			if len(m.nav) > 1 {
-				m.nav = m.nav[:len(m.nav)-1]
-			}
-			return m, nil
-
-		case key.Matches(msg, keys.Up):
-			m.nav = append([]navLevel(nil), m.nav...)
-			if cursor > 0 {
-				m.nav[len(m.nav)-1].cursor = cursor - 1
-			} else {
-				m.nav[len(m.nav)-1].cursor = n - 1
-			}
-			return m, nil
-
-		case key.Matches(msg, keys.Down):
-			m.nav = append([]navLevel(nil), m.nav...)
-			if cursor < n-1 {
-				m.nav[len(m.nav)-1].cursor = cursor + 1
-			} else {
-				m.nav[len(m.nav)-1].cursor = 0
-			}
-			return m, nil
+			return m.navigateBack()
 
 		case key.Matches(msg, keys.Select):
-			if n == 0 {
+			selected := m.list.SelectedItem()
+			if selected == nil {
 				return m, nil
 			}
-			item := items[cursor]
-			if item.submenu != 0 {
-				m.nav = append(m.nav, navLevel{menu: item.submenu, cursor: 0})
-				return m, nil
-			}
+			item := selected.(menuItem)
+
 			if item.action == actBack {
-				if len(m.nav) > 1 {
-					m.nav = m.nav[:len(m.nav)-1]
-				}
-				return m, nil
+				return m.navigateBack()
 			}
+
+			if item.submenu != 0 {
+				// Save cursor so we can restore it when navigating back.
+				m.nav[len(m.nav)-1].cursor = m.list.Index()
+				m.nav = append(m.nav, navLevel{menu: item.submenu, cursor: 0})
+				cmd := m.list.SetItems(toListItems(itemsFor(item.submenu)))
+				m.list.Select(0)
+				return m, cmd
+			}
+
 			return m, m.runAction(item.action)
 		}
 	}
-	return m, nil
+
+	// Delegate remaining input to the list (handles Up/Down/PgUp/PgDn/j/k).
+	var cmd tea.Cmd
+	m.list, cmd = m.list.Update(msg)
+	return m, cmd
+}
+
+func (m Model) navigateBack() (tea.Model, tea.Cmd) {
+	if len(m.nav) <= 1 {
+		return m, nil
+	}
+	m.nav = m.nav[:len(m.nav)-1]
+	parent := m.nav[len(m.nav)-1]
+	cmd := m.list.SetItems(toListItems(itemsFor(parent.menu)))
+	m.list.Select(parent.cursor)
+	return m, cmd
 }
 
 // updateThemeMode handles key events while the theme selector is open.
@@ -258,7 +274,6 @@ func (m Model) updateThemeMode(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 		return m, tea.Quit
 
 	case key.Matches(msg, keys.Back):
-		// Cancel: revert to the confirmed theme.
 		m.themeOpen = false
 		m.styles = buildStyles(m.theme)
 		return m, nil
@@ -282,10 +297,10 @@ func (m Model) updateThemeMode(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 		return m, nil
 
 	case key.Matches(msg, keys.Select):
-		// Confirm: persist the selected theme.
 		m.themeOpen = false
 		m.theme = availableThemes[m.themeCursor]
 		m.styles = buildStyles(m.theme)
+		m.list.SetDelegate(buildDelegate(m.theme))
 		m.cfg.Theme = m.theme.Name
 		if err := config.Save(m.cfg); err != nil {
 			m.msgKind = msgError
@@ -323,6 +338,8 @@ func (m Model) runAction(a actionID) tea.Cmd {
 
 	case actSystemUlauncher:
 		return exec(ulauncher.Install)
+	case actUlauncherUninstall:
+		return exec(ulauncher.Uninstall)
 
 	case actSystemFonts:
 		return execInteractive(fonts.Select)
@@ -378,10 +395,8 @@ func (m Model) runAction(a actionID) tea.Cmd {
 		return exec(upgrade.Update)
 
 	// ── Stack: Config ────────────────────────────────────────────────────────
-	case actStackDepends:
-		return exec(stackconfig.Depends)
-	case actStackDocker:
-		return exec(stackconfig.Docker)
+	case actStackSetupPrereqs:
+		return exec(stackconfig.SetupPrereqs)
 	case actStackWorkspace:
 		return exec(stackconfig.Workspace)
 	case actStackCompose:
@@ -431,7 +446,7 @@ func (m Model) runAction(a actionID) tea.Cmd {
 		return exec(selfupdate.Uninstall)
 
 	case actLuminaHelp:
-		return exec(selfupdate.ShowHelp)
+		return execInteractive(selfupdate.ShowHelp)
 
 	default:
 		return func() tea.Msg { return notImplementedMsg{} }
@@ -456,7 +471,11 @@ func (m Model) View() string {
 			if t.Name == m.theme.Name {
 				label += "  (atual)"
 			}
-			sb.WriteString(renderItem(menuItem{label: label}, i == m.themeCursor, s) + "\n")
+			if i == m.themeCursor {
+				sb.WriteString(s.ActiveBar.Render("|") + s.ActiveText.Render(" "+label) + "\n")
+			} else {
+				sb.WriteString(s.Inactive.Render("   "+label) + "\n")
+			}
 		}
 		sb.WriteString("\n")
 		sb.WriteString(renderThemeFooter(m.width, s))
@@ -465,11 +484,7 @@ func (m Model) View() string {
 
 	sb.WriteString(s.Breadcrumb.Render("  "+m.breadcrumb()) + "\n")
 	sb.WriteString(div + "\n")
-	sb.WriteString("\n")
-
-	for i, item := range m.currentItems() {
-		sb.WriteString(renderItem(item, i == m.currentCursor(), s) + "\n")
-	}
+	sb.WriteString(m.list.View())
 
 	if m.msg != "" {
 		sb.WriteString("\n")
@@ -488,14 +503,32 @@ func (m Model) View() string {
 	return sb.String()
 }
 
-func renderItem(item menuItem, active bool, s TUIStyles) string {
-	suffix := ""
-	if item.submenu != 0 {
-		suffix = "  >"
-	}
-	if active {
-		return s.ActiveBar.Render("|") +
-			s.ActiveText.Render(" "+item.label+suffix)
-	}
-	return s.Inactive.Render("   " + item.label + suffix)
+// ── delegate ──────────────────────────────────────────────────────────────────
+
+func buildDelegate(t Theme) list.DefaultDelegate {
+	d := list.NewDefaultDelegate()
+	d.Styles.SelectedTitle = lipgloss.NewStyle().
+		Border(lipgloss.NormalBorder(), false, false, false, true).
+		BorderForeground(t.Accent).
+		Foreground(t.Accent).
+		Bold(true).
+		Padding(0, 0, 0, 1)
+	d.Styles.SelectedDesc = lipgloss.NewStyle().
+		Border(lipgloss.NormalBorder(), false, false, false, true).
+		BorderForeground(t.Accent).
+		Foreground(t.Primary).
+		Padding(0, 0, 0, 1)
+	d.Styles.NormalTitle = lipgloss.NewStyle().
+		Foreground(t.Text).
+		Padding(0, 0, 0, 2)
+	d.Styles.NormalDesc = lipgloss.NewStyle().
+		Foreground(t.Muted).
+		Padding(0, 0, 0, 2)
+	d.Styles.DimmedTitle = lipgloss.NewStyle().
+		Foreground(t.Muted).
+		Padding(0, 0, 0, 2)
+	d.Styles.DimmedDesc = lipgloss.NewStyle().
+		Foreground(t.Muted).
+		Padding(0, 0, 0, 2)
+	return d
 }

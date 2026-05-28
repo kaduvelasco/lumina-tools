@@ -89,6 +89,90 @@ func installPackage(ctx context.Context, exe *executor.Executor, stdout io.Write
 	return nil
 }
 
+// Uninstall removes Ulauncher, its PPA (Debian) and the user-themes directory.
+func Uninstall(ctx context.Context, exe *executor.Executor, stdout io.Writer) error {
+	ui.PrintHeader(stdout, "Desinstalar Ulauncher")
+
+	family := distro.Detect()
+
+	switch family {
+	case distro.Debian, distro.Fedora:
+		// supported
+	default:
+		ui.Warning(stdout, "Distribuição não suportada (família: "+family+").\nRemova o Ulauncher manualmente.")
+		ui.WaitEnter(stdout)
+		return fmt.Errorf("distro nao suportada: %s", family)
+	}
+
+	fmt.Fprint(stdout, "  Deseja remover o Ulauncher? (s/N): ")
+	if c := strings.TrimSpace(prompt.ReadLine()); c != "s" && c != "S" {
+		ui.Warning(stdout, "Operação cancelada.")
+		ui.WaitEnter(stdout)
+		return nil
+	}
+
+	ui.Info(stdout, "Removendo Ulauncher...")
+	if err := removePackage(ctx, exe, stdout, family); err != nil {
+		ui.Err(stdout, "Falha ao remover Ulauncher: "+err.Error())
+		ui.WaitEnter(stdout)
+		return err
+	}
+	ui.Success(stdout, "Ulauncher removido com sucesso!")
+
+	ui.Info(stdout, "Removendo temas instalados...")
+	if err := removeThemes(stdout); err != nil {
+		ui.Warning(stdout, "Falha ao remover temas: "+err.Error())
+	} else {
+		ui.Success(stdout, "Temas removidos.")
+	}
+
+	ui.Success(stdout, "Desinstalação finalizada.")
+	ui.WaitEnter(stdout)
+	return nil
+}
+
+func removePackage(ctx context.Context, exe *executor.Executor, stdout io.Writer, family string) error {
+	if family == distro.Fedora {
+		return exe.Run(ctx,
+			executor.Options{RequiresSudo: true, Stdout: stdout, Stderr: stdout},
+			"dnf", "remove", "-y", "ulauncher",
+		)
+	}
+
+	steps := []struct {
+		msg  string
+		name string
+		args []string
+	}{
+		{"Removendo pacote ulauncher...", "apt-get", []string{"remove", "-y", "--purge", "--", "ulauncher"}},
+		{"Removendo PPA do Ulauncher...", "add-apt-repository", []string{"--remove", "-y", "ppa:agornostal/ulauncher"}},
+		{"Atualizando lista de pacotes...", "apt-get", []string{"update", "-y", "-o", "APT::Color=0"}},
+	}
+	for _, s := range steps {
+		ui.Info(stdout, s.msg)
+		opts := executor.Options{
+			RequiresSudo: true,
+			Stdout:       stdout,
+			Stderr:       stdout,
+			Env:          []string{"DEBIAN_FRONTEND=noninteractive"},
+		}
+		if err := exe.Run(ctx, opts, s.name, s.args...); err != nil {
+			return fmt.Errorf("%s: %w", s.msg, err)
+		}
+	}
+	return nil
+}
+
+func removeThemes(stdout io.Writer) error {
+	home, err := os.UserHomeDir()
+	if err != nil {
+		return err
+	}
+	themesDir := filepath.Join(home, ".config", "ulauncher", "user-themes")
+	ui.Info(stdout, "Removendo diretório de temas...")
+	return os.RemoveAll(themesDir)
+}
+
 func installThemes(ctx context.Context, exe *executor.Executor, stdout io.Writer) error {
 	home, err := os.UserHomeDir()
 	if err != nil {

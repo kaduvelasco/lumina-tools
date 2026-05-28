@@ -6,6 +6,52 @@ O formato segue o padrão [Keep a Changelog](https://keepachangelog.com/pt-BR/1.
 
 ---
 
+## [1.0.2] — 2026-05-28
+
+### Adicionado
+
+#### TUI — Menus com descrições (`bubbles/list`)
+- Todos os itens de menu exibem uma descrição da ação ao serem destacados, utilizando o componente `bubbles/list` com `NewDefaultDelegate()`
+- Delegate estilizado com as cores do tema ativo: título selecionado, descrição, normal e dimmed
+- Itens de submenu indicados visualmente com `›`
+
+#### Desinstalar Ulauncher
+- Nova opção no submenu de Aplicativos > Desinstalar (TUI) e via CLI (`lumina system ulauncher uninstall`)
+- Remove o pacote via apt/dnf, desfaz o repositório PPA (Debian) e remove o diretório de temas do usuário
+
+#### Ajuda interativa com rolagem (Glamour + viewport)
+- Help (`Configurações Lumina › Ajuda`) reescrito como visualizador scrollável com Markdown renderizado via Glamour
+- Borda arredondada na cor primária do tema; navegação com `↑↓/jk/PgUp/PgDn`, fechado com `q/esc`
+- Conteúdo completo: atalhos TUI, todos os comandos CLI por seção e referência de configuração
+
+#### Stack — Pré-requisitos unificados
+- Nova função `SetupPrereqs` (`stack/config/prereqs.go`) que combina instalação de pacotes base e Docker Engine em uma única etapa na TUI
+- Verificação se o Docker já está instalado antes de qualquer tentativa de reinstalação
+
+### Alterado
+
+#### Reorganização dos menus TUI
+- **Gerenciamento Linux:** novo submenu "Aplicativos" com opções Instalar e Desinstalar (Flatpak + Ulauncher)
+- **DevStuff:** agrupa "Criar Stack de Desenvolvimento" e "Gerenciar Ferramentas de Desenvolvimento"
+  - Criar Stack: pré-requisitos unificados (pacotes base + Docker numa etapa) + Workspace + docker-compose
+  - Gerenciar Ferramentas: CLIs LLM, IDEs, terminais, MCP e atualização em lote
+- **DevManager:** submenu "Gerenciar Stack" (Iniciar, Finalizar, Logs, Status, Dados DB, Permissões)
+
+#### Pós-instalação ZorinOS
+- Removidos: `gnome-tweaks`, `gparted`, instalação manual do Flathub e VLC via Flatpak (ZorinOS já inclui Flatpak/Flathub nativamente)
+
+#### GitHub Actions — Node.js 24
+- `actions/checkout@v4` → `@v6`, `actions/setup-go@v5` → `@v6`, `softprops/action-gh-release@v2` → `@v3`
+- `FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true` removido (não é mais necessário)
+
+#### Stack — guard de Docker no Compose
+- `lumina stack config stack` verifica se o Docker está instalado antes de gerar os arquivos; exibe instrução para executar "Instalar Pré-requisitos" caso o Docker esteja ausente
+
+### Dependências
+- Adicionado `github.com/charmbracelet/glamour v1.0.0` (renderização Markdown no terminal)
+
+---
+
 ## [1.0.1] — 2026-05-28
 
 ### Adicionado

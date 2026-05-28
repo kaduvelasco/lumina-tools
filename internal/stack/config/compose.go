@@ -19,8 +19,15 @@ import (
 var supportedPHP = []string{"8.1", "8.2", "8.3", "8.4"}
 
 // Compose generates docker-compose.yml and all supporting config files.
-func Compose(_ context.Context, _ *executor.Executor, stdout io.Writer) error {
+// Returns an error immediately if Docker is not installed.
+func Compose(ctx context.Context, exe *executor.Executor, stdout io.Writer) error {
 	ui.PrintHeader(stdout, "Criar Stack Docker")
+
+	if _, err := exe.Output(ctx, executor.Options{}, "which", "docker"); err != nil {
+		ui.Err(stdout, "Docker não encontrado. Execute 'Instalar pré-requisitos' antes de criar a stack.")
+		ui.WaitEnter(stdout)
+		return fmt.Errorf("docker nao instalado")
+	}
 
 	cfg, err := config.Load()
 	if err != nil {

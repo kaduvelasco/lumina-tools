@@ -125,19 +125,28 @@ func dispatchSystem(ctx context.Context, args []string, stdin io.Reader, stdout,
 		return templates.Select(ctx, exe, stdin, stdout)
 	case "apps":
 		if len(args) < 2 {
-			return fmt.Errorf("uso: lumina system apps <install|uninstall>")
+			return fmt.Errorf("uso: lumina system apps <install|uninstall> [flatpak|ulauncher]")
 		}
 		switch args[1] {
 		case "install":
+			if len(args) > 2 && args[2] == "ulauncher" {
+				return ulauncher.Install(ctx, exe, stdout)
+			}
 			return apps.SelectInstall(ctx, exe, stdin, stdout)
 		case "uninstall":
+			if len(args) > 2 && args[2] == "ulauncher" {
+				return ulauncher.Uninstall(ctx, exe, stdout)
+			}
 			return apps.SelectUninstall(ctx, exe, stdin, stdout)
 		default:
-			return fmt.Errorf("subcomando desconhecido: %s\nuso: lumina system apps <install|uninstall>", args[1])
+			return fmt.Errorf("subcomando desconhecido: %s\nuso: lumina system apps <install|uninstall> [flatpak|ulauncher]", args[1])
 		}
 	case "update":
 		return update.Run(ctx, exe, stdout)
 	case "ulauncher":
+		if len(args) > 1 && args[1] == "uninstall" {
+			return ulauncher.Uninstall(ctx, exe, stdout)
+		}
 		return ulauncher.Install(ctx, exe, stdout)
 	default:
 		return fmt.Errorf("subcomando desconhecido: %s\nuso: lumina system <pos|gnome|fonts|templates|apps|update|ulauncher>", args[0])
@@ -355,6 +364,7 @@ GERENCIAMENTO LINUX
   lumina system apps uninstall
   lumina system update
   lumina system ulauncher
+  lumina system ulauncher uninstall
   lumina system gnome [pre|ext|themes|icons|cursors]
 
 DEVSTACK

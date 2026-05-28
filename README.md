@@ -24,7 +24,7 @@
 | Templates de Arquivos | Criar templates em branco (Office, LibreOffice, código) em `~/Templates` |
 | Aplicativos Flatpak | Instalar/remover a partir de um catálogo curado de 28 aplicativos |
 | Atualizar Sistema | Atualiza pacotes (apt/dnf/pacman), Snap e Flatpak em uma única etapa |
-| Ulauncher | Instalar Ulauncher com temas libadwaita |
+| Ulauncher | Instalar ou desinstalar o Ulauncher com temas libadwaita |
 | Customizar GNOME | Temas GTK, ícones, cursores, extensões recomendadas e pré-requisitos |
 
 #### O que a pós-instalação configura
@@ -94,7 +94,7 @@ Ambiente de desenvolvimento PHP com Docker (multi-versão PHP + Nginx + MariaDB)
 |---|---|
 | Atualizar | Verificar e instalar a versão mais recente |
 | Desinstalar | Remover o binário e as configurações do sistema |
-| Ajuda | Exibir referência completa de comandos |
+| Ajuda | Referência completa de comandos com rolagem (Markdown renderizado via Glamour) |
 
 ---
 
@@ -128,7 +128,7 @@ sudo mv lumina-linux-amd64 /usr/local/bin/lumina
 ```bash
 git clone https://github.com/kaduvelasco/lumina-tools.git
 cd lumina-tools
-go build -ldflags "-X github.com/kaduvelasco/lumina-tools/internal/version.Version=v1.0.0" -o lumina ./cmd/lumina
+go build -ldflags "-X github.com/kaduvelasco/lumina-tools/internal/version.Version=v1.0.2" -o lumina ./cmd/lumina
 sudo mv lumina /usr/local/bin/lumina
 ```
 
@@ -144,6 +144,7 @@ lumina
 
 Navegue com `↑ ↓` ou `j k`, confirme com `Enter` ou `Espaço`, volte com `Esc`, saia com `q`.
 Pressione `t` a qualquer momento para abrir o seletor de temas com preview ao vivo.
+Cada item do menu exibe uma descrição da ação ao ser destacado.
 
 ---
 
@@ -169,6 +170,7 @@ lumina system apps install                     Instalar aplicativos Flatpak
 lumina system apps uninstall                   Desinstalar aplicativos Flatpak
 lumina system update                           Atualizar o sistema completo
 lumina system ulauncher                        Instalar Ulauncher e temas
+lumina system ulauncher uninstall              Desinstalar Ulauncher e remover dados
 lumina system gnome pre                        Instalar pré-requisitos GNOME
 lumina system gnome ext                        Exibir extensões recomendadas
 lumina system gnome themes                     Gerenciar temas GTK (multi-seleção)

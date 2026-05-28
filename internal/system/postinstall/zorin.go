@@ -15,7 +15,6 @@ var zorinPackages = []string{
 	"gstreamer1.0-plugins-bad",
 	"gstreamer1.0-plugins-ugly",
 	"gstreamer1.0-libav",
-	"gnome-tweaks",
 	"gnome-shell-extension-manager",
 	"build-essential",
 	"git",
@@ -23,7 +22,6 @@ var zorinPackages = []string{
 	"wget",
 	"htop",
 	"fastfetch",
-	"gparted",
 	"gdebi",
 	"libfuse2t64",
 	"unrar",
@@ -74,14 +72,6 @@ func Zorin(ctx context.Context, exe *executor.Executor, stdout io.Writer) error 
 		[]string{"mesa-va-drivers"},
 		aptInstall,
 	)
-
-	if err := ensureFlatpakReady(ctx, exe, stdout); err != nil {
-		return failWith(stdout, err)
-	}
-	ui.Info(stdout, "Instalando Flatpaks essenciais...")
-	if err := flatpakInstall(ctx, exe, stdout, "org.videolan.VLC"); err != nil {
-		ui.Warning(stdout, "Falha ao instalar Flatpaks: "+err.Error())
-	}
 
 	ui.Success(stdout, "Pós-instalação do ZorinOS concluída.")
 	ui.Warning(stdout, "Reinicie o sistema para aplicar todas as mudanças.")
