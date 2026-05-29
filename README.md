@@ -23,6 +23,7 @@
 | Fontes | Instalar/remover JetBrains Mono, Noto, Carlito, Caladea e outros |
 | Templates de Arquivos | Criar templates em branco (Office, LibreOffice, código) em `~/Templates` |
 | Aplicativos Flatpak | Instalar/remover a partir de um catálogo curado de 28 aplicativos |
+| WebApps sugeridos | Lista de aplicativos web com URL para abrir no navegador como PWA |
 | Atualizar Sistema | Atualiza pacotes (apt/dnf/pacman), Snap e Flatpak em uma única etapa |
 | Ulauncher | Instalar ou desinstalar o Ulauncher com temas libadwaita |
 | Customizar GNOME | Temas GTK, ícones, cursores, extensões recomendadas e pré-requisitos |
@@ -57,6 +58,7 @@ Requer GNOME como desktop ativo. Todas as operações verificam o ambiente antes
 | Temas GTK | 9 temas: Orchis, WhiteSur, Nordic, Colloid, Fluent, Tokyonight, Everforest, Rose Pine, Gruvbox |
 | Ícones | 5 pacotes: Gruvbox Plus, Kora, Candy Icons, Flatery, Newaita |
 | Cursores | 5 temas: Layan, Oreo, Sweet, Colloid, Future |
+| Flatpak | Aplicar tema GTK a todos os apps Flatpak via `flatpak override --user` |
 
 ### DevStack (`lumina stack`)
 
@@ -75,7 +77,7 @@ Ambiente de desenvolvimento PHP com Docker (multi-versão PHP + Nginx + MariaDB)
 |---|---|
 | LLMs | Instalar/remover Claude Code, Antigravity CLI, Codex CLI, OpenCode CLI |
 | IDEs | Instalar/remover Zed, Windsurf, VS Code, VSCodium |
-| Terminais | Instalar/remover Kitty, Alacritty, Black Box |
+| Terminais | Instalar/remover Kitty, Alacritty, Black Box, Starship Prompt |
 | Servidores MCP | Instalar/remover servidores a partir de catálogo YAML embutido |
 | Atualizar Ferramentas | Atualizar todos os CLIs, IDEs e terminais instalados |
 
@@ -128,7 +130,7 @@ sudo mv lumina-linux-amd64 /usr/local/bin/lumina
 ```bash
 git clone https://github.com/kaduvelasco/lumina-tools.git
 cd lumina-tools
-go build -ldflags "-X github.com/kaduvelasco/lumina-tools/internal/version.Version=v1.0.2" -o lumina ./cmd/lumina
+go build -ldflags "-X github.com/kaduvelasco/lumina-tools/internal/version.Version=v1.0.3" -o lumina ./cmd/lumina
 sudo mv lumina /usr/local/bin/lumina
 ```
 
@@ -168,6 +170,7 @@ lumina system fonts                            Gerenciar fontes (multi-seleção
 lumina system templates                        Gerenciar templates de arquivos
 lumina system apps install                     Instalar aplicativos Flatpak
 lumina system apps uninstall                   Desinstalar aplicativos Flatpak
+lumina system apps webapps                     Listar WebApps sugeridos
 lumina system update                           Atualizar o sistema completo
 lumina system ulauncher                        Instalar Ulauncher e temas
 lumina system ulauncher uninstall              Desinstalar Ulauncher e remover dados
@@ -176,6 +179,7 @@ lumina system gnome ext                        Exibir extensões recomendadas
 lumina system gnome themes                     Gerenciar temas GTK (multi-seleção)
 lumina system gnome icons                      Gerenciar pacotes de ícones (multi-seleção)
 lumina system gnome cursors                    Gerenciar temas de cursor (multi-seleção)
+lumina system gnome flatpak                    Aplicar tema GTK em apps Flatpak
 ```
 
 #### DevStack

@@ -15,11 +15,12 @@ type Terminal struct {
 	FlatID string // non-empty when installed via Flatpak
 }
 
-// Catalogue lists all terminals managed by lumina.
+// Catalogue lists all terminals and shell tools managed by lumina.
 var Catalogue = []Terminal{
 	{Name: "Kitty", Cmd: "kitty", FlatID: ""},
 	{Name: "Alacritty", Cmd: "alacritty", FlatID: ""},
 	{Name: "Black Box", Cmd: "blackbox-terminal", FlatID: "com.raggesilver.BlackBox"},
+	{Name: "Starship", Cmd: "starship", FlatID: ""},
 }
 
 // InstalledMap returns which terminals are currently installed (by Name).

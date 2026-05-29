@@ -29,6 +29,7 @@ var Catalogue = []Template{
 	{Label: "Documento LibreOffice (.odt)", Filename: "Documento.odt"},
 	{Label: "Planilha LibreOffice (.ods)", Filename: "Planilha.ods"},
 	{Label: "Texto (.txt)", Filename: "Texto.txt"},
+	{Label: "Markdown (.md)", Filename: "Documento.md"},
 	{Label: "HTML (.html)", Filename: "HTML.html"},
 	{Label: "CSS (.css)", Filename: "Estilo.css"},
 	{Label: "JavaScript (.js)", Filename: "Script.js"},
@@ -62,6 +63,8 @@ func PresentNames(dir string) map[string]bool {
 }
 
 // Select shows an interactive multi-select for templates and applies the diff.
+// Files found in the templates directory that are not in the Catalogue are shown
+// as pre-selected external entries so the user can remove them.
 func Select(ctx context.Context, _ *executor.Executor, stdin io.Reader, stdout io.Writer) error {
 	ui.PrintHeader(stdout, "Templates de Arquivos")
 
@@ -72,10 +75,40 @@ func Select(ctx context.Context, _ *executor.Executor, stdin io.Reader, stdout i
 		return err
 	}
 
-	present := PresentNames(dir)
-	items := make([]ui.SelectItem, len(Catalogue))
-	for i, t := range Catalogue {
-		items[i] = ui.SelectItem{Label: t.Label, ID: t.Filename, Selected: present[t.Filename]}
+	// Build set of catalogue filenames for fast lookup.
+	catalogueNames := make(map[string]bool, len(Catalogue))
+	for _, t := range Catalogue {
+		catalogueNames[t.Filename] = true
+	}
+
+	// Discover files in the templates dir that are not in the Catalogue.
+	var extraFiles []string
+	if entries, readErr := os.ReadDir(dir); readErr == nil {
+		for _, e := range entries {
+			if e.IsDir() || strings.HasPrefix(e.Name(), ".") {
+				continue
+			}
+			if !catalogueNames[e.Name()] {
+				extraFiles = append(extraFiles, e.Name())
+			}
+		}
+	}
+
+	// Build items: catalogue first, then external files (always pre-selected).
+	present := make(map[string]bool, len(Catalogue)+len(extraFiles))
+	items := make([]ui.SelectItem, 0, len(Catalogue)+len(extraFiles))
+
+	for _, t := range Catalogue {
+		exists := false
+		if _, statErr := os.Stat(filepath.Join(dir, t.Filename)); statErr == nil {
+			exists = true
+		}
+		present[t.Filename] = exists
+		items = append(items, ui.SelectItem{Label: t.Label, ID: t.Filename, Selected: exists})
+	}
+	for _, name := range extraFiles {
+		present[name] = true
+		items = append(items, ui.SelectItem{Label: name + " [externo]", ID: name, Selected: true})
 	}
 
 	finalItems, confirmed, err := ui.RunMultiSelect(ctx, stdin, stdout, items)
@@ -117,25 +150,26 @@ func Select(ctx context.Context, _ *executor.Executor, stdin io.Reader, stdout i
 }
 
 // Apply creates templates in toCreate and removes those in toRemove.
+// toRemove may contain filenames not in the Catalogue (e.g. external templates).
 func Apply(stdout io.Writer, dir string, toCreate, toRemove []string) error {
 	createSet := sets.Of(toCreate)
-	removeSet := sets.Of(toRemove)
-
 	for _, t := range Catalogue {
+		if !createSet[t.Filename] {
+			continue
+		}
 		dest := filepath.Join(dir, t.Filename)
-		switch {
-		case createSet[t.Filename]:
-			if err := create(dest, t); err != nil {
-				ui.Warning(stdout, fmt.Sprintf("Falha ao criar %s: %v", t.Filename, err))
-			} else {
-				ui.Info(stdout, "Criado: "+t.Filename)
-			}
-		case removeSet[t.Filename]:
-			if err := os.Remove(dest); err != nil && !os.IsNotExist(err) {
-				ui.Warning(stdout, fmt.Sprintf("Falha ao remover %s: %v", t.Filename, err))
-			} else {
-				ui.Info(stdout, "Removido: "+t.Filename)
-			}
+		if err := create(dest, t); err != nil {
+			ui.Warning(stdout, fmt.Sprintf("Falha ao criar %s: %v", t.Filename, err))
+		} else {
+			ui.Info(stdout, "Criado: "+t.Filename)
+		}
+	}
+	for _, filename := range toRemove {
+		dest := filepath.Join(dir, filename)
+		if err := os.Remove(dest); err != nil && !os.IsNotExist(err) {
+			ui.Warning(stdout, fmt.Sprintf("Falha ao remover %s: %v", filename, err))
+		} else {
+			ui.Info(stdout, "Removido: "+filename)
 		}
 	}
 	return nil
@@ -324,6 +358,8 @@ func textContent(ext string) string {
 	switch ext {
 	case ".txt":
 		return ""
+	case ".md":
+		return "# Título\n"
 	case ".html":
 		return "<!DOCTYPE html>\n<html lang=\"pt-BR\">\n<head>\n    <meta charset=\"UTF-8\">\n    <title></title>\n</head>\n<body>\n</body>\n</html>\n"
 	case ".css":

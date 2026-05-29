@@ -29,6 +29,7 @@ func InstallPrereqs(ctx context.Context, exe *executor.Executor, stdout io.Write
 			executor.Options{RequiresSudo: true, Stdout: stdout, Stderr: stdout},
 			"apt-get", "install", "-y", "--",
 			"gnome-tweaks", "gnome-themes-extra", "gtk2-engines-murrine", "sassc", "git",
+			"inkscape", "x11-apps",
 		); err != nil {
 			ui.Err(stdout, "Falha ao instalar pacotes: "+err.Error())
 			ui.WaitEnter(stdout)

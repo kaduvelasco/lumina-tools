@@ -125,7 +125,7 @@ func dispatchSystem(ctx context.Context, args []string, stdin io.Reader, stdout,
 		return templates.Select(ctx, exe, stdin, stdout)
 	case "apps":
 		if len(args) < 2 {
-			return fmt.Errorf("uso: lumina system apps <install|uninstall> [flatpak|ulauncher]")
+			return fmt.Errorf("uso: lumina system apps <install|uninstall|webapps> [flatpak|ulauncher]")
 		}
 		switch args[1] {
 		case "install":
@@ -138,8 +138,10 @@ func dispatchSystem(ctx context.Context, args []string, stdin io.Reader, stdout,
 				return ulauncher.Uninstall(ctx, exe, stdout)
 			}
 			return apps.SelectUninstall(ctx, exe, stdin, stdout)
+		case "webapps":
+			return apps.ShowWebApps(ctx, exe, stdout)
 		default:
-			return fmt.Errorf("subcomando desconhecido: %s\nuso: lumina system apps <install|uninstall> [flatpak|ulauncher]", args[1])
+			return fmt.Errorf("subcomando desconhecido: %s\nuso: lumina system apps <install|uninstall|webapps> [flatpak|ulauncher]", args[1])
 		}
 	case "update":
 		return update.Run(ctx, exe, stdout)
@@ -155,7 +157,7 @@ func dispatchSystem(ctx context.Context, args []string, stdin io.Reader, stdout,
 
 func dispatchGnome(ctx context.Context, args []string, stdin io.Reader, stdout, _ io.Writer) error {
 	if len(args) == 0 {
-		return fmt.Errorf("uso: lumina system gnome <pre|ext|themes|icons|cursors>")
+		return fmt.Errorf("uso: lumina system gnome <pre|ext|themes|icons|cursors|flatpak>")
 	}
 	exe := executor.New(stdout, stdout)
 	switch args[0] {
@@ -169,8 +171,10 @@ func dispatchGnome(ctx context.Context, args []string, stdin io.Reader, stdout, 
 		return gnome.ManageIcons(ctx, exe, stdin, stdout)
 	case "cursors":
 		return gnome.ManageCursors(ctx, exe, stdin, stdout)
+	case "flatpak":
+		return gnome.ApplyFlatpakTheme(ctx, exe, stdin, stdout)
 	default:
-		return fmt.Errorf("subcomando desconhecido: %s\nuso: lumina system gnome <pre|ext|themes|icons|cursors>", args[0])
+		return fmt.Errorf("subcomando desconhecido: %s\nuso: lumina system gnome <pre|ext|themes|icons|cursors|flatpak>", args[0])
 	}
 }
 
@@ -362,10 +366,11 @@ GERENCIAMENTO LINUX
   lumina system templates
   lumina system apps install
   lumina system apps uninstall
+  lumina system apps webapps
   lumina system update
   lumina system ulauncher
   lumina system ulauncher uninstall
-  lumina system gnome [pre|ext|themes|icons|cursors]
+  lumina system gnome [pre|ext|themes|icons|cursors|flatpak]
 
 DEVSTACK
   lumina stack config [pre|docker|workspace|stack]

@@ -11,6 +11,7 @@ import (
 	"github.com/charmbracelet/glamour"
 	"github.com/charmbracelet/lipgloss"
 
+	"github.com/kaduvelasco/lumina-tools/internal/config"
 	"github.com/kaduvelasco/lumina-tools/internal/executor"
 	"github.com/kaduvelasco/lumina-tools/internal/ui"
 	"github.com/kaduvelasco/lumina-tools/internal/version"
@@ -40,18 +41,40 @@ var (
 // ShowHelp opens a full-screen scrollable help viewer rendered with Glamour.
 // The signature matches the execInteractive function type used by the TUI.
 func ShowHelp(_ context.Context, _ *executor.Executor, stdin io.Reader, stdout io.Writer) error {
-	p := tea.NewProgram(helpModel{}, tea.WithInput(stdin), tea.WithOutput(stdout), tea.WithAltScreen())
+	style := glamourStyleFromConfig()
+	p := tea.NewProgram(helpModel{glamourStyle: style}, tea.WithInput(stdin), tea.WithOutput(stdout), tea.WithAltScreen())
 	_, err := p.Run()
 	return err
+}
+
+// glamourStyleFromConfig maps the user's Lumina theme to a glamour style name.
+// Using a fixed style avoids the blocking terminal color-detection query done by
+// glamour.WithAutoStyle(), which is the main cause of slow help viewer startup.
+func glamourStyleFromConfig() string {
+	cfg, err := config.Load()
+	if err != nil {
+		return "dark"
+	}
+	switch cfg.Theme {
+	case "Claro":
+		return "light"
+	case "Dracula":
+		return "dracula"
+	case "Tokyo Night":
+		return "tokyo-night"
+	default:
+		return "dark"
+	}
 }
 
 // ── model ─────────────────────────────────────────────────────────────────────
 
 type helpModel struct {
-	viewport viewport.Model
-	ready    bool
-	width    int
-	height   int
+	viewport     viewport.Model
+	glamourStyle string
+	ready        bool
+	width        int
+	height       int
 }
 
 func (m helpModel) Init() tea.Cmd { return nil }
@@ -68,7 +91,7 @@ func (m helpModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			vpH = 4
 		}
 
-		content := renderHelp(vpW - glamourGutter)
+		content := renderHelp(vpW-glamourGutter, m.glamourStyle)
 
 		if !m.ready {
 			m.viewport = viewport.New(vpW, vpH)
@@ -116,12 +139,15 @@ func (m helpModel) View() string {
 
 // ── content ───────────────────────────────────────────────────────────────────
 
-func renderHelp(glamourWidth int) string {
+func renderHelp(glamourWidth int, style string) string {
 	if glamourWidth < 40 {
 		glamourWidth = 40
 	}
+	if style == "" {
+		style = "dark"
+	}
 	r, err := glamour.NewTermRenderer(
-		glamour.WithAutoStyle(),
+		glamour.WithStandardStyle(style),
 		glamour.WithWordWrap(glamourWidth),
 	)
 	if err != nil {
@@ -167,12 +193,14 @@ func helpMarkdown() string {
 | lumina system templates | Instalar templates de arquivo |
 | lumina system apps install | Instalar aplicativos via Flatpak |
 | lumina system apps uninstall | Remover aplicativos via Flatpak |
+| lumina system apps webapps | Listar WebApps sugeridos |
 | lumina system ulauncher | Instalar o Ulauncher |
 | lumina system gnome pre | Instalar pré-requisitos GNOME |
 | lumina system gnome ext | Listar extensões recomendadas |
 | lumina system gnome themes | Gerenciar temas GTK |
 | lumina system gnome icons | Gerenciar pacotes de ícones |
 | lumina system gnome cursors | Gerenciar temas de cursor |
+| lumina system gnome flatpak | Aplicar tema GTK em apps Flatpak |
 
 ---
 

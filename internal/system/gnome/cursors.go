@@ -17,6 +17,7 @@ type cursorEntry struct {
 	Branch        string // non-empty: clone this branch
 	HasInstall    bool   // true: run ./install.sh from InstallSubDir (or repo root)
 	InstallSubDir string // subdir to cd into before running install.sh
+	BuildScript   string // non-empty: run this command in the repo root before copying
 	CopyFrom      string // non-empty: copy matching dirs from this subdir
 	CopyGlob      string // non-empty: glob within CopyFrom (or repo root) to copy
 }
@@ -29,19 +30,20 @@ var cursorCatalogue = []cursorEntry{
 		HasInstall: true,
 	},
 	{
-		Name:     "Oreo",
-		DirPattern: "oreo*",
-		RepoURL:  "https://github.com/varlesh/oreo-cursors.git",
-		CopyFrom: "dist",
-		CopyGlob: "oreo*",
+		Name:        "Oreo",
+		DirPattern:  "oreo*",
+		RepoURL:     "https://github.com/varlesh/oreo-cursors.git",
+		BuildScript: "bash build.sh",
+		CopyFrom:    "dist",
+		CopyGlob:    "oreo*",
 	},
 	{
 		Name:       "Sweet",
-		DirPattern: "Sweet-cursors*",
+		DirPattern: "Sweet-cursors",
 		RepoURL:    "https://github.com/EliverLara/Sweet.git",
 		Branch:     "nova",
-		CopyFrom:   "cursors",
-		CopyGlob:   "*",
+		CopyFrom:   "kde/cursors",
+		CopyGlob:   "Sweet-cursors",
 	},
 	{
 		Name:          "Colloid",
@@ -166,21 +168,26 @@ bash ./install.sh
 		)
 	}
 
-	// Clone to temp, copy matching subdirs into the icons directory.
+	// Clone to temp, optionally build, then copy matching subdirs into the icons directory.
 	// $1 = repo URL, $2 = glob pattern, $3 = icons dir
 	copyFrom := ce.CopyFrom
 	if copyFrom == "" {
 		copyFrom = "."
 	}
+	buildStep := ""
+	if ce.BuildScript != "" {
+		buildStep = "\ncd \"$TMP/repo\"\n" + ce.BuildScript + "\n"
+	}
 	script := `
 set -e
 TMP=$(mktemp -d)
-trap 'rm -rf "$TMP"' EXIT
-git clone --depth=1 ` + branchFlag + `"$1" "$TMP/repo"
+trap 'rm -rf -- "$TMP"' EXIT
+git clone --depth=1 ` + branchFlag + `-- "$1" "$TMP/repo"` + buildStep + `
 shopt -s nullglob
 for d in "$TMP/repo/` + copyFrom + `"/$2; do
     [ -d "$d" ] || continue
-    cp -r "$d" "$3/"
+    rm -rf -- "$3/$(basename -- "$d")"
+    cp -r -- "$d" "$3/"
 done
 `
 	return exe.Run(ctx,

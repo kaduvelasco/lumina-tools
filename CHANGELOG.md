@@ -6,6 +6,68 @@ O formato segue o padrão [Keep a Changelog](https://keepachangelog.com/pt-BR/1.
 
 ---
 
+## [1.0.3] — 2026-05-29
+
+### Adicionado
+
+#### Starship Prompt (`lumina dev term`)
+- Starship adicionado ao catálogo de terminais como opção selecionável
+- Instalação via script oficial para `~/.local/bin`; seleção interativa de preset (gruvbox-rainbow, tokyo-night, pastel-powerline, pure-preset) na primeira instalação
+- Configuração automática em todos os shells presentes (bash, zsh, fish) com hook de inicialização
+- Desinstalação remove binário, `~/.config/starship.toml` e os hooks de todos os shells configurados
+- Atualização via reinvocação do script oficial (preset e config preservados)
+
+#### Aplicar tema no Flatpak (`lumina system gnome flatpak`)
+- Novo item "Aplicar tema no Flatpak" no submenu de Customização GNOME
+- Detecta automaticamente os temas GTK instalados pelo Lumina e apresenta single-select
+- Aplica `flatpak override --user --env=GTK_THEME=<tema>` para todos os aplicativos Flatpak do usuário
+
+#### Templates — Markdown
+- Formato Markdown (`.md`) adicionado ao catálogo de templates de arquivo
+- Arquivos presentes na pasta `~/Templates` mas fora do catálogo Lumina (criados por outros programas, como os padrões do ZorinOS) agora aparecem na listagem de remoção com sufixo `[externo]`
+
+#### WebApps sugeridos (`lumina system apps webapps`)
+- Novo item "WebApps sugeridos" no submenu de Aplicativos
+- Exibe lista de aplicativos web com URL para abrir no navegador e instalar como PWA
+- Lista inicial: WhatsApp (`https://web.whatsapp.com`) e Vectorpea (`https://www.vectorpea.com/`)
+
+### Corrigido
+
+#### Pós-instalação ZorinOS
+- `software-properties-common` adicionado aos pacotes e repositórios `universe`/`multiverse` habilitados via `add-apt-repository` antes do `apt-get update` — corrige "impossível encontrar o pacote fastfetch"
+
+#### GNOME — Temas GTK
+- Estratégia de instalação corrigida para Tokyonight, Everforest e Gruvbox: executa `install.sh` do subdiretório `themes/` (os arquivos pré-construídos não estão no repositório e precisam ser gerados pelo script)
+- Estratégia corrigida para Rose Pine: copia de `gtk3/` (subdiretório com arquivos pré-construídos) em vez do diretório raiz
+
+#### GNOME — Cursores
+- Oreo: adicionada etapa de build (`bash build.sh`) antes da cópia — o diretório `dist/` não existe no repositório e precisa ser gerado; `inkscape` e `x11-apps` adicionados aos pré-requisitos GNOME
+- Sweet: caminho corrigido de `cursors/` para `kde/cursors/` na branch `nova` (o caminho anterior não existe nessa branch)
+
+#### ESC sequences em saída de apt e Flatpak
+- Adicionados `-o Dpkg::Use-Pty=0`, `-o Dpkg::Progress-Fancy=0`, `-o APT::Color=0` e `DEBIAN_FRONTEND=noninteractive` às chamadas apt-get — previne sequências de escape como `^[[34;1R` ao executar pós-instalação ou atualização do sistema
+- Adicionado `TERM=dumb` às chamadas flatpak pelo mesmo motivo
+
+#### CLIs LLM — `~/.local/bin` ausente do PATH
+- `~/.local/bin` agora é adicionado ao `~/.bashrc` automaticamente após instalar Claude Code ou Antigravity CLI quando o diretório não está no PATH — corrige aviso "~/.local/bin is not in your PATH"
+
+#### Servidores MCP — instalação npm
+- Removido `sudo` na instalação e atualização de servidores MCP; npm agora é invocado via script bash que carrega o `nvm` do usuário — corrige "npm: arquivo ou diretório inexistente" em sistemas com Node.js instalado via nvm
+
+#### Help viewer — carregamento lento
+- `glamour.WithAutoStyle()` substituído por `glamour.WithStandardStyle()` com estilo derivado do tema configurado pelo usuário — elimina a query bloqueante de detecção de cor do terminal que causava lentidão ao abrir a ajuda
+
+### Alterado
+
+#### Pré-requisitos de desenvolvimento
+- `lumina dev pre` garante que `~/.local/bin` está no PATH (adiciona ao `~/.bashrc` se ausente) e instrui o usuário a reiniciar o terminal ao concluir
+
+### Refatorado
+
+- `internal/dev/localbin`: novo pacote compartilhado com `EnsureInPath()`, extraído de `llm/install.go` e reutilizado em `dev/depends` e `dev/llm`
+
+---
+
 ## [1.0.2] — 2026-05-28
 
 ### Adicionado

@@ -61,10 +61,10 @@ func updatePackages(ctx context.Context, exe *executor.Executor, stdout io.Write
 			msg  string
 			args []string
 		}{
-			{"Sincronizando lista de pacotes...", []string{"update", "-o", "APT::Color=0", "-o", "Dpkg::Progress-Fancy=0"}},
-			{"Instalando atualizacoes...", []string{"upgrade", "-y", "-o", "APT::Color=0", "-o", "Dpkg::Progress-Fancy=0"}},
-			{"Atualizacao completa do sistema...", []string{"full-upgrade", "-y", "-o", "APT::Color=0", "-o", "Dpkg::Progress-Fancy=0"}},
-			{"Removendo pacotes desnecessarios...", []string{"autoremove", "-y", "-o", "APT::Color=0"}},
+			{"Sincronizando lista de pacotes...", []string{"update", "-o", "APT::Color=0", "-o", "Dpkg::Progress-Fancy=0", "-o", "Dpkg::Use-Pty=0"}},
+			{"Instalando atualizacoes...", []string{"upgrade", "-y", "-o", "APT::Color=0", "-o", "Dpkg::Progress-Fancy=0", "-o", "Dpkg::Use-Pty=0"}},
+			{"Atualizacao completa do sistema...", []string{"full-upgrade", "-y", "-o", "APT::Color=0", "-o", "Dpkg::Progress-Fancy=0", "-o", "Dpkg::Use-Pty=0"}},
+			{"Removendo pacotes desnecessarios...", []string{"autoremove", "-y", "-o", "APT::Color=0", "-o", "Dpkg::Use-Pty=0"}},
 			{"Limpando cache APT...", []string{"autoclean", "-y"}},
 		}
 		opts := aptOpts(stdout)
@@ -112,7 +112,7 @@ func updateFlatpak(ctx context.Context, exe *executor.Executor, stdout io.Writer
 		return nil
 	}
 	ui.Info(stdout, "Atualizando Flatpaks...")
-	opts := executor.Options{Stdout: stdout, Stderr: stdout}
+	opts := executor.Options{Stdout: stdout, Stderr: stdout, Env: []string{"TERM=dumb"}}
 	if err := exe.Run(ctx, opts, "flatpak", "update", config.FlatpakFlag(), "-y"); err != nil {
 		return fmt.Errorf("flatpak update: %w", err)
 	}

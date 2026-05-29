@@ -85,6 +85,8 @@ func uninstallOne(ctx context.Context, exe *executor.Executor, stdout io.Writer,
 		}
 	case "blackbox-terminal":
 		return exe.Run(ctx, opts, "flatpak", "uninstall", config.FlatpakFlag(), "-y", t.FlatID)
+	case "starship":
+		return uninstallStarship(stdout)
 	}
 	return fmt.Errorf("desinstalador desconhecido para %s", t.Name)
 }

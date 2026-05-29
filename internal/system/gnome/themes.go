@@ -15,8 +15,10 @@ type themeEntry struct {
 	Name        string
 	DirPattern  string   // glob under ~/.themes/ for detection and removal
 	RepoURL     string
-	CloneTarget string   // non-empty: clone directly to ~/.themes/<CloneTarget>
-	InstallArgs []string // args for ./install.sh (only when CloneTarget is empty)
+	CloneTarget string   // non-empty: clone entire repo to ~/.themes/<CloneTarget> (e.g. Nordic)
+	CopySubDir  string   // non-empty: copy all subdirs from CopySubDir of the repo to ~/.themes/ (e.g. Rose Pine)
+	InstallDir  string   // subdir containing install.sh; empty means repo root (e.g. "themes" for Fausto-Korpsvart)
+	InstallArgs []string // args for ./install.sh (when CloneTarget and CopySubDir are both empty)
 	AskIcon     bool     // true: prompt the user for the -i <icon> flag (WhiteSur)
 	FlatpakName string   // theme name used for GTK_THEME flatpak override
 }
@@ -60,31 +62,31 @@ var themeCatalogue = []themeEntry{
 	},
 	{
 		Name:        "Tokyonight",
-		DirPattern:  "Tokyonight",
+		DirPattern:  "Tokyonight*",
 		RepoURL:     "https://github.com/Fausto-Korpsvart/Tokyonight-GTK-Theme.git",
-		CloneTarget: "Tokyonight",
-		FlatpakName: "Tokyonight",
+		InstallDir:  "themes",
+		FlatpakName: "Tokyonight-Dark",
 	},
 	{
 		Name:        "Everforest",
-		DirPattern:  "Everforest",
+		DirPattern:  "Everforest*",
 		RepoURL:     "https://github.com/Fausto-Korpsvart/Everforest-GTK-Theme.git",
-		CloneTarget: "Everforest",
-		FlatpakName: "Everforest",
+		InstallDir:  "themes",
+		FlatpakName: "Everforest-Dark",
 	},
 	{
 		Name:        "Rose Pine",
-		DirPattern:  "RosePine",
+		DirPattern:  "rose-pine*",
 		RepoURL:     "https://github.com/rose-pine/gtk.git",
-		CloneTarget: "RosePine",
-		FlatpakName: "RosePine",
+		CopySubDir:  "gtk3",
+		FlatpakName: "rose-pine-gtk",
 	},
 	{
 		Name:        "Gruvbox",
-		DirPattern:  "Gruvbox",
+		DirPattern:  "Gruvbox*",
 		RepoURL:     "https://github.com/Fausto-Korpsvart/Gruvbox-GTK-Theme.git",
-		CloneTarget: "Gruvbox",
-		FlatpakName: "Gruvbox",
+		InstallDir:  "themes",
+		FlatpakName: "Gruvbox-Dark",
 	},
 }
 
@@ -213,11 +215,12 @@ func installTheme(ctx context.Context, exe *executor.Executor, stdout io.Writer,
 	}
 
 	if t.CloneTarget != "" {
+		// Clone entire repo as the theme directory (e.g. Nordic).
 		target := filepath.Join(td, t.CloneTarget)
 		script := `
 set -e
 rm -rf -- "$2"
-git clone --depth=1 "$1" "$2"
+git clone --depth=1 -- "$1" "$2"
 `
 		return exe.Run(ctx,
 			executor.Options{Stdout: stdout, Stderr: stdout},
@@ -225,7 +228,26 @@ git clone --depth=1 "$1" "$2"
 		)
 	}
 
-	// Build install invocation: ./install.sh <args...> [-i <icon>]
+	if t.CopySubDir != "" {
+		// Clone to tempdir and copy each pre-built theme subdir to ~/.themes/ (e.g. Rose Pine).
+		script := `
+set -e
+TMP=$(mktemp -d)
+trap 'rm -rf -- "$TMP"' EXIT
+git clone --depth=1 -- "$1" "$TMP/repo"
+for d in "$TMP/repo/$2"/*/; do
+    [ -d "$d" ] || continue
+    rm -rf -- "$3/$(basename -- "$d")"
+    cp -r -- "$d" "$3/"
+done
+`
+		return exe.Run(ctx,
+			executor.Options{Stdout: stdout, Stderr: stdout},
+			"bash", "-c", script, "--", t.RepoURL, t.CopySubDir, td,
+		)
+	}
+
+	// Run install.sh from InstallDir (empty = repo root; e.g. "themes" for Fausto-Korpsvart repos).
 	installCmd := "./install.sh"
 	for _, a := range t.InstallArgs {
 		installCmd += " " + shellQuote(a)
@@ -237,14 +259,14 @@ git clone --depth=1 "$1" "$2"
 	script := `
 set -e
 TMP=$(mktemp -d)
-trap 'rm -rf "$TMP"' EXIT
-git clone --depth=1 "$1" "$TMP/theme"
-cd "$TMP/theme"
+trap 'rm -rf -- "$TMP"' EXIT
+git clone --depth=1 -- "$1" "$TMP/repo"
+cd "$TMP/repo/$2"
 bash ` + installCmd + `
 `
 	return exe.Run(ctx,
 		executor.Options{Stdout: stdout, Stderr: stdout},
-		"bash", "-c", script, "--", t.RepoURL,
+		"bash", "-c", script, "--", t.RepoURL, t.InstallDir,
 	)
 }
 
@@ -309,4 +331,84 @@ func offerFlatpak(ctx context.Context, exe *executor.Executor, stdin io.Reader, 
 		return
 	}
 	ui.Success(stdout, "Flatpak configurado com o tema "+chosen+".")
+}
+
+// ApplyFlatpakTheme lets the user pick an installed GTK theme and apply it
+// as a GTK_THEME environment override for all Flatpak apps.
+func ApplyFlatpakTheme(ctx context.Context, exe *executor.Executor, stdin io.Reader, stdout io.Writer) error {
+	ui.PrintHeader(stdout, "Customizar GNOME — Aplicar Tema no Flatpak")
+
+	if !isGnome() {
+		ui.Err(stdout, ErrNotGnome.Error())
+		ui.WaitEnter(stdout)
+		return nil
+	}
+
+	td, err := themesDir()
+	if err != nil {
+		ui.Err(stdout, "Erro ao obter diretório de temas: "+err.Error())
+		ui.WaitEnter(stdout)
+		return err
+	}
+
+	var installed []ui.SelectItem
+	for _, t := range themeCatalogue {
+		if isThemeInstalled(t, td) {
+			installed = append(installed, ui.SelectItem{Label: t.Name, ID: t.FlatpakName})
+		}
+	}
+
+	if len(installed) == 0 {
+		ui.Warning(stdout, "Nenhum tema compatível encontrado em ~/.themes/")
+		ui.Info(stdout, "Instale pelo menos um tema GTK antes de usar esta opção.")
+		ui.WaitEnter(stdout)
+		return nil
+	}
+
+	installed = append(installed, ui.SelectItem{Label: "Não aplicar", ID: ""})
+
+	ui.Info(stdout, "Selecione o tema GTK para aplicar em todos os apps Flatpak:")
+	fmt.Fprintln(stdout)
+
+	idx, ok, err := ui.RunSingleSelect(ctx, stdin, stdout, installed)
+	if err != nil {
+		return err
+	}
+	if !ok || idx < 0 {
+		ui.Warning(stdout, "Operação cancelada.")
+		ui.WaitEnter(stdout)
+		return nil
+	}
+
+	chosen := installed[idx].ID
+	if chosen == "" {
+		ui.Info(stdout, "Nenhuma alteração aplicada.")
+		ui.WaitEnter(stdout)
+		return nil
+	}
+
+	h, err := os.UserHomeDir()
+	if err != nil {
+		ui.Err(stdout, "Erro ao obter diretório home: "+err.Error())
+		ui.WaitEnter(stdout)
+		return err
+	}
+
+	ui.Info(stdout, "Configurando Flatpak para o tema "+chosen+"...")
+	_ = exe.Run(ctx,
+		executor.Options{Stdout: stdout, Stderr: stdout},
+		"flatpak", "override", "--user", "--filesystem="+filepath.Join(h, ".themes"),
+	)
+	if err := exe.Run(ctx,
+		executor.Options{Stdout: stdout, Stderr: stdout},
+		"flatpak", "override", "--user", "--env=GTK_THEME="+chosen,
+	); err != nil {
+		ui.Warning(stdout, "Falha ao configurar Flatpak: "+err.Error())
+		ui.WaitEnter(stdout)
+		return nil
+	}
+
+	ui.Success(stdout, "Flatpak configurado com o tema "+chosen+".")
+	ui.WaitEnter(stdout)
+	return nil
 }

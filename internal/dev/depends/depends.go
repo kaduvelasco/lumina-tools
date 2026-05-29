@@ -6,6 +6,7 @@ import (
 	"io"
 	"strings"
 
+	"github.com/kaduvelasco/lumina-tools/internal/dev/localbin"
 	"github.com/kaduvelasco/lumina-tools/internal/distro"
 	"github.com/kaduvelasco/lumina-tools/internal/executor"
 	"github.com/kaduvelasco/lumina-tools/internal/prompt"
@@ -63,7 +64,10 @@ func Install(ctx context.Context, exe *executor.Executor, stdout io.Writer) erro
 		return runErr
 	}
 
+	localbin.EnsureInPath(stdout)
+
 	ui.Success(stdout, "Pré-requisitos instalados com sucesso!")
+	ui.Warning(stdout, "Reinicie o terminal para aplicar todas as alterações de PATH.")
 	ui.WaitEnter(stdout)
 	return nil
 }

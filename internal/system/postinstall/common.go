@@ -20,8 +20,13 @@ func step(ctx context.Context, exe *executor.Executor, stdout io.Writer, msg, na
 
 // aptInstall installs one or more apt packages with sudo.
 func aptInstall(ctx context.Context, exe *executor.Executor, stdout io.Writer, pkgs ...string) error {
-	args := append([]string{"install", "-y", "--"}, pkgs...)
-	return exe.Run(ctx, executor.Options{RequiresSudo: true, Stdout: stdout, Stderr: stdout}, "apt-get", args...)
+	args := append([]string{"install", "-y", "-o", "Dpkg::Use-Pty=0", "-o", "Dpkg::Progress-Fancy=0", "-o", "APT::Color=0", "--"}, pkgs...)
+	return exe.Run(ctx, executor.Options{
+		RequiresSudo: true,
+		Stdout:       stdout,
+		Stderr:       stdout,
+		Env:          []string{"DEBIAN_FRONTEND=noninteractive"},
+	}, "apt-get", args...)
 }
 
 // dnfInstall installs one or more dnf packages with sudo.
@@ -50,7 +55,7 @@ func ensureFlatpakReady(ctx context.Context, exe *executor.Executor, stdout io.W
 // flatpakInstall installs Flatpak apps from Flathub using the configured scope.
 func flatpakInstall(ctx context.Context, exe *executor.Executor, stdout io.Writer, appIDs ...string) error {
 	args := append([]string{"install", config.FlatpakFlag(), "-y", "flathub"}, appIDs...)
-	return exe.Run(ctx, executor.Options{Stdout: stdout, Stderr: stdout}, "flatpak", args...)
+	return exe.Run(ctx, executor.Options{Stdout: stdout, Stderr: stdout, Env: []string{"TERM=dumb"}}, "flatpak", args...)
 }
 
 // configureSysctl sets swappiness, inotify and applies sysctl.

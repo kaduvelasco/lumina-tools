@@ -353,6 +353,9 @@ func (m Model) runAction(a actionID) tea.Cmd {
 	case actAppsUninstall:
 		return execInteractive(apps.SelectUninstall)
 
+	case actAppsWebApps:
+		return exec(apps.ShowWebApps)
+
 	// ── Manager: AI / Gitignore / DB / Repo ─────────────────────────────────
 	case actAIContext:
 		return execInteractive(managerai.GenerateContext)
@@ -437,6 +440,8 @@ func (m Model) runAction(a actionID) tea.Cmd {
 		return execInteractive(gnome.ManageIcons)
 	case actGnomeCursors:
 		return execInteractive(gnome.ManageCursors)
+	case actGnomeFlatpak:
+		return execInteractive(gnome.ApplyFlatpakTheme)
 
 	// ── Lumina ───────────────────────────────────────────────────────────────
 	case actLuminaUpdate:

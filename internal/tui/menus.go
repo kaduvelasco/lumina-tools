@@ -36,6 +36,7 @@ const (
 	actSystemTemplates
 	actAppsInstall
 	actAppsUninstall
+	actAppsWebApps
 	actSystemUpdate
 	actSystemUlauncher
 	actUlauncherUninstall
@@ -79,6 +80,7 @@ const (
 	actGnomeThemes
 	actGnomeIcons
 	actGnomeCursors
+	actGnomeFlatpak
 )
 
 type menuItem struct {
@@ -156,6 +158,7 @@ func itemsFor(m menuID) []menuItem {
 		return []menuItem{
 			{label: "Instalar", description: "Seleciona e instala aplicativos Flatpak ou o Ulauncher", submenu: menuSystemAppsInstall},
 			{label: "Desinstalar", description: "Remove aplicativos Flatpak ou o Ulauncher do sistema", submenu: menuSystemAppsUninstall},
+			{label: "WebApps sugeridos", description: "Lista de aplicativos web com links para abrir no navegador", action: actAppsWebApps},
 			{label: "Voltar", description: "Retorna ao menu anterior", action: actBack},
 		}
 	case menuSystemAppsInstall:
@@ -243,6 +246,7 @@ func itemsFor(m menuID) []menuItem {
 			{label: "Gerenciar Temas", description: "Instala ou remove temas GTK para o ambiente GNOME", action: actGnomeThemes},
 			{label: "Gerenciar Ícones", description: "Instala ou remove pacotes de ícones para o ambiente GNOME", action: actGnomeIcons},
 			{label: "Gerenciar Cursores", description: "Instala ou remove temas de cursor para o ambiente GNOME", action: actGnomeCursors},
+			{label: "Aplicar tema no Flatpak", description: "Aplica um tema GTK instalado em todos os aplicativos Flatpak", action: actGnomeFlatpak},
 			{label: "Voltar", description: "Retorna ao menu anterior", action: actBack},
 		}
 	}

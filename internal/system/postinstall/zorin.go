@@ -32,11 +32,22 @@ var zorinPackages = []string{
 	"jq",
 	"plocate",
 	"net-tools",
+	"software-properties-common",
 }
 
 // Zorin runs the post-install routine for ZorinOS 18.1.
 func Zorin(ctx context.Context, exe *executor.Executor, stdout io.Writer) error {
 	ui.PrintHeader(stdout, "Pós Instalação — ZorinOS 18.1")
+
+	ui.Info(stdout, "Habilitando repositórios universe e multiverse...")
+	for _, repo := range []string{"universe", "multiverse"} {
+		if err := exe.Run(ctx,
+			executor.Options{RequiresSudo: true, Stdout: stdout, Stderr: stdout},
+			"add-apt-repository", "-y", repo,
+		); err != nil {
+			return failWith(stdout, fmt.Errorf("add-apt-repository %s: %w", repo, err))
+		}
+	}
 
 	if err := step(ctx, exe, stdout, "Atualizando lista de pacotes...", "apt-get", "update", "-y"); err != nil {
 		return failWith(stdout, err)

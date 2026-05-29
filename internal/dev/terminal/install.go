@@ -81,6 +81,8 @@ ln -sf "$HOME/.local/kitty.app/bin/kitten" "$HOME/.local/bin/kitten"
 
 	case "blackbox-terminal":
 		return exe.Run(ctx, opts, "flatpak", "install", config.FlatpakFlag(), "-y", "flathub", t.FlatID)
+	case "starship":
+		return installStarship(ctx, exe, stdout)
 	}
 	return fmt.Errorf("instalador desconhecido para %s", t.Name)
 }

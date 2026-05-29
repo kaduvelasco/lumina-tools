@@ -6,6 +6,7 @@ import (
 	"io"
 	"strings"
 
+	"github.com/kaduvelasco/lumina-tools/internal/dev/localbin"
 	"github.com/kaduvelasco/lumina-tools/internal/executor"
 	"github.com/kaduvelasco/lumina-tools/internal/prompt"
 	"github.com/kaduvelasco/lumina-tools/internal/ui"
@@ -73,11 +74,17 @@ func installOne(ctx context.Context, exe *executor.Executor, stdout io.Writer, l
 	opts := executor.Options{Stdout: stdout, Stderr: stdout}
 	switch l.Cmd {
 	case "claude":
-		script := `curl -fsSL https://claude.ai/install.sh | bash`
-		return exe.Run(ctx, opts, "bash", "-c", script)
+		if err := exe.Run(ctx, opts, "bash", "-c", `curl -fsSL https://claude.ai/install.sh | bash`); err != nil {
+			return err
+		}
+		localbin.EnsureInPath(stdout)
+		return nil
 	case "agy":
-		script := `curl -fsSL https://antigravity.google/cli/install.sh | bash`
-		return exe.Run(ctx, opts, "bash", "-c", script)
+		if err := exe.Run(ctx, opts, "bash", "-c", `curl -fsSL https://antigravity.google/cli/install.sh | bash`); err != nil {
+			return err
+		}
+		localbin.EnsureInPath(stdout)
+		return nil
 	case "codex":
 		return npmInstall(ctx, exe, stdout, "@openai/codex")
 	case "opencode":
@@ -85,6 +92,7 @@ func installOne(ctx context.Context, exe *executor.Executor, stdout io.Writer, l
 	}
 	return fmt.Errorf("instalador desconhecido para %s", l.Name)
 }
+
 
 func npmInstall(ctx context.Context, exe *executor.Executor, stdout io.Writer, pkg string) error {
 	// Source NVM when available so a freshly-installed Node is on PATH.
