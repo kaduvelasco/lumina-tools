@@ -4,6 +4,7 @@ import (
 	"context"
 	"io"
 
+	"github.com/kaduvelasco/lumina-tools/internal/dev/localbin"
 	"github.com/kaduvelasco/lumina-tools/internal/executor"
 	"github.com/kaduvelasco/lumina-tools/internal/ui"
 )
@@ -22,7 +23,7 @@ func Update(ctx context.Context, exe *executor.Executor, stdout io.Writer) error
 			continue
 		}
 		ui.Info(stdout, "Atualizando "+s.Name+"...")
-		if err := npmInstallMCP(ctx, exe, stdout, s.Package); err != nil {
+		if err := localbin.RunNPMGlobal(ctx, exe, stdout, "install", s.Package); err != nil {
 			ui.Warning(stdout, "Falha ao atualizar "+s.Name+": "+err.Error())
 		} else {
 			ui.Success(stdout, s.Name+" atualizado.")

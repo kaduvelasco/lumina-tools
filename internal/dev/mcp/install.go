@@ -6,6 +6,7 @@ import (
 	"io"
 	"strings"
 
+	"github.com/kaduvelasco/lumina-tools/internal/dev/localbin"
 	"github.com/kaduvelasco/lumina-tools/internal/executor"
 	"github.com/kaduvelasco/lumina-tools/internal/prompt"
 	"github.com/kaduvelasco/lumina-tools/internal/ui"
@@ -60,7 +61,7 @@ func Install(ctx context.Context, exe *executor.Executor, stdout io.Writer) erro
 	for _, idx := range selected {
 		s := servers[idx]
 		ui.Info(stdout, "Instalando "+s.Name+"...")
-		if err := npmInstallMCP(ctx, exe, stdout, s.Package); err != nil {
+		if err := localbin.RunNPMGlobal(ctx, exe, stdout, "install", s.Package); err != nil {
 			ui.Warning(stdout, "Falha: "+err.Error())
 		} else {
 			ui.Success(stdout, s.Name+" instalado.")
@@ -69,16 +70,4 @@ func Install(ctx context.Context, exe *executor.Executor, stdout io.Writer) erro
 
 	ui.WaitEnter(stdout)
 	return nil
-}
-
-// npmInstallMCP installs an npm package globally, sourcing nvm when available.
-// Global npm installs via nvm are user-local and do not require sudo.
-func npmInstallMCP(ctx context.Context, exe *executor.Executor, stdout io.Writer, pkg string) error {
-	script := fmt.Sprintf(`
-set -e
-export NVM_DIR="$HOME/.nvm"
-[ -s "$NVM_DIR/nvm.sh" ] && . "$NVM_DIR/nvm.sh"
-npm install -g %s
-`, pkg)
-	return exe.Run(ctx, executor.Options{Stdout: stdout, Stderr: stdout}, "bash", "-c", script)
 }

@@ -6,6 +6,115 @@ O formato segue o padrão [Keep a Changelog](https://keepachangelog.com/pt-BR/1.
 
 ---
 
+## [1.0.4] — em desenvolvimento
+
+### Adicionado
+
+#### Fontes — JetBrains Mono Nerd Font (`lumina system fonts`)
+- JetBrains Mono NF adicionado ao catálogo de fontes
+- Instalação via `https://github.com/ryanoasis/nerd-fonts/releases/latest/download/JetBrainsMono.tar.xz`
+- Remoção via glob `JetBrainsMonoNerd*.ttf` em `~/.local/share/fonts/`
+- Instalador genérico `installFromURL` suporta arquivos `.zip` e `.tar.xz` — substitui o instalador dedicado da JetBrains Mono
+
+#### Go — instalação e atualização automatizada (`lumina dev go`)
+- Nova opção "Gerenciar Go" adicionada ao menu DevStuff > Gerenciar Ferramentas (segundo item, após Instalar Pré-requisitos)
+- Se Go já estiver instalado em `/usr/local/go`, exibe a versão atual e pergunta se deseja atualizar
+- Consulta a versão estável mais recente via `https://go.dev/dl/?mode=json`
+- Se já estiver na versão mais recente, informa e encerra sem alterações
+- Download via `curl` de `https://dl.google.com/go/<versão>.linux-amd64.tar.gz` para diretório temporário
+- Extrai o tarball para `/usr/local/go-staging` antes de remover a instalação anterior; substituição é atômica via `mv` dentro de `/usr/local`
+- Garante `export PATH=$PATH:/usr/local/go/bin` em `~/.bashrc` se ainda não estiver presente
+- Arquivos temporários removidos automaticamente ao final da instalação
+
+#### Node.js via nvm — pré-requisito do DevStuff (`lumina dev pre`)
+- Instalação do Node.js LTS via nvm adicionada à etapa de pré-requisitos do DevStuff
+- Verifica se Node.js já está disponível (inclusive via nvm existente) antes de instalar
+- Instala o nvm via script oficial se ainda não estiver presente; caso contrário apenas executa `nvm install --lts` + `nvm use --lts`
+- Exibe aviso de reinício do terminal quando o nvm é instalado pela primeira vez
+
+### Removido
+
+#### Pós-instalação — fastfetch
+- `fastfetch` removido da lista de pacotes de pós-instalação de todas as distribuições (Fedora, Ubuntu, Mint, ZorinOS)
+
+#### GNOME — Temas GTK
+- WhiteSur removido do catálogo de temas GTK
+
+#### GNOME — Cursores
+- Oreo removido do catálogo de cursores
+
+### Corrigido
+
+#### Servidores MCP — instalação e desinstalação sem sudo (`lumina dev mcp`)
+- `npmInstallMCP` atualizado para verificar disponibilidade do npm antes de instalar e emitir mensagem clara quando Node.js não está presente
+- `npmUninstallMCP` adicionado: script bash com source do `nvm.sh` sem sudo — corrige falha ao desinstalar servidores MCP em sistemas com Node.js via nvm
+- `uninstall.go` e `select.go` reescritos para usar as funções `npmInstallMCP`/`npmUninstallMCP`; removidos `RequiresSudo: true`, `env PATH=...` e dependência de `os.Getenv`
+
+#### CLIs LLM — desinstalação sem sudo (`lumina dev llm`)
+- `npmUninstall` reescrito para usar script bash com source do `nvm.sh` e sem sudo — consistente com `npmInstall`; corrige falha ao desinstalar Codex e OpenCode em sistemas com Node.js via nvm
+- `rm -f` de Claude Code e Antigravity CLI removido de `RequiresSudo: true` — ambos instalam em `~/.local/bin` (diretório do usuário), sudo desnecessário
+
+#### Flatpak — ESC sequences na saída (`lumina system apps`, `lumina system gnome`)
+- `TERM=dumb` adicionado às chamadas `flatpak install` em `system/apps/install.go` e `gnome/prereqs.go` — corrige sequências como `[24;52R` aparecendo durante a instalação de aplicativos e extensões GNOME
+- `TERM=dumb` adicionado à chamada `flatpak uninstall` em `system/apps/uninstall.go` pelo mesmo motivo
+
+#### Stack — Docker sem buildx (`lumina stack config docker`)
+- `docker-buildx` adicionado à instalação via apt-get nas distribuições Debian/Ubuntu/Mint/Zorin — corrige o erro "Docker Compose is configured to build using buildx, but buildx isn't installed" na primeira inicialização da stack
+- `docker-buildx-plugin` adicionado à instalação via dnf no Fedora pelo mesmo motivo
+
+#### Go — janela destrutiva na instalação eliminada (`lumina dev go`)
+- Extração do tarball agora ocorre para `/usr/local/go-staging` antes de remover a instalação anterior — se a extração falhar, o Go existente permanece intacto
+- Substituição é atômica: `rm -rf /usr/local/go` só ocorre após extração bem-sucedida, seguido de `mv /usr/local/go-staging /usr/local/go` no mesmo filesystem
+
+#### Contexto AI — referências quebradas em update mode com todos os modelos desmarcados (`lumina manager ai`)
+- `generateSharedFiles` agora é sempre executada em modo atualização, mesmo quando todos os modelos são desmarcados — evita que `CLAUDE.md`, `GEMINI.md`, `AGENTS.md` e demais arquivos fiquem com `@-references` apontando para arquivos de instrução já removidos
+
+#### CLIs LLM — falha silenciosa na desinstalação do Claude Code (`lumina dev llm`)
+- Erro de `rm -f` na remoção do binário do Claude Code não é mais descartado com `_ =` — comportamento agora consistente com o caso Antigravity CLI na mesma função; falha de permissão é reportada ao usuário
+
+#### Pré-requisitos — mensagem de reinício enganosa em falha de instalação do Node.js (`lumina dev pre`)
+- Aviso "Reinicie o terminal para ativar o nvm" agora só é exibido quando a instalação do Node.js é bem-sucedida — evita instruir o usuário a reiniciar para uma ferramenta que nunca chegou a ser instalada
+
+#### Fontes — remoção via glob e instalação com URL vazia (`lumina system fonts`)
+- Glob de remoção (`RemoveGlob`) agora é passado via variável de ambiente `LUMINA_GLOB` em vez de interpolado com `%s` na string do script — elimina risco de injeção de shell para entradas futuras do catálogo com metacaracteres
+- Guard adicionado em `install()`: retorna erro descritivo quando `AptPkg` e `URL` são ambos vazios, em vez de passar URL vazia para o `curl`
+
+#### Go — requisição HTTP podia bloquear indefinidamente (`lumina dev go`)
+- `http.DefaultClient` substituído por cliente local com `Timeout: 30 * time.Second` na consulta da versão estável — evita travamento da TUI em ambientes com conectividade instável
+
+### Alterado
+
+#### Template de instruções AI — melhorias de comportamento (`manager/ai/templates/BASIC.md`)
+- Nova seção `Communication` adicionada: resposta concisa, sem preâmbulo antes de agir, sem resumo pós-ação, e tratamento diferenciado para perguntas exploratórias (recomendar + tradeoff antes de implementar)
+- `Agent Behavior`: novo bullet — preferir editar arquivos existentes a criar novos; criar apenas quando a tarefa exigir explicitamente
+- `Agent Behavior`: dois bullets redundantes sobre refatoração fundidos em um só
+- `Code Quality`: regra de comentários adicionada — sem comentários por padrão; comentar apenas o WHY quando não é óbvio pelo código
+- `General Principles`: seção removida — todo conteúdo era duplicata de `Agent Behavior`
+- `Agent Behavior`: "Sempre pergunte em caso de dúvidas" adicionado como primeiro bullet, com linguagem direta e sem condicional
+
+#### Criar Contexto AI — detecção de execução anterior (`lumina manager ai`)
+- Ao executar em um diretório onde o contexto já foi gerado, exibe "Deseja atualizar?" antes do multiselect
+- Em modo atualização: todos os arquivos selecionados são regerados sem pedir confirmação por arquivo; modelos desmarcados têm seus arquivos de instrução removidos
+- Em modo fresh: comportamento anterior preservado — pergunta "Sobrescrever?" individualmente para cada arquivo existente
+- `writeFile`, `writeInstruction` e `generateSharedFiles` recebem parâmetro `overwrite bool`; `removeInstruction` extraída como função dedicada
+- Testes do pacote `manager/ai` atualizados para refletir as novas assinaturas
+
+#### Node.js — separação de responsabilidades
+- Instalação automática do Node.js removida do fluxo de gerenciamento de CLIs LLM (`lumina dev llm`)
+- `npmInstall` falha com mensagem clara ("Execute DevStuff → Instalar Pré-requisitos primeiro") quando o Node.js não está disponível
+
+#### npm global — helper compartilhado entre `llm` e `mcp`
+- `RunNPMGlobal(ctx, exe, stdout, action, pkg)` extraído para `internal/dev/localbin` — fonte única para install/uninstall de pacotes npm globais via nvm
+- Funções duplicadas `npmInstall`, `npmUninstall` (pacote `llm`) e `npmInstallMCP`, `npmUninstallMCP` (pacote `mcp`) removidas; todos os call sites em `llm`, `mcp/install.go`, `mcp/select.go`, `mcp/uninstall.go` e `mcp/update.go` atualizados
+
+#### Go — confirmação de atualização via stdin injetado (`lumina dev go`)
+- `Manage` migrado de `exec` para `execInteractive`: aceita `stdin io.Reader` e usa `prompt.ReadLineFrom(stdin)` em vez de `prompt.ReadLine()` — consistente com `GenerateContext` e demais funções interativas, e testável sem terminal real
+
+#### Criar Contexto AI — fluxo de fresh/update unificado (`lumina manager ai`)
+- Branches `if !update / else` em `GenerateContext` substituídos por fluxo único parametrizado com `toWrite []Model`; `update` passa diretamente como `overwrite` para os helpers — elimina duplicação de ~30 linhas e garante que novos passos precisem ser adicionados em um único lugar
+
+---
+
 ## [1.0.3] — 2026-05-29
 
 ### Adicionado

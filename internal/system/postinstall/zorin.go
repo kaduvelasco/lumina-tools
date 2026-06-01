@@ -21,7 +21,6 @@ var zorinPackages = []string{
 	"curl",
 	"wget",
 	"htop",
-	"fastfetch",
 	"gdebi",
 	"libfuse2t64",
 	"unrar",

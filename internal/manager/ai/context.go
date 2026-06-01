@@ -33,15 +33,27 @@ var models = []Model{
 }
 
 // GenerateContext shows a multiselect of all project models.
-// Models whose instruction file already exists in .instructions/ start selected.
-// Selecting = generate/add; deselecting = remove. After confirming, shared
-// context files are regenerated to reference all currently active models.
+// If the context was previously generated, asks whether to update before
+// proceeding. In update mode all files are overwritten without confirmation.
+// Selecting = generate/add; deselecting = remove.
 func GenerateContext(ctx context.Context, _ *executor.Executor, stdin io.Reader, stdout io.Writer) error {
 	ui.PrintHeader(stdout, "Criar Contexto AI")
 	d, _ := os.Getwd()
 	ui.Info(stdout, "Diretório atual: "+d)
 
 	present := detectActiveModels()
+	update := false
+
+	if len(present) > 0 {
+		fmt.Fprint(stdout, "\nContexto AI já existe neste diretório. Deseja atualizar? (s/N): ")
+		line, _ := prompt.ReadLineFrom(stdin)
+		if c := strings.TrimSpace(line); c != "s" && c != "S" {
+			ui.Info(stdout, "Operação cancelada.")
+			ui.WaitEnter(stdout)
+			return nil
+		}
+		update = true
+	}
 
 	items := make([]ui.SelectItem, len(models))
 	for i, m := range models {
@@ -58,58 +70,61 @@ func GenerateContext(ctx context.Context, _ *executor.Executor, stdin io.Reader,
 		return nil
 	}
 
-	// Compute diff between previous state and new selection.
-	var toAdd, toRemove []Model
+	// Determine active set and models to remove.
+	var active, toRemove []Model
 	for i, item := range finalItems {
 		m := models[i]
-		switch {
-		case item.Selected && !present[m.Name]:
-			toAdd = append(toAdd, m)
-		case !item.Selected && present[m.Name]:
+		if item.Selected {
+			active = append(active, m)
+		} else if present[m.Name] {
 			toRemove = append(toRemove, m)
 		}
 	}
 
-	if len(toAdd) == 0 && len(toRemove) == 0 {
-		ui.Info(stdout, "Nenhuma alteração necessária.")
-		ui.WaitEnter(stdout)
-		return nil
-	}
-
-	// Determine which models remain active after the operation.
-	// finalItems[i] corresponds to models[i] — same order as the items slice built above.
-	var active []Model
-	for i, item := range finalItems {
-		if item.Selected {
-			active = append(active, models[i])
+	// In fresh mode only newly selected models are written; in update mode all
+	// selected models are rewritten. The overwrite flag mirrors the update flag.
+	var toWrite []Model
+	if !update {
+		for i, item := range finalItems {
+			if item.Selected && !present[models[i].Name] {
+				toWrite = append(toWrite, models[i])
+			}
 		}
+		if len(toWrite) == 0 && len(toRemove) == 0 {
+			ui.Info(stdout, "Nenhuma alteração necessária.")
+			ui.WaitEnter(stdout)
+			return nil
+		}
+	} else {
+		toWrite = active
 	}
 
 	ui.PrintHeader(stdout, "Criar Contexto AI")
 
-	// Remove instruction files for deselected models.
 	for _, m := range toRemove {
-		dest := filepath.Join(".instructions", filepath.Base(m.Instruction))
-		if err := os.Remove(dest); err != nil && !os.IsNotExist(err) {
-			ui.Warning(stdout, "Falha ao remover "+dest+": "+err.Error())
-		} else {
-			fmt.Fprintf(stdout, "  - %s removido.\n", dest)
-		}
+		removeInstruction(m, stdout)
 	}
-
-	// Generate instruction files for newly selected models.
-	for _, m := range toAdd {
-		if err := writeInstruction(m, stdin, stdout); err != nil {
+	for _, m := range toWrite {
+		if err := writeInstruction(m, update, stdin, stdout); err != nil {
 			ui.Err(stdout, "Falha ao gerar instrução para "+m.Name+": "+err.Error())
 			ui.WaitEnter(stdout)
 			return err
 		}
 	}
 
-	// Regenerate shared context files based on the full active set.
-	if len(active) > 0 {
-		ui.Info(stdout, "Atualizando arquivos de contexto para: "+modelNames(active))
-		if err := generateSharedFiles(active, stdin, stdout); err != nil {
+	// Regenerate shared files. In update mode this always runs (even when active
+	// is empty) to clear dangling @-references left by removed instructions.
+	// In fresh mode it only runs when at least one model remains active.
+	if update || len(active) > 0 {
+		switch {
+		case update && len(active) == 0:
+			ui.Info(stdout, "Removendo referências dos arquivos de contexto compartilhados...")
+		case update:
+			ui.Info(stdout, "Regenerando arquivos de contexto para: "+modelNames(active))
+		default:
+			ui.Info(stdout, "Atualizando arquivos de contexto para: "+modelNames(active))
+		}
+		if err := generateSharedFiles(active, update, stdin, stdout); err != nil {
 			ui.Err(stdout, "Falha ao gerar arquivos: "+err.Error())
 			ui.WaitEnter(stdout)
 			return err
@@ -137,7 +152,8 @@ func detectActiveModels() map[string]bool {
 // generateSharedFiles writes CLAUDE.md, GEMINI.md, AGENTS.md, .windsurfrules
 // and .cursorrules referencing all active models. When multiple models are
 // active their @-references are stacked; for inline files the content is concatenated.
-func generateSharedFiles(active []Model, stdin io.Reader, stdout io.Writer) error {
+// When overwrite is true, existing files are replaced without prompting.
+func generateSharedFiles(active []Model, overwrite bool, stdin io.Reader, stdout io.Writer) error {
 	rawBasic, err := readTpl("templates/BASIC.md")
 	if err != nil {
 		return err
@@ -197,7 +213,7 @@ func generateSharedFiles(active []Model, stdin io.Reader, stdout io.Writer) erro
 		{".cursorrules", buildContentInline(".cursorrules")},
 	}
 	for _, f := range files {
-		if err := writeFile(f.filename, f.content, stdin, stdout); err != nil {
+		if err := writeFile(f.filename, f.content, overwrite, stdin, stdout); err != nil {
 			return err
 		}
 	}
@@ -218,7 +234,7 @@ func generateSharedFiles(active []Model, stdin io.Reader, stdout io.Writer) erro
 		return err
 	}
 	for _, name := range []string{".aiexclude", ".claudeignore", ".geminiignore"} {
-		if err := writeFile(name, aiexclude, stdin, stdout); err != nil {
+		if err := writeFile(name, aiexclude, overwrite, stdin, stdout); err != nil {
 			return err
 		}
 	}
@@ -234,8 +250,8 @@ func modelNames(ms []Model) string {
 	return strings.Join(names, ", ")
 }
 
-func writeFile(name, content string, stdin io.Reader, stdout io.Writer) error {
-	if _, err := os.Stat(name); err == nil {
+func writeFile(name, content string, overwrite bool, stdin io.Reader, stdout io.Writer) error {
+	if _, err := os.Stat(name); err == nil && !overwrite {
 		fmt.Fprintf(stdout, "  %s ja existe. Sobrescrever? (s/N): ", name)
 		line, _ := prompt.ReadLineFrom(stdin)
 		confirm := strings.TrimSpace(line)
@@ -251,7 +267,7 @@ func writeFile(name, content string, stdin io.Reader, stdout io.Writer) error {
 	return nil
 }
 
-func writeInstruction(model Model, stdin io.Reader, stdout io.Writer) error {
+func writeInstruction(model Model, overwrite bool, stdin io.Reader, stdout io.Writer) error {
 	dir := ".instructions"
 	if err := os.MkdirAll(dir, 0o755); err != nil {
 		return err
@@ -261,7 +277,16 @@ func writeInstruction(model Model, stdin io.Reader, stdout io.Writer) error {
 	if err != nil {
 		return err
 	}
-	return writeFile(dest, content, stdin, stdout)
+	return writeFile(dest, content, overwrite, stdin, stdout)
+}
+
+func removeInstruction(model Model, stdout io.Writer) {
+	dest := filepath.Join(".instructions", filepath.Base(model.Instruction))
+	if err := os.Remove(dest); err != nil && !os.IsNotExist(err) {
+		ui.Warning(stdout, "Falha ao remover "+dest+": "+err.Error())
+	} else {
+		fmt.Fprintf(stdout, "  - %s removido.\n", dest)
+	}
 }
 
 func copyPHPReferences(stdout io.Writer) error {

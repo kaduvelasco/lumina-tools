@@ -30,14 +30,6 @@ var cursorCatalogue = []cursorEntry{
 		HasInstall: true,
 	},
 	{
-		Name:        "Oreo",
-		DirPattern:  "oreo*",
-		RepoURL:     "https://github.com/varlesh/oreo-cursors.git",
-		BuildScript: "bash build.sh",
-		CopyFrom:    "dist",
-		CopyGlob:    "oreo*",
-	},
-	{
 		Name:       "Sweet",
 		DirPattern: "Sweet-cursors",
 		RepoURL:    "https://github.com/EliverLara/Sweet.git",

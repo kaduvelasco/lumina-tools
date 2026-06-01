@@ -94,7 +94,7 @@ func Uninstall(ctx context.Context, exe *executor.Executor, stdout io.Writer, fl
 	for _, id := range flatIDs {
 		ui.Info(stdout, "Desinstalando: "+id)
 		if err := exe.Run(ctx,
-			executor.Options{Stdout: stdout, Stderr: stdout},
+			executor.Options{Stdout: stdout, Stderr: stdout, Env: []string{"TERM=dumb"}},
 			"flatpak", "uninstall", config.FlatpakFlag(), "-y", id,
 		); err != nil {
 			ui.Warning(stdout, fmt.Sprintf("Falha ao desinstalar %s: %v", id, err))

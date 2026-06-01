@@ -32,7 +32,6 @@ var mintPackages = []string{
 	"plocate",
 	"net-tools",
 	"python3-pip",
-	"fastfetch",
 	"software-properties-common",
 	"timeshift",
 }

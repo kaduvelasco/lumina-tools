@@ -131,7 +131,7 @@ func Install(ctx context.Context, exe *executor.Executor, stdout io.Writer, flat
 	for _, id := range flatIDs {
 		ui.Info(stdout, "Instalando: "+id)
 		if err := exe.Run(ctx,
-			executor.Options{Stdout: stdout, Stderr: stdout},
+			executor.Options{Stdout: stdout, Stderr: stdout, Env: []string{"TERM=dumb"}},
 			"flatpak", "install", config.FlatpakFlag(), "-y", "flathub", id,
 		); err != nil {
 			ui.Warning(stdout, fmt.Sprintf("Falha ao instalar %s: %v", id, err))

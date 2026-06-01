@@ -14,6 +14,7 @@ import (
 
 	"github.com/kaduvelasco/lumina-tools/internal/config"
 	"github.com/kaduvelasco/lumina-tools/internal/dev/depends"
+	devgolang "github.com/kaduvelasco/lumina-tools/internal/dev/golang"
 	"github.com/kaduvelasco/lumina-tools/internal/dev/ide"
 	"github.com/kaduvelasco/lumina-tools/internal/dev/llm"
 	"github.com/kaduvelasco/lumina-tools/internal/dev/mcp"
@@ -383,9 +384,11 @@ func (m Model) runAction(a actionID) tea.Cmd {
 	case actRepoIdent:
 		return exec(managerrepo.ApplyIdent)
 
-	// ── Dev: Prerequisites / LLMs / IDEs / Terminals / MCP / Upgrade ────────
+	// ── Dev: Prerequisites / Go / LLMs / IDEs / Terminals / MCP / Upgrade ──
 	case actDevDepends:
 		return exec(depends.Install)
+	case actGoManage:
+		return execInteractive(devgolang.Manage)
 	case actLLMManage:
 		return execInteractive(llm.Select)
 	case actIDEManage:

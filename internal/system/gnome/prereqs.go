@@ -66,7 +66,7 @@ func InstallPrereqs(ctx context.Context, exe *executor.Executor, stdout io.Write
 	ui.Info(stdout, "Instalando extensões via Flatpak...")
 	for _, app := range []string{"org.gnome.Extensions", "com.mattjakeman.ExtensionManager"} {
 		if err := exe.Run(ctx,
-			executor.Options{RequiresSudo: requiresSudo, Stdout: stdout, Stderr: stdout},
+			executor.Options{RequiresSudo: requiresSudo, Stdout: stdout, Stderr: stdout, Env: []string{"TERM=dumb"}},
 			"flatpak", "install", flatpakFlag, "-y", "flathub", app,
 		); err != nil {
 			ui.Warning(stdout, "Falha ao instalar "+app+": "+err.Error())

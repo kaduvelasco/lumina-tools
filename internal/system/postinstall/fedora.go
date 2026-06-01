@@ -14,7 +14,6 @@ var fedoraPackages = []string{
 	"curl",
 	"wget",
 	"htop",
-	"fastfetch",
 	"make",
 	"gcc",
 	"gcc-c++",

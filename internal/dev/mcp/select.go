@@ -3,8 +3,8 @@ package mcp
 import (
 	"context"
 	"io"
-	"os"
 
+	"github.com/kaduvelasco/lumina-tools/internal/dev/localbin"
 	"github.com/kaduvelasco/lumina-tools/internal/executor"
 	"github.com/kaduvelasco/lumina-tools/internal/ui"
 )
@@ -68,14 +68,10 @@ func Select(ctx context.Context, exe *executor.Executor, stdin io.Reader, stdout
 	}
 
 	ui.PrintHeader(stdout, "DevStuff :: Gerenciar Servidores MCP")
-	npmPath := os.Getenv("PATH")
 
 	for _, s := range toRemove {
 		ui.Info(stdout, "Desinstalando "+s.Name+"...")
-		if err := exe.Run(ctx,
-			executor.Options{RequiresSudo: true, Stdout: stdout, Stderr: stdout},
-			"env", "PATH="+npmPath, "npm", "uninstall", "-g", s.Package,
-		); err != nil {
+		if err := localbin.RunNPMGlobal(ctx, exe, stdout, "uninstall", s.Package); err != nil {
 			ui.Warning(stdout, "Falha ao remover "+s.Name+": "+err.Error())
 		} else {
 			ui.Success(stdout, s.Name+" removido.")
@@ -84,10 +80,7 @@ func Select(ctx context.Context, exe *executor.Executor, stdin io.Reader, stdout
 
 	for _, s := range toInstall {
 		ui.Info(stdout, "Instalando "+s.Name+"...")
-		if err := exe.Run(ctx,
-			executor.Options{RequiresSudo: true, Stdout: stdout, Stderr: stdout},
-			"env", "PATH="+npmPath, "npm", "install", "-g", s.Package,
-		); err != nil {
+		if err := localbin.RunNPMGlobal(ctx, exe, stdout, "install", s.Package); err != nil {
 			ui.Warning(stdout, "Falha ao instalar "+s.Name+": "+err.Error())
 		} else {
 			ui.Success(stdout, s.Name+" instalado.")

@@ -42,16 +42,6 @@ func Install(ctx context.Context, exe *executor.Executor, stdout io.Writer) erro
 		return nil
 	}
 
-	hasNode := nodeAvailable(ctx, exe)
-	if !hasNode {
-		ui.Info(stdout, "Node.js não encontrado. Instalando via nvm...")
-		if err := installNode(ctx, exe, stdout); err != nil {
-			ui.Err(stdout, "Falha ao instalar Node.js: "+err.Error())
-			ui.WaitEnter(stdout)
-			return fmt.Errorf("instalar node: %w", err)
-		}
-	}
-
 	for _, idx := range selected {
 		l := Catalogue[idx]
 		if installed[l.Name] {
@@ -86,39 +76,9 @@ func installOne(ctx context.Context, exe *executor.Executor, stdout io.Writer, l
 		localbin.EnsureInPath(stdout)
 		return nil
 	case "codex":
-		return npmInstall(ctx, exe, stdout, "@openai/codex")
+		return localbin.RunNPMGlobal(ctx, exe, stdout, "install", "@openai/codex")
 	case "opencode":
-		return npmInstall(ctx, exe, stdout, "opencode-ai@latest")
+		return localbin.RunNPMGlobal(ctx, exe, stdout, "install", "opencode-ai@latest")
 	}
 	return fmt.Errorf("instalador desconhecido para %s", l.Name)
-}
-
-
-func npmInstall(ctx context.Context, exe *executor.Executor, stdout io.Writer, pkg string) error {
-	// Source NVM when available so a freshly-installed Node is on PATH.
-	// NVM global installs are user-local and do not require sudo.
-	script := fmt.Sprintf(`
-set -e
-export NVM_DIR="$HOME/.nvm"
-[ -s "$NVM_DIR/nvm.sh" ] && . "$NVM_DIR/nvm.sh"
-npm install -g %s
-`, pkg)
-	return exe.Run(ctx, executor.Options{Stdout: stdout, Stderr: stdout}, "bash", "-c", script)
-}
-
-func nodeAvailable(ctx context.Context, exe *executor.Executor) bool {
-	_, err := exe.Output(ctx, executor.Options{}, "which", "node")
-	return err == nil
-}
-
-func installNode(ctx context.Context, exe *executor.Executor, stdout io.Writer) error {
-	script := `
-set -e
-curl -fsSL https://raw.githubusercontent.com/nvm-sh/nvm/HEAD/install.sh | bash
-export NVM_DIR="$HOME/.nvm"
-[ -s "$NVM_DIR/nvm.sh" ] && . "$NVM_DIR/nvm.sh"
-nvm install --lts
-nvm use --lts
-`
-	return exe.Run(ctx, executor.Options{Stdout: stdout, Stderr: stdout}, "bash", "-c", script)
 }

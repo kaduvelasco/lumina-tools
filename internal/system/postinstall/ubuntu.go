@@ -32,7 +32,6 @@ var ubuntuPackages = []string{
 	"plocate",
 	"net-tools",
 	"python3-pip",
-	"fastfetch",
 	"software-properties-common",
 	"ubuntu-drivers-common",
 	"timeshift",

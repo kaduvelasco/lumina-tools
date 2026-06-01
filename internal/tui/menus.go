@@ -53,6 +53,7 @@ const (
 	actStackFixPerms
 	// Dev tools
 	actDevDepends
+	actGoManage
 	actLLMManage
 	actIDEManage
 	actTermManage
@@ -189,6 +190,7 @@ func itemsFor(m menuID) []menuItem {
 	case menuDevTools:
 		return []menuItem{
 			{label: "Instalar Pré-requisitos", description: "Instala dependências base para as ferramentas de desenvolvimento", action: actDevDepends},
+			{label: "Gerenciar Go", description: "Instala ou atualiza a linguagem Go para a versão estável mais recente", action: actGoManage},
 			{label: "Gerenciar CLIs LLM", description: "Instala ou remove CLIs de modelos de linguagem (Claude, Gemini, etc.)", action: actLLMManage},
 			{label: "Gerenciar IDEs", description: "Instala ou remove ambientes de desenvolvimento integrado", action: actIDEManage},
 			{label: "Gerenciar Terminais", description: "Instala ou remove emuladores de terminal alternativos", action: actTermManage},

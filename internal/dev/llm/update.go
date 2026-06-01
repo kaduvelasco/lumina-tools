@@ -22,14 +22,6 @@ func Update(ctx context.Context, exe *executor.Executor, stdout io.Writer) error
 		return nil
 	}
 
-	if !nodeAvailable(ctx, exe) {
-		ui.Info(stdout, "Node.js não encontrado. Instalando via nvm...")
-		if err := installNode(ctx, exe, stdout); err != nil {
-			ui.Warning(stdout, "Falha ao instalar Node.js: "+err.Error())
-			return nil
-		}
-	}
-
 	for _, l := range pending {
 		ui.Info(stdout, "Atualizando "+l.Name+"...")
 		if err := installOne(ctx, exe, stdout, l); err != nil {

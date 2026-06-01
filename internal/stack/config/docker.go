@@ -75,9 +75,9 @@ func installDockerPkg(ctx context.Context, exe *executor.Executor, stdout io.Wri
 		if err := exe.Run(ctx, opts, "apt-get", "update", "-q"); err != nil {
 			return err
 		}
-		return exe.Run(ctx, opts, "apt-get", "install", "-y", "--", "docker.io", "docker-compose-v2")
+		return exe.Run(ctx, opts, "apt-get", "install", "-y", "--", "docker.io", "docker-compose-v2", "docker-buildx")
 	case distro.Fedora:
-		return exe.Run(ctx, opts, "dnf", "install", "-y", "--", "docker", "docker-compose")
+		return exe.Run(ctx, opts, "dnf", "install", "-y", "--", "docker", "docker-compose", "docker-buildx-plugin")
 	default:
 		return exe.Run(ctx, opts, "pacman", "-S", "--noconfirm", "--", "docker", "docker-compose")
 	}

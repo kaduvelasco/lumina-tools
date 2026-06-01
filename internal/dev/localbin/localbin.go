@@ -1,12 +1,14 @@
 package localbin
 
 import (
+	"context"
 	"fmt"
 	"io"
 	"os"
 	"path/filepath"
 	"strings"
 
+	"github.com/kaduvelasco/lumina-tools/internal/executor"
 	"github.com/kaduvelasco/lumina-tools/internal/ui"
 )
 
@@ -40,4 +42,21 @@ func EnsureInPath(stdout io.Writer) {
 	}
 	defer f.Close()
 	fmt.Fprintf(f, "\n%s\n", exportLine)
+}
+
+// RunNPMGlobal runs `npm <action> -g <pkg>`, sourcing nvm when available.
+// action must be "install" or "uninstall". Never requires sudo since nvm
+// installs are user-local.
+func RunNPMGlobal(ctx context.Context, exe *executor.Executor, stdout io.Writer, action, pkg string) error {
+	script := fmt.Sprintf(`
+set -e
+export NVM_DIR="$HOME/.nvm"
+[ -s "$NVM_DIR/nvm.sh" ] && . "$NVM_DIR/nvm.sh"
+if ! command -v npm &>/dev/null; then
+    printf 'Node.js não encontrado. Execute DevStuff → Instalar Pré-requisitos primeiro.\n' >&2
+    exit 1
+fi
+npm %s -g %s
+`, action, pkg)
+	return exe.Run(ctx, executor.Options{Stdout: stdout, Stderr: stdout}, "bash", "-c", script)
 }

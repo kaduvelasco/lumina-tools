@@ -14,14 +14,27 @@ import (
 
 // Font describes an installable font.
 type Font struct {
-	Name   string
-	Check  string // substring searched in fc-list output
-	AptPkg string // empty when installed via download
+	Name       string
+	Check      string // substring searched in fc-list output
+	AptPkg     string // empty when installed via download
+	URL        string // download URL (.zip or .tar.xz); used when AptPkg is empty
+	RemoveGlob string // glob pattern for .ttf files to delete from ~/.local/share/fonts/
 }
 
 // Catalogue lists all fonts managed by lumina.
 var Catalogue = []Font{
-	{Name: "JetBrains Mono", Check: "JetBrains Mono", AptPkg: ""},
+	{
+		Name:       "JetBrains Mono",
+		Check:      "JetBrains Mono",
+		URL:        "https://github.com/JetBrains/JetBrainsMono/releases/download/v2.304/JetBrainsMono-2.304.zip",
+		RemoveGlob: "JetBrainsMono-*.ttf",
+	},
+	{
+		Name:       "JetBrains Mono NF",
+		Check:      "JetBrainsMono Nerd Font",
+		URL:        "https://github.com/ryanoasis/nerd-fonts/releases/latest/download/JetBrainsMono.tar.xz",
+		RemoveGlob: "JetBrainsMonoNerd*.ttf",
+	},
 	{Name: "Carlito", Check: "Carlito", AptPkg: "fonts-crosextra-carlito"},
 	{Name: "Caladea", Check: "Caladea", AptPkg: "fonts-crosextra-caladea"},
 	{Name: "Noto", Check: "Noto Sans", AptPkg: "fonts-noto"},
@@ -130,7 +143,10 @@ func install(ctx context.Context, exe *executor.Executor, stdout io.Writer, f Fo
 			"apt-get", "install", "-y", "--", f.AptPkg,
 		)
 	}
-	return installJetBrainsMono(ctx, exe, stdout)
+	if f.URL == "" {
+		return fmt.Errorf("fonte %q: URL de download não configurada", f.Name)
+	}
+	return installFromURL(ctx, exe, stdout, f.URL)
 }
 
 func remove(ctx context.Context, exe *executor.Executor, stdout io.Writer, f Font, family string) error {
@@ -145,34 +161,38 @@ func remove(ctx context.Context, exe *executor.Executor, stdout io.Writer, f Fon
 			"apt-get", "purge", "-y", "--", f.AptPkg,
 		)
 	}
-	return removeJetBrainsMono(ctx, exe, stdout)
+	// Pass the glob via env variable so that shell metacharacters in future
+	// catalogue entries cannot break or inject into the find command.
+	return exe.Run(ctx,
+		executor.Options{
+			Stdout: stdout,
+			Stderr: stdout,
+			Env:    []string{"LUMINA_GLOB=" + f.RemoveGlob},
+		},
+		"bash", "-c",
+		`find "$HOME/.local/share/fonts" -name "$LUMINA_GLOB" -delete 2>/dev/null; true`,
+	)
 }
 
-// installJetBrainsMono downloads and installs JetBrains Mono from GitHub.
-func installJetBrainsMono(ctx context.Context, exe *executor.Executor, stdout io.Writer) error {
-	const version = "2.304"
-	url := fmt.Sprintf(
-		"https://github.com/JetBrains/JetBrainsMono/releases/download/v%s/JetBrainsMono-%s.zip",
-		version, version,
-	)
+// installFromURL downloads and installs a font from a .zip or .tar.xz URL.
+func installFromURL(ctx context.Context, exe *executor.Executor, stdout io.Writer, url string) error {
 	fontDir := "$HOME/.local/share/fonts"
+	var archiveFile, extractCmd string
+	if strings.HasSuffix(url, ".tar.xz") {
+		archiveFile = "fonts.tar.xz"
+		extractCmd = `tar -xJf "$TMP/fonts.tar.xz" -C "$TMP"`
+	} else {
+		archiveFile = "fonts.zip"
+		extractCmd = `unzip -q "$TMP/fonts.zip" -d "$TMP"`
+	}
 	script := fmt.Sprintf(`
 set -e
 mkdir -p "%s"
 TMP=$(mktemp -d)
 trap 'rm -rf "$TMP"' EXIT
-curl -fsSL %q -o "$TMP/fonts.zip"
-unzip -q "$TMP/fonts.zip" -d "$TMP"
+curl -fsSL %q -o "$TMP/%s"
+%s
 find "$TMP" -maxdepth 3 -name "*.ttf" -exec cp -- {} "%s/" \;
-`, fontDir, url, fontDir)
-
-	return exe.Run(ctx,
-		executor.Options{Stdout: stdout, Stderr: stdout},
-		"bash", "-c", script,
-	)
-}
-
-func removeJetBrainsMono(ctx context.Context, exe *executor.Executor, stdout io.Writer) error {
-	script := `find "$HOME/.local/share/fonts" -name "JetBrainsMono-*.ttf" -delete 2>/dev/null; true`
+`, fontDir, url, archiveFile, extractCmd, fontDir)
 	return exe.Run(ctx, executor.Options{Stdout: stdout, Stderr: stdout}, "bash", "-c", script)
 }

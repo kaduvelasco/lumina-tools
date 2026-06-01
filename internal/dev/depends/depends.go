@@ -4,6 +4,8 @@ import (
 	"context"
 	"fmt"
 	"io"
+	"os"
+	"path/filepath"
 	"strings"
 
 	"github.com/kaduvelasco/lumina-tools/internal/dev/localbin"
@@ -64,10 +66,51 @@ func Install(ctx context.Context, exe *executor.Executor, stdout io.Writer) erro
 		return runErr
 	}
 
+	freshNVM, nodeErr := installNodeViaNVM(ctx, exe, stdout)
+	if nodeErr != nil {
+		ui.Warning(stdout, "Falha ao instalar Node.js: "+nodeErr.Error())
+	}
+
 	localbin.EnsureInPath(stdout)
 
 	ui.Success(stdout, "Pré-requisitos instalados com sucesso!")
-	ui.Warning(stdout, "Reinicie o terminal para aplicar todas as alterações de PATH.")
+	if freshNVM && nodeErr == nil {
+		ui.Warning(stdout, "Reinicie o terminal para ativar o nvm e o Node.js.")
+	} else {
+		ui.Warning(stdout, "Reinicie o terminal para aplicar todas as alterações de PATH.")
+	}
 	ui.WaitEnter(stdout)
 	return nil
+}
+
+func installNodeViaNVM(ctx context.Context, exe *executor.Executor, stdout io.Writer) (freshNVM bool, err error) {
+	// Check if node is already available (accounting for nvm in PATH).
+	checkScript := `export NVM_DIR="$HOME/.nvm"; [ -s "$NVM_DIR/nvm.sh" ] && . "$NVM_DIR/nvm.sh"; command -v node`
+	if _, e := exe.Output(ctx, executor.Options{}, "bash", "-c", checkScript); e == nil {
+		ui.Info(stdout, "Node.js já disponível.")
+		return false, nil
+	}
+
+	home, e := os.UserHomeDir()
+	if e != nil {
+		return false, fmt.Errorf("obter diretório home: %w", e)
+	}
+	_, statErr := os.Stat(filepath.Join(home, ".nvm", "nvm.sh"))
+	freshNVM = statErr != nil // nvm not yet installed
+
+	script := `set -e
+export NVM_DIR="$HOME/.nvm"
+if [ ! -s "$NVM_DIR/nvm.sh" ]; then
+    curl -fsSL https://raw.githubusercontent.com/nvm-sh/nvm/HEAD/install.sh | bash
+    export NVM_DIR="$HOME/.nvm"
+fi
+[ -s "$NVM_DIR/nvm.sh" ] && . "$NVM_DIR/nvm.sh"
+nvm install --lts
+nvm use --lts
+`
+	ui.Info(stdout, "Instalando Node.js LTS via nvm...")
+	if runErr := exe.Run(ctx, executor.Options{Stdout: stdout, Stderr: stdout}, "bash", "-c", script); runErr != nil {
+		return freshNVM, fmt.Errorf("instalar Node.js: %w", runErr)
+	}
+	return freshNVM, nil
 }

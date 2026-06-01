@@ -4,9 +4,9 @@ import (
 	"context"
 	"fmt"
 	"io"
-	"os"
 	"strings"
 
+	"github.com/kaduvelasco/lumina-tools/internal/dev/localbin"
 	"github.com/kaduvelasco/lumina-tools/internal/executor"
 	"github.com/kaduvelasco/lumina-tools/internal/prompt"
 	"github.com/kaduvelasco/lumina-tools/internal/ui"
@@ -67,10 +67,7 @@ func Uninstall(ctx context.Context, exe *executor.Executor, stdout io.Writer) er
 	for _, idx := range selected {
 		s := present[idx]
 		ui.Info(stdout, "Desinstalando "+s.Name+"...")
-		if err := exe.Run(ctx,
-			executor.Options{RequiresSudo: true, Stdout: stdout, Stderr: stdout},
-			"env", "PATH="+os.Getenv("PATH"), "npm", "uninstall", "-g", s.Package,
-		); err != nil {
+		if err := localbin.RunNPMGlobal(ctx, exe, stdout, "uninstall", s.Package); err != nil {
 			ui.Warning(stdout, "Falha: "+err.Error())
 		} else {
 			ui.Success(stdout, s.Name+" removido.")

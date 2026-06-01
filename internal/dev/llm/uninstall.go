@@ -4,9 +4,9 @@ import (
 	"context"
 	"fmt"
 	"io"
-	"os"
 	"strings"
 
+	"github.com/kaduvelasco/lumina-tools/internal/dev/localbin"
 	"github.com/kaduvelasco/lumina-tools/internal/executor"
 	"github.com/kaduvelasco/lumina-tools/internal/prompt"
 	"github.com/kaduvelasco/lumina-tools/internal/ui"
@@ -70,8 +70,8 @@ func uninstallOne(ctx context.Context, exe *executor.Executor, stdout io.Writer,
 	case "claude":
 		if claudePath, err := exe.Output(ctx, executor.Options{}, "which", "claude"); err == nil {
 			if p := strings.TrimSpace(claudePath); p != "" {
-				_ = exe.Run(ctx,
-					executor.Options{RequiresSudo: true, Stdout: stdout, Stderr: stdout},
+				return exe.Run(ctx,
+					executor.Options{Stdout: stdout, Stderr: stdout},
 					"rm", "-f", "--", p,
 				)
 			}
@@ -81,23 +81,16 @@ func uninstallOne(ctx context.Context, exe *executor.Executor, stdout io.Writer,
 		if agyPath, err := exe.Output(ctx, executor.Options{}, "which", "agy"); err == nil {
 			if p := strings.TrimSpace(agyPath); p != "" {
 				return exe.Run(ctx,
-					executor.Options{RequiresSudo: true, Stdout: stdout, Stderr: stdout},
+					executor.Options{Stdout: stdout, Stderr: stdout},
 					"rm", "-f", "--", p,
 				)
 			}
 		}
 		return nil
 	case "codex":
-		return npmUninstall(ctx, exe, stdout, "@openai/codex")
+		return localbin.RunNPMGlobal(ctx, exe, stdout, "uninstall", "@openai/codex")
 	case "opencode":
-		return npmUninstall(ctx, exe, stdout, "opencode-ai")
+		return localbin.RunNPMGlobal(ctx, exe, stdout, "uninstall", "opencode-ai")
 	}
 	return fmt.Errorf("desinstalador desconhecido para %s", l.Name)
-}
-
-func npmUninstall(ctx context.Context, exe *executor.Executor, stdout io.Writer, pkg string) error {
-	return exe.Run(ctx,
-		executor.Options{RequiresSudo: true, Stdout: stdout, Stderr: stdout},
-		"env", "PATH="+os.Getenv("PATH"), "npm", "uninstall", "-g", pkg,
-	)
 }

@@ -32,14 +32,6 @@ var themeCatalogue = []themeEntry{
 		FlatpakName: "Orchis",
 	},
 	{
-		Name:        "WhiteSur",
-		DirPattern:  "WhiteSur*",
-		RepoURL:     "https://github.com/vinceliuice/WhiteSur-gtk-theme.git",
-		InstallArgs: []string{"-t", "all"},
-		AskIcon:     true,
-		FlatpakName: "WhiteSur",
-	},
-	{
 		Name:        "Nordic",
 		DirPattern:  "Nordic",
 		RepoURL:     "https://github.com/EliverLara/Nordic.git",
