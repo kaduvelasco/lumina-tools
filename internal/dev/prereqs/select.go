@@ -1,4 +1,4 @@
-package llm
+package prereqs
 
 import (
 	"context"
@@ -8,26 +8,25 @@ import (
 	"github.com/kaduvelasco/lumina-tools/internal/ui"
 )
 
-// Select shows a multiselect of all LLM CLIs.
-// Items already installed start selected. Deselecting one uninstalls it;
-// selecting one installs it.
+// Select shows a multiselect of all prerequisite groups.
+// Items already installed start selected. Deselecting uninstalls; selecting installs.
 func Select(ctx context.Context, exe *executor.Executor, stdin io.Reader, stdout io.Writer) error {
-	ui.PrintHeader(stdout, "DevStuff :: Gerenciar CLIs LLM")
-	ui.Info(stdout, "Verificando CLIs instalados...")
+	ui.PrintHeader(stdout, "DevStuff :: Instalar Pré-Requisitos")
+	ui.Info(stdout, "Verificando pré-requisitos instalados...")
 
 	installed := InstalledMap(ctx, exe)
 
 	items := make([]ui.SelectItem, len(Catalogue))
-	for i, l := range Catalogue {
-		items[i] = ui.SelectItem{Label: l.Name, ID: l.Cmd, Selected: installed[l.Name]}
+	for i, p := range Catalogue {
+		items[i] = ui.SelectItem{Label: p.Name, ID: p.ID, Selected: installed[p.Name]}
 	}
 
 	return ui.RunManagedSelect(ctx, stdin, stdout,
-		"DevStuff :: Gerenciar CLIs LLM",
+		"DevStuff :: Instalar Pré-Requisitos",
 		items,
 		installed,
 		func(i int) error { return installOne(ctx, exe, stdout, Catalogue[i]) },
 		func(i int) error { return uninstallOne(ctx, exe, stdout, Catalogue[i]) },
-		"Gerenciamento de CLIs concluído.",
+		"Instalação de pré-requisitos concluída.",
 	)
 }

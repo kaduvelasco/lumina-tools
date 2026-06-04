@@ -20,6 +20,7 @@ var Catalogue = []Terminal{
 	{Name: "Kitty", Cmd: "kitty", FlatID: ""},
 	{Name: "Alacritty", Cmd: "alacritty", FlatID: ""},
 	{Name: "Black Box", Cmd: "blackbox-terminal", FlatID: "com.raggesilver.BlackBox"},
+	{Name: "GNOME Console", Cmd: "kgx", FlatID: ""},
 	{Name: "Starship", Cmd: "starship", FlatID: ""},
 }
 

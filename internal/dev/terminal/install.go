@@ -80,7 +80,10 @@ ln -sf "$HOME/.local/kitty.app/bin/kitten" "$HOME/.local/bin/kitten"
 		return installAlacritty(ctx, exe, family, sudo)
 
 	case "blackbox-terminal":
-		return exe.Run(ctx, opts, "flatpak", "install", config.FlatpakFlag(), "-y", "flathub", t.FlatID)
+		flatOpts := executor.Options{Stdout: stdout, Stderr: stdout, Env: []string{"TERM=dumb"}}
+		return exe.Run(ctx, flatOpts, "flatpak", "install", config.FlatpakFlag(), "-y", "flathub", t.FlatID)
+	case "kgx":
+		return distro.InstallPkgs(ctx, exe, stdout, family, "gnome-console")
 	case "starship":
 		return installStarship(ctx, exe, stdout)
 	}

@@ -46,7 +46,7 @@ func ensureFlatpakReady(ctx context.Context, exe *executor.Executor, stdout io.W
 	ui.Info(stdout, "Configurando repositório Flathub...")
 	scope := config.FlatpakFlag()
 	return exe.Run(ctx,
-		executor.Options{RequiresSudo: scope == "--system", Stdout: stdout, Stderr: stdout},
+		executor.Options{RequiresSudo: scope == "--system", Stdout: stdout, Stderr: stdout, Env: []string{"TERM=dumb"}},
 		"flatpak", "remote-add", scope, "--if-not-exists", "flathub",
 		"https://dl.flathub.org/repo/flathub.flatpakrepo",
 	)
@@ -63,7 +63,7 @@ func configureSysctl(ctx context.Context, exe *executor.Executor, stdout io.Writ
 	ui.Info(stdout, "Aplicando configurações de kernel (sysctl)...")
 	conf := "vm.swappiness=10\nfs.inotify.max_user_watches=524288\n"
 	path := "/etc/sysctl.d/99-lumina.conf"
-	cmd := fmt.Sprintf("printf '%%s' %q > %s && sysctl -p %s", conf, path, path)
+	cmd := fmt.Sprintf("printf '%%b' %q > %s && sysctl -p %s", conf, path, path)
 	return exe.Run(ctx, executor.Options{RequiresSudo: true, Stdout: stdout, Stderr: stdout},
 		"bash", "-c", cmd,
 	)

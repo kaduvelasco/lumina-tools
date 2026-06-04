@@ -55,9 +55,9 @@ Requer GNOME como desktop ativo. Todas as operações verificam o ambiente antes
 |---|---|
 | Pré-requisitos | gnome-tweaks, murrine-engine (por distro), sassc, git e extensões Flatpak |
 | Extensões | Lista de extensões recomendadas com links de instalação |
-| Temas GTK | 9 temas: Orchis, WhiteSur, Nordic, Colloid, Fluent, Tokyonight, Everforest, Rose Pine, Gruvbox |
+| Temas GTK | 10 temas: Orchis, Nordic, Colloid, Fluent, Tokyonight, Everforest, Rose Pine, Gruvbox, Graphite, Zorin |
 | Ícones | 5 pacotes: Gruvbox Plus, Kora, Candy Icons, Flatery, Newaita |
-| Cursores | 5 temas: Layan, Oreo, Sweet, Colloid, Future |
+| Cursores | 4 temas: Layan, Sweet, Colloid, Future |
 | Flatpak | Aplicar tema GTK a todos os apps Flatpak via `flatpak override --user` |
 
 ### DevStack (`lumina stack`)
@@ -66,7 +66,7 @@ Ambiente de desenvolvimento PHP com Docker (multi-versão PHP + Nginx + MariaDB)
 
 | Funcionalidade | Descrição |
 |---|---|
-| Configurar | Pré-requisitos, Docker Engine, workspace e docker-compose |
+| Configurar | Docker Engine, workspace e docker-compose |
 | Ciclo de vida | Iniciar, finalizar, visualizar logs, monitorar recursos em tempo real |
 | Banco de Dados | Exibir credenciais de conexão MariaDB |
 | Permissões | Corrigir propriedade e permissões do workspace |
@@ -75,9 +75,11 @@ Ambiente de desenvolvimento PHP com Docker (multi-versão PHP + Nginx + MariaDB)
 
 | Funcionalidade | Descrição |
 |---|---|
+| Pré-requisitos | Selecionar e instalar: pacotes base, ferramentas DevStuff, GitHub CLI, Docker Engine e Node.js via nvm (multi-seleção) |
+| Go | Instalar ou atualizar Go via tarball oficial (`go.dev/dl`) |
 | LLMs | Instalar/remover Claude Code, Antigravity CLI, Codex CLI, OpenCode CLI |
 | IDEs | Instalar/remover Zed, Windsurf, VS Code, VSCodium |
-| Terminais | Instalar/remover Kitty, Alacritty, Black Box, Starship Prompt |
+| Terminais | Instalar/remover Kitty, Alacritty, Black Box, GNOME Console, Starship Prompt |
 | Servidores MCP | Instalar/remover servidores a partir de catálogo YAML embutido |
 | Atualizar Ferramentas | Atualizar todos os CLIs, IDEs e terminais instalados |
 
@@ -130,7 +132,7 @@ sudo mv lumina-linux-amd64 /usr/local/bin/lumina
 ```bash
 git clone https://github.com/kaduvelasco/lumina-tools.git
 cd lumina-tools
-go build -ldflags "-X github.com/kaduvelasco/lumina-tools/internal/version.Version=v1.0.3" -o lumina ./cmd/lumina
+go build -ldflags "-X github.com/kaduvelasco/lumina-tools/internal/version.Version=v1.0.5" -o lumina ./cmd/lumina
 sudo mv lumina /usr/local/bin/lumina
 ```
 
@@ -185,7 +187,7 @@ lumina system gnome flatpak                    Aplicar tema GTK em apps Flatpak
 #### DevStack
 
 ```
-lumina stack config [pre|docker|workspace|stack]   Configurar stack (sem arg abre menu)
+lumina stack config [docker|workspace|stack]       Configurar stack (sem arg abre menu)
 lumina stack start                                 Iniciar stack de containers
 lumina stack end                                   Finalizar stack de containers
 lumina stack log                                   Visualizar logs em tempo real
@@ -197,10 +199,11 @@ lumina stack fix-perm                              Corrigir permissões do works
 #### DevStuff
 
 ```
-lumina dev pre      Instalar pré-requisitos (git, libsecret, gnome-keyring)
+lumina dev pre      Selecionar e instalar pré-requisitos (pacotes base, DevStuff, GitHub CLI, Docker, Node.js)
+lumina dev go       Instalar ou atualizar Go via tarball oficial
 lumina dev llm      Gerenciar CLIs LLM (multi-seleção)
 lumina dev ide      Gerenciar IDEs (multi-seleção)
-lumina dev term     Gerenciar terminais (multi-seleção)
+lumina dev term     Gerenciar terminais — Kitty, Alacritty, Black Box, GNOME Console, Starship (multi-seleção)
 lumina dev mcp      Gerenciar servidores MCP (multi-seleção)
 lumina dev update   Atualizar todas as ferramentas de desenvolvimento
 ```

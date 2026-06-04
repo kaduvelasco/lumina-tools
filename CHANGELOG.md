@@ -6,7 +6,71 @@ O formato segue o padrão [Keep a Changelog](https://keepachangelog.com/pt-BR/1.
 
 ---
 
-## [1.0.4] — em desenvolvimento
+## [1.0.5] — em desenvolvimento
+
+### Adicionado
+
+#### DevStuff — Pré-Requisitos unificados (`lumina dev pre`)
+- `internal/dev/prereqs/` — novo pacote com catálogo de 5 grupos instaláveis via multi-select, seguindo o mesmo padrão de "Gerenciar CLIs LLM" (itens instalados pré-selecionados; selecionar instala, desmarcar desinstala)
+- **Pacotes base**: `curl`, `git`, `openssl`, `lsof`
+- **Ferramentas DevStuff**: `libsecret`, `gnome-keyring` (nomes de pacotes por distro)
+- **GitHub CLI**: `gh` — repositório oficial por distro (keyring + apt source no Debian; `dnf config-manager` no Fedora; `pacman` no Arch)
+- **Docker Engine**: docker + buildx, habilita serviço systemd e adiciona o usuário ao grupo docker
+- **Node.js**: Node.js LTS via nvm (migrado de `dev/depends`)
+- `lumina dev pre` agora abre o multi-select unificado — anterior: fluxo linear sem seleção de componentes
+- `lumina stack config pre` removido — funcionalidade absorvida pelo fluxo unificado
+- TUI: "Instalar Pré-Requisitos" adicionado como primeiro item em DevStuff; itens duplicados removidos de "Criar Stack" e "Gerenciar Ferramentas"
+
+#### Terminais — GNOME Console (`lumina dev term`)
+- GNOME Console (`kgx`) adicionado ao catálogo de terminais entre Black Box e Starship
+- Instalação via gerenciador de pacotes: `apt-get install gnome-console` (Debian/Ubuntu) ou `dnf install gnome-console` (Fedora)
+
+#### GNOME — Temas GTK (`lumina system gnome themes`)
+- **Graphite** adicionado ao catálogo — instala via `./install.sh -t all` (variantes: default, purple, pink, red, orange, yellow, green, teal, blue)
+- **Zorin** adicionado ao catálogo — copia os diretórios pré-construídos da raiz do repositório (`ZorinBlue-Dark/`, `ZorinBlue-Light/`, `ZorinGreen-Dark/`, etc.) para `~/.themes/`
+
+### Corrigido
+
+#### `lumina dev go` ausente na CLI
+- `case "go"` adicionado em `app.go:dispatchDev` — o comando CLI não roteava para `devgolang.Manage`; apenas a TUI funcionava corretamente
+
+#### Self-update — sem retorno claro quando já na versão mais recente
+- Ao detectar que a versão instalada é a mais recente, exibe painel de sucesso "Você já possui a versão mais recente." e aguarda Enter antes de retornar — anterior: retornava silenciosamente sem feedback
+
+#### Pós-instalação — falha no `sysctl` (`lumina system pos`)
+- `configureSysctl` em `postinstall/common.go`: `printf '%s'` → `printf '%b'` — corrige "Argumento inválido" reportado pelo `sysctl -p` em todas as distros
+- Causa: `%q` do Go formata `\n` como escape literal (barra-n); `printf '%s'` escreve o arquivo sem quebras de linha reais; `sysctl` recebia uma única linha longa e falhava ao definir `vm.swappiness`
+
+#### Stack — config não era relido após ações que o modificam (`lumina stack`)
+- `actionDoneMsg` no modelo Bubble Tea agora recarrega `~/.lumina/config.yaml` do disco após cada ação concluída
+- Corrige o bug onde "Iniciar Stack" exibia "Stack não configurada" mesmo após executar "Criar Workspace" ou "Criar Stack" na mesma sessão da TUI
+
+#### Flatpak — ESC sequences em chamadas faltantes (`lumina dev term`, pós-instalação)
+- `TERM=dumb` adicionado às chamadas `flatpak install` e `flatpak uninstall` do Black Box em `dev/terminal/install.go` e `dev/terminal/uninstall.go`
+- `TERM=dumb` adicionado às chamadas `flatpak remote-add` em `system/postinstall/common.go` e `system/apps/install.go`
+
+### Refatorado
+
+#### Pré-Requisitos — remoção de arquivos obsoletos
+- `internal/dev/depends/depends.go` removido — lógica migrada para `internal/dev/prereqs`
+- `internal/stack/config/prereqs.go` removido — `SetupPrereqs` migrado para `internal/dev/prereqs`
+- `internal/stack/config/depends.go` removido — `Depends` migrado para `internal/dev/prereqs`
+
+#### Fluxos Select — helper compartilhado (`ide`, `llm`, `terminal`)
+- `ui.RunManagedSelect` adicionado a `internal/ui`: encapsula o fluxo multiselect → diff → execute comum aos domínios de ferramentas gerenciadas
+- `ide/select.go`, `llm/select.go` e `terminal/select.go` simplificados de ~75 para ~30 linhas cada
+
+#### Instalação de pacotes — helper compartilhado (`distro.InstallPkgs`)
+- `distro.InstallPkgs(ctx, exe, stdout, family, pkgs...)` adicionado a `internal/distro`: encapsula o bloco `switch family { apt-get / dnf / pacman }` duplicado
+
+#### Help — fonte única de verdade (`selfupdate.HelpMarkdown`)
+- `helpMarkdown()` exportada como `HelpMarkdown()` em `internal/selfupdate/help.go`
+- `lumina dev go` adicionado à tabela de DevStuff (estava ausente em ambos os arquivos de help)
+- `app.go:printHelp` delega a `selfupdate.HelpMarkdown()` — uma única fonte para `lumina help` e o viewer interativo da TUI
+
+---
+
+## [1.0.4] — 2026-06-03
 
 ### Adicionado
 

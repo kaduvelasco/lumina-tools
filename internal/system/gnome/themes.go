@@ -80,6 +80,20 @@ var themeCatalogue = []themeEntry{
 		InstallDir:  "themes",
 		FlatpakName: "Gruvbox-Dark",
 	},
+	{
+		Name:        "Graphite",
+		DirPattern:  "Graphite*",
+		RepoURL:     "https://github.com/vinceliuice/Graphite-gtk-theme.git",
+		InstallArgs: []string{"-t", "all"},
+		FlatpakName: "Graphite-Dark",
+	},
+	{
+		Name:        "Zorin",
+		DirPattern:  "Zorin*",
+		RepoURL:     "https://github.com/ZorinOS/zorin-desktop-themes.git",
+		CopySubDir:  ".",
+		FlatpakName: "ZorinBlue-Dark",
+	},
 }
 
 // whiteSurIconOptions lists valid values for WhiteSur's -i (titlebar icon) flag.

@@ -151,16 +151,17 @@ func renderHelp(glamourWidth int, style string) string {
 		glamour.WithWordWrap(glamourWidth),
 	)
 	if err != nil {
-		return helpMarkdown()
+		return HelpMarkdown()
 	}
-	rendered, err := r.Render(helpMarkdown())
+	rendered, err := r.Render(HelpMarkdown())
 	if err != nil {
-		return helpMarkdown()
+		return HelpMarkdown()
 	}
 	return rendered
 }
 
-func helpMarkdown() string {
+// HelpMarkdown returns the full help content in Markdown format.
+func HelpMarkdown() string {
 	return fmt.Sprintf(`# Lumina Tools — Ajuda
 
 **Versão:** %s
@@ -217,6 +218,7 @@ func helpMarkdown() string {
 | Comando | Descrição |
 | --- | --- |
 | lumina dev pre | Instalar dependências base |
+| lumina dev go | Instalar ou atualizar o Go |
 | lumina dev llm | Gerenciar CLIs de modelos de linguagem |
 | lumina dev ide | Gerenciar ambientes de desenvolvimento |
 | lumina dev term | Gerenciar emuladores de terminal |

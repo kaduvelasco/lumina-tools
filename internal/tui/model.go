@@ -13,8 +13,8 @@ import (
 	"github.com/charmbracelet/lipgloss"
 
 	"github.com/kaduvelasco/lumina-tools/internal/config"
-	"github.com/kaduvelasco/lumina-tools/internal/dev/depends"
 	devgolang "github.com/kaduvelasco/lumina-tools/internal/dev/golang"
+	"github.com/kaduvelasco/lumina-tools/internal/dev/prereqs"
 	"github.com/kaduvelasco/lumina-tools/internal/dev/ide"
 	"github.com/kaduvelasco/lumina-tools/internal/dev/llm"
 	"github.com/kaduvelasco/lumina-tools/internal/dev/mcp"
@@ -59,7 +59,7 @@ func RunAtSystemPostInstall(ctx context.Context, stdin io.Reader, stdout, stderr
 func RunAtStackConfig(ctx context.Context, stdin io.Reader, stdout, stderr io.Writer) error {
 	return runAt(ctx, stdin, stdout, stderr, []navLevel{
 		{menu: menuMain, cursor: 1},
-		{menu: menuDev, cursor: 0},
+		{menu: menuDev, cursor: 1},
 		{menu: menuDevStack, cursor: 0},
 	})
 }
@@ -190,6 +190,10 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	case actionDoneMsg:
 		if errors.Is(msg.err, selfupdate.ErrUninstalled) {
 			return m, tea.Quit
+		}
+		// Reload config from disk — actions like Workspace and Compose may have updated it.
+		if cfg, err := config.Load(); err == nil {
+			m.cfg = cfg
 		}
 		if msg.err != nil {
 			m.msgKind = msgError
@@ -385,8 +389,8 @@ func (m Model) runAction(a actionID) tea.Cmd {
 		return exec(managerrepo.ApplyIdent)
 
 	// ── Dev: Prerequisites / Go / LLMs / IDEs / Terminals / MCP / Upgrade ──
-	case actDevDepends:
-		return exec(depends.Install)
+	case actPrereqs:
+		return execInteractive(prereqs.Select)
 	case actGoManage:
 		return execInteractive(devgolang.Manage)
 	case actLLMManage:
@@ -401,8 +405,6 @@ func (m Model) runAction(a actionID) tea.Cmd {
 		return exec(upgrade.Update)
 
 	// ── Stack: Config ────────────────────────────────────────────────────────
-	case actStackSetupPrereqs:
-		return exec(stackconfig.SetupPrereqs)
 	case actStackWorkspace:
 		return exec(stackconfig.Workspace)
 	case actStackCompose:

@@ -7,7 +7,8 @@ import (
 	"io"
 
 	"github.com/kaduvelasco/lumina-tools/internal/config"
-	"github.com/kaduvelasco/lumina-tools/internal/dev/depends"
+	devgolang "github.com/kaduvelasco/lumina-tools/internal/dev/golang"
+	"github.com/kaduvelasco/lumina-tools/internal/dev/prereqs"
 	"github.com/kaduvelasco/lumina-tools/internal/dev/ide"
 	"github.com/kaduvelasco/lumina-tools/internal/dev/llm"
 	"github.com/kaduvelasco/lumina-tools/internal/dev/mcp"
@@ -189,8 +190,6 @@ func dispatchStack(ctx context.Context, args []string, stdin io.Reader, stdout, 
 			return tui.RunAtStackConfig(ctx, stdin, stdout, stderr)
 		}
 		switch args[1] {
-		case "pre":
-			return stackconfig.Depends(ctx, exe, stdout)
 		case "docker":
 			return stackconfig.Docker(ctx, exe, stdout)
 		case "workspace":
@@ -198,7 +197,7 @@ func dispatchStack(ctx context.Context, args []string, stdin io.Reader, stdout, 
 		case "stack":
 			return stackconfig.Compose(ctx, exe, stdout)
 		default:
-			return fmt.Errorf("subcomando desconhecido: %s\nuso: lumina stack config [pre|docker|workspace|stack]", args[1])
+			return fmt.Errorf("subcomando desconhecido: %s\nuso: lumina stack config [docker|workspace|stack]", args[1])
 		}
 	default:
 		cfg, err := config.Load()
@@ -226,12 +225,14 @@ func dispatchStack(ctx context.Context, args []string, stdin io.Reader, stdout, 
 
 func dispatchDev(ctx context.Context, args []string, stdin io.Reader, stdout, stderr io.Writer) error {
 	if len(args) == 0 {
-		return fmt.Errorf("uso: lumina dev <pre|llm|ide|term|mcp|update>")
+		return fmt.Errorf("uso: lumina dev <pre|go|llm|ide|term|mcp|update>")
 	}
 	exe := executor.New(stdout, stderr)
 	switch args[0] {
 	case "pre":
-		return depends.Install(ctx, exe, stdout)
+		return prereqs.Select(ctx, exe, stdin, stdout)
+	case "go":
+		return devgolang.Manage(ctx, exe, stdin, stdout)
 	case "llm":
 		return llm.Select(ctx, exe, stdin, stdout)
 	case "ide":
@@ -243,7 +244,7 @@ func dispatchDev(ctx context.Context, args []string, stdin io.Reader, stdout, st
 	case "update":
 		return upgrade.Update(ctx, exe, stdout)
 	default:
-		return fmt.Errorf("subcomando desconhecido: %s\nuso: lumina dev <pre|llm|ide|term|mcp|update>", args[0])
+		return fmt.Errorf("subcomando desconhecido: %s\nuso: lumina dev <pre|go|llm|ide|term|mcp|update>", args[0])
 	}
 }
 
@@ -351,53 +352,5 @@ func dispatchSet(args []string, stdout io.Writer) error {
 }
 
 func printHelp(w io.Writer) {
-	fmt.Fprintln(w, `lumina — Ferramentas Linux unificadas
-
-COMANDOS
-  lumina                   Abre a interface TUI interativa
-  lumina self-update       Verifica e instala atualizações
-  lumina self-uninstall    Remove o binário e as configurações
-  lumina version           Exibe a versão instalada
-  lumina help              Exibe esta referência
-
-GERENCIAMENTO LINUX
-  lumina system pos [mint|zorin|ubuntu|fedora]
-  lumina system fonts
-  lumina system templates
-  lumina system apps install
-  lumina system apps uninstall
-  lumina system apps webapps
-  lumina system update
-  lumina system ulauncher
-  lumina system ulauncher uninstall
-  lumina system gnome [pre|ext|themes|icons|cursors|flatpak]
-
-DEVSTACK
-  lumina stack config [pre|docker|workspace|stack]
-  lumina stack start
-  lumina stack end
-  lumina stack log
-  lumina stack status
-  lumina stack db
-  lumina stack fix-perm
-
-DEVSTUFF
-  lumina dev pre
-  lumina dev llm
-  lumina dev ide
-  lumina dev term
-  lumina dev mcp
-  lumina dev update
-
-DEVMANAGER
-  lumina ai
-  lumina gitignore
-  lumina db [backup|restore|remove|optimize|moodle]
-  lumina repo [global|init|clone|ident]
-
-CONFIGURAÇÃO
-  lumina set workspace <caminho>
-  lumina set docker <caminho>
-  lumina set theme [lumina|light|dracula|nord|tokyo|gruvbox]
-  lumina set flatpak [user|system]`)
+	fmt.Fprint(w, selfupdate.HelpMarkdown())
 }

@@ -27,6 +27,7 @@ type actionID int
 const (
 	actNone actionID = iota
 	actBack
+	actPrereqs
 	// System
 	actSystemPostMint
 	actSystemPostZorin
@@ -176,20 +177,19 @@ func itemsFor(m menuID) []menuItem {
 		}
 	case menuDev:
 		return []menuItem{
-			{label: "Criar Stack de Desenvolvimento", description: "Configura Docker, workspace e ambiente de desenvolvimento local", submenu: menuDevStack},
+			{label: "Instalar Pré-Requisitos", description: "Seleciona e instala pacotes base, Docker, GitHub CLI e Node.js", action: actPrereqs},
+			{label: "Criar Stack de Desenvolvimento", description: "Configura workspace e ambiente de desenvolvimento local", submenu: menuDevStack},
 			{label: "Gerenciar Ferramentas de Desenvolvimento", description: "Instala e atualiza CLIs, IDEs, terminais e servidores MCP", submenu: menuDevTools},
 			{label: "Voltar", description: "Retorna ao menu anterior", action: actBack},
 		}
 	case menuDevStack:
 		return []menuItem{
-			{label: "Instalar Pré-requisitos", description: "Instala pacotes base e Docker Engine via gerenciador de pacotes", action: actStackSetupPrereqs},
 			{label: "Criar Estrutura do Workspace", description: "Cria a estrutura de diretórios do workspace de desenvolvimento", action: actStackWorkspace},
 			{label: "Criar Stack (Nginx + PHP + MariaDB)", description: "Gera docker-compose.yml com Nginx, PHP-FPM e MariaDB configurados", action: actStackCompose},
 			{label: "Voltar", description: "Retorna ao menu anterior", action: actBack},
 		}
 	case menuDevTools:
 		return []menuItem{
-			{label: "Instalar Pré-requisitos", description: "Instala dependências base para as ferramentas de desenvolvimento", action: actDevDepends},
 			{label: "Gerenciar Go", description: "Instala ou atualiza a linguagem Go para a versão estável mais recente", action: actGoManage},
 			{label: "Gerenciar CLIs LLM", description: "Instala ou remove CLIs de modelos de linguagem (Claude, Gemini, etc.)", action: actLLMManage},
 			{label: "Gerenciar IDEs", description: "Instala ou remove ambientes de desenvolvimento integrado", action: actIDEManage},

@@ -84,7 +84,15 @@ func uninstallOne(ctx context.Context, exe *executor.Executor, stdout io.Writer,
 			return exe.Run(ctx, sudo, "apt-get", "purge", "-y", "--", "alacritty")
 		}
 	case "blackbox-terminal":
-		return exe.Run(ctx, opts, "flatpak", "uninstall", config.FlatpakFlag(), "-y", t.FlatID)
+		flatOpts := executor.Options{Stdout: stdout, Stderr: stdout, Env: []string{"TERM=dumb"}}
+		return exe.Run(ctx, flatOpts, "flatpak", "uninstall", config.FlatpakFlag(), "-y", t.FlatID)
+	case "kgx":
+		switch family {
+		case distro.Fedora:
+			return exe.Run(ctx, sudo, "dnf", "remove", "-y", "--", "gnome-console")
+		default:
+			return exe.Run(ctx, sudo, "apt-get", "purge", "-y", "--", "gnome-console")
+		}
 	case "starship":
 		return uninstallStarship(stdout)
 	}

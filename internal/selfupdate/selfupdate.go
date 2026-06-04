@@ -11,6 +11,7 @@ import (
 	"strings"
 
 	"github.com/kaduvelasco/lumina-tools/internal/executor"
+	"github.com/kaduvelasco/lumina-tools/internal/ui"
 	"github.com/kaduvelasco/lumina-tools/internal/version"
 )
 
@@ -36,7 +37,8 @@ func Run(ctx context.Context, exe *executor.Executor, stdout io.Writer) error {
 
 	normalize := func(v string) string { return strings.TrimPrefix(strings.TrimSpace(v), "v") }
 	if normalize(rel.Version) == normalize(version.Version) {
-		fmt.Fprintln(stdout, "+ Voce ja esta usando a versao mais recente.")
+		ui.Success(stdout, "Você já possui a versão mais recente.")
+		ui.WaitEnter(stdout)
 		return nil
 	}
 

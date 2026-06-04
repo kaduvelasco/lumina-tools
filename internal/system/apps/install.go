@@ -54,7 +54,7 @@ func EnsureFlatpak(ctx context.Context, exe *executor.Executor, stdout io.Writer
 	}
 	scope := config.FlatpakFlag()
 	return exe.Run(ctx,
-		executor.Options{RequiresSudo: scope == "--system", Stdout: stdout, Stderr: stdout},
+		executor.Options{RequiresSudo: scope == "--system", Stdout: stdout, Stderr: stdout, Env: []string{"TERM=dumb"}},
 		"flatpak", "remote-add", scope, "--if-not-exists", "flathub",
 		"https://dl.flathub.org/repo/flathub.flatpakrepo",
 	)
