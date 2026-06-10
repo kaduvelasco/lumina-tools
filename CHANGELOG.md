@@ -6,6 +6,19 @@ O formato segue o padrão [Keep a Changelog](https://keepachangelog.com/pt-BR/1.
 
 ---
 
+## [2.0.1] — em desenvolvimento
+
+### Adicionado
+
+#### GNOME — Temas GTK (`lumina gnome themes`)
+- **Yaru (Ubuntu 24.04)** adicionado ao catálogo — instala `fonts-ubuntu`, `yaru-theme-gtk`, `yaru-theme-icon`, `yaru-theme-sound` e `yaru-theme-gnome-shell` via `apt-get install`; remoção via `apt-get purge`
+- **Yaru (Ubuntu 26.04)** adicionado ao catálogo — baixa os pacotes `.deb` diretamente do archive Ubuntu 26.04 (`yaru-theme-gtk`, `yaru-theme-icon`, `yaru-theme-sound`) e instala via `apt-get install`; remoção via `apt-get purge`
+- Catálogo de temas GTK passa de 10 para 12 entradas
+- Ambas as variantes instalam em `/usr/share/themes/` (sistema) em vez de `~/.themes/` (usuário)
+- Suporte técnico: `themeEntry` ganhou dois novos campos — `CustomScript string` (bash executado como root via `RequiresSudo`) e `PurgePackages []string` (remoção via `apt-get purge`); `isThemeInstalled` atualizado para aceitar `DirPattern` como caminho absoluto
+
+---
+
 ## [2.0.0] — 2026-06-10
 
 ### Adicionado

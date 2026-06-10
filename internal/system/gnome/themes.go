@@ -12,15 +12,17 @@ import (
 )
 
 type themeEntry struct {
-	Name        string
-	DirPattern  string   // glob under ~/.themes/ for detection and removal
-	RepoURL     string
-	CloneTarget string   // non-empty: clone entire repo to ~/.themes/<CloneTarget> (e.g. Nordic)
-	CopySubDir  string   // non-empty: copy all subdirs from CopySubDir of the repo to ~/.themes/ (e.g. Rose Pine)
-	InstallDir  string   // subdir containing install.sh; empty means repo root (e.g. "themes" for Fausto-Korpsvart)
-	InstallArgs []string // args for ./install.sh (when CloneTarget and CopySubDir are both empty)
-	AskIcon     bool     // true: prompt the user for the -i <icon> flag (WhiteSur)
-	FlatpakName string   // theme name used for GTK_THEME flatpak override
+	Name          string
+	DirPattern    string   // glob for detection; absolute path = system install, relative = under ~/.themes/
+	RepoURL       string
+	CloneTarget   string   // non-empty: clone entire repo to ~/.themes/<CloneTarget> (e.g. Nordic)
+	CopySubDir    string   // non-empty: copy all subdirs from CopySubDir of the repo to ~/.themes/ (e.g. Rose Pine)
+	InstallDir    string   // subdir containing install.sh; empty means repo root (e.g. "themes" for Fausto-Korpsvart)
+	InstallArgs   []string // args for ./install.sh (when CloneTarget and CopySubDir are both empty)
+	AskIcon       bool     // true: prompt the user for the -i <icon> flag (WhiteSur)
+	FlatpakName   string   // theme name used for GTK_THEME flatpak override
+	CustomScript  string   // when non-empty, run as root via bash -c instead of clone-based flows
+	PurgePackages []string // when non-empty, remove via apt-get purge instead of glob deletion
 }
 
 var themeCatalogue = []themeEntry{
@@ -94,6 +96,27 @@ var themeCatalogue = []themeEntry{
 		CopySubDir:  ".",
 		FlatpakName: "ZorinBlue-Dark",
 	},
+	{
+		Name:       "Yaru (Ubuntu 24.04)",
+		DirPattern: "/usr/share/themes/Yaru*",
+		CustomScript: `DEBIAN_FRONTEND=noninteractive apt-get install -y -o Dpkg::Use-Pty=0 -o Dpkg::Progress-Fancy=0 -o APT::Color=0 fonts-ubuntu yaru-theme-gtk yaru-theme-icon yaru-theme-sound yaru-theme-gnome-shell`,
+		PurgePackages: []string{"fonts-ubuntu", "yaru-theme-gtk", "yaru-theme-icon", "yaru-theme-sound", "yaru-theme-gnome-shell"},
+		FlatpakName:   "Yaru",
+	},
+	{
+		Name:       "Yaru (Ubuntu 26.04)",
+		DirPattern: "/usr/share/themes/Yaru*",
+		CustomScript: `set -e
+TMP=$(mktemp -d)
+trap 'rm -rf -- "$TMP"' EXIT
+cd -- "$TMP"
+wget -q http://archive.ubuntu.com/ubuntu/pool/main/y/yaru-theme/yaru-theme-gtk_26.04.5.1ubuntu_all.deb
+wget -q http://archive.ubuntu.com/ubuntu/pool/main/y/yaru-theme/yaru-theme-icon_26.04.5.1ubuntu_all.deb
+wget -q http://archive.ubuntu.com/ubuntu/pool/main/y/yaru-theme/yaru-theme-sound_26.04.5.1ubuntu_all.deb
+DEBIAN_FRONTEND=noninteractive apt-get install -y -o Dpkg::Use-Pty=0 -o Dpkg::Progress-Fancy=0 -o APT::Color=0 ./yaru-theme-gtk_26.04.5.1ubuntu_all.deb ./yaru-theme-icon_26.04.5.1ubuntu_all.deb ./yaru-theme-sound_26.04.5.1ubuntu_all.deb`,
+		PurgePackages: []string{"yaru-theme-gtk", "yaru-theme-icon", "yaru-theme-sound"},
+		FlatpakName:   "Yaru",
+	},
 }
 
 // whiteSurIconOptions lists valid values for WhiteSur's -i (titlebar icon) flag.
@@ -115,6 +138,9 @@ var whiteSurIconOptions = []ui.SelectItem{
 }
 
 func isThemeInstalled(t themeEntry, td string) bool {
+	if filepath.IsAbs(t.DirPattern) {
+		return globExists(t.DirPattern)
+	}
 	return globExists(filepath.Join(td, t.DirPattern))
 }
 
@@ -213,6 +239,13 @@ func ManageThemes(ctx context.Context, exe *executor.Executor, stdin io.Reader, 
 }
 
 func installTheme(ctx context.Context, exe *executor.Executor, stdout io.Writer, t themeEntry, td, icon string) error {
+	if t.CustomScript != "" {
+		return exe.Run(ctx,
+			executor.Options{RequiresSudo: true, Stdout: stdout, Stderr: stdout},
+			"bash", "-c", t.CustomScript,
+		)
+	}
+
 	if err := exe.Run(ctx,
 		executor.Options{Stdout: stdout, Stderr: stdout},
 		"bash", "-c", "mkdir -p -- \"$1\"", "--", td,
@@ -277,6 +310,25 @@ bash ` + installCmd + `
 }
 
 func removeTheme(ctx context.Context, exe *executor.Executor, stdout io.Writer, t themeEntry, td string) error {
+	if len(t.PurgePackages) > 0 {
+		args := append([]string{
+			"purge", "-y",
+			"-o", "Dpkg::Use-Pty=0",
+			"-o", "Dpkg::Progress-Fancy=0",
+			"-o", "APT::Color=0",
+			"--",
+		}, t.PurgePackages...)
+		return exe.Run(ctx,
+			executor.Options{
+				RequiresSudo: true,
+				Stdout:       stdout,
+				Stderr:       stdout,
+				Env:          []string{"DEBIAN_FRONTEND=noninteractive"},
+			},
+			"apt-get", args...,
+		)
+	}
+
 	// $1 = themes dir, $2 = glob pattern; nullglob prevents a no-match from being a literal arg
 	script := `
 set -e

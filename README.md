@@ -65,7 +65,7 @@ Requer GNOME como desktop ativo. Todas as operações verificam o ambiente antes
 |---|---|
 | Pré-requisitos | gnome-tweaks, murrine-engine (por distro), sassc, git e extensões Flatpak |
 | Extensões | Lista de extensões recomendadas com links de instalação |
-| Temas GTK | 10 temas: Orchis, Nordic, Colloid, Fluent, Tokyonight, Everforest, Rose Pine, Gruvbox, Graphite, Zorin |
+| Temas GTK | 12 temas: Orchis, Nordic, Colloid, Fluent, Tokyonight, Everforest, Rose Pine, Gruvbox, Graphite, Zorin, Yaru (Ubuntu 24.04), Yaru (Ubuntu 26.04) |
 | Ícones | 5 pacotes: Gruvbox Plus, Kora, Candy Icons, Flatery, Newaita |
 | Cursores | 4 temas: Layan, Sweet, Colloid, Future |
 | Flatpak | Aplicar tema GTK a todos os apps Flatpak via `flatpak override --user` |
@@ -163,7 +163,7 @@ sudo mv lumina-linux-amd64 /usr/local/bin/lumina
 ```bash
 git clone https://github.com/kaduvelasco/lumina-tools.git
 cd lumina-tools
-go build -ldflags "-X github.com/kaduvelasco/lumina-tools/internal/version.Version=v2.0.0" -o lumina ./cmd/lumina
+go build -ldflags "-X github.com/kaduvelasco/lumina-tools/internal/version.Version=v2.0.1" -o lumina ./cmd/lumina
 sudo mv lumina /usr/local/bin/lumina
 ```
 
