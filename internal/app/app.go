@@ -25,6 +25,8 @@ import (
 	"github.com/kaduvelasco/lumina-tools/internal/system/apps"
 	"github.com/kaduvelasco/lumina-tools/internal/system/fonts"
 	"github.com/kaduvelasco/lumina-tools/internal/system/gnome"
+	"github.com/kaduvelasco/lumina-tools/internal/system/linuxtoys"
+	"github.com/kaduvelasco/lumina-tools/internal/system/megasync"
 	"github.com/kaduvelasco/lumina-tools/internal/system/postinstall"
 	"github.com/kaduvelasco/lumina-tools/internal/system/templates"
 	"github.com/kaduvelasco/lumina-tools/internal/system/ulauncher"
@@ -74,13 +76,18 @@ func dispatch(ctx context.Context, args []string, stdin io.Reader, stdout, stder
 	case "dev":
 		return dispatchDev(ctx, args[1:], stdin, stdout, stderr)
 
-	case "ai":
-		exe := executor.New(stdout, stderr)
-		return managerai.GenerateContext(ctx, exe, stdin, stdout)
+	case "apps":
+		return dispatchApps(ctx, args[1:], stdin, stdout, stderr)
 
-	case "gitignore":
+	case "gnome":
+		return dispatchGnome(ctx, args[1:], stdin, stdout, stderr)
+
+	case "ai":
+		return dispatchAI(ctx, args[1:], stdin, stdout, stderr)
+
+	case "self-config":
 		exe := executor.New(stdout, stderr)
-		return managergitignore.Generate(ctx, exe, stdout)
+		return selfupdate.Configure(ctx, exe, stdin, stdout)
 
 	case "db":
 		return dispatchDB(ctx, args[1:], stdout, stderr)
@@ -98,7 +105,7 @@ func dispatch(ctx context.Context, args []string, stdin io.Reader, stdout, stder
 
 func dispatchSystem(ctx context.Context, args []string, stdin io.Reader, stdout, stderr io.Writer) error {
 	if len(args) == 0 {
-		return fmt.Errorf("uso: lumina system <pos|gnome|fonts|templates|apps|update|ulauncher>")
+		return fmt.Errorf("uso: lumina system <pos|gnome|fonts|templates|apps|update|ulauncher|toys|megasync>")
 	}
 	exe := executor.New(stdout, stderr)
 	switch args[0] {
@@ -151,14 +158,18 @@ func dispatchSystem(ctx context.Context, args []string, stdin io.Reader, stdout,
 			return ulauncher.Uninstall(ctx, exe, stdout)
 		}
 		return ulauncher.Install(ctx, exe, stdout)
+	case "toys":
+		return linuxtoys.Install(ctx, exe, stdout)
+	case "megasync":
+		return megasync.Install(ctx, exe, stdout)
 	default:
-		return fmt.Errorf("subcomando desconhecido: %s\nuso: lumina system <pos|gnome|fonts|templates|apps|update|ulauncher>", args[0])
+		return fmt.Errorf("subcomando desconhecido: %s\nuso: lumina system <pos|gnome|fonts|templates|apps|update|ulauncher|toys|megasync>", args[0])
 	}
 }
 
 func dispatchGnome(ctx context.Context, args []string, stdin io.Reader, stdout, _ io.Writer) error {
 	if len(args) == 0 {
-		return fmt.Errorf("uso: lumina system gnome <pre|ext|themes|icons|cursors|flatpak>")
+		return fmt.Errorf("uso: lumina gnome <pre|ext|themes|icons|cursor|flatpak>")
 	}
 	exe := executor.New(stdout, stdout)
 	switch args[0] {
@@ -170,12 +181,12 @@ func dispatchGnome(ctx context.Context, args []string, stdin io.Reader, stdout, 
 		return gnome.ManageThemes(ctx, exe, stdin, stdout)
 	case "icons":
 		return gnome.ManageIcons(ctx, exe, stdin, stdout)
-	case "cursors":
+	case "cursors", "cursor":
 		return gnome.ManageCursors(ctx, exe, stdin, stdout)
 	case "flatpak":
 		return gnome.ApplyFlatpakTheme(ctx, exe, stdin, stdout)
 	default:
-		return fmt.Errorf("subcomando desconhecido: %s\nuso: lumina system gnome <pre|ext|themes|icons|cursors|flatpak>", args[0])
+		return fmt.Errorf("subcomando desconhecido: %s\nuso: lumina gnome <pre|ext|themes|icons|cursor|flatpak>", args[0])
 	}
 }
 
@@ -209,6 +220,8 @@ func dispatchStack(ctx context.Context, args []string, stdin io.Reader, stdout, 
 			return stack.Start(ctx, exe, stdout, cfg.DockerComposeDir)
 		case "end":
 			return stack.Stop(ctx, exe, stdout, cfg.DockerComposeDir)
+		case "restart":
+			return stack.Restart(ctx, exe, stdout, cfg.DockerComposeDir)
 		case "log":
 			return stack.Logs(ctx, exe, stdout, cfg.DockerComposeDir)
 		case "status":
@@ -225,7 +238,7 @@ func dispatchStack(ctx context.Context, args []string, stdin io.Reader, stdout, 
 
 func dispatchDev(ctx context.Context, args []string, stdin io.Reader, stdout, stderr io.Writer) error {
 	if len(args) == 0 {
-		return fmt.Errorf("uso: lumina dev <pre|go|llm|ide|term|mcp|update>")
+		return fmt.Errorf("uso: lumina dev <pre|go|llm|ide|term|mcp|update|create-workspace|create-stack-php>")
 	}
 	exe := executor.New(stdout, stderr)
 	switch args[0] {
@@ -243,8 +256,12 @@ func dispatchDev(ctx context.Context, args []string, stdin io.Reader, stdout, st
 		return mcp.Select(ctx, exe, stdin, stdout)
 	case "update":
 		return upgrade.Update(ctx, exe, stdout)
+	case "create-workspace":
+		return stackconfig.Workspace(ctx, exe, stdout)
+	case "create-stack-php":
+		return stackconfig.Compose(ctx, exe, stdout)
 	default:
-		return fmt.Errorf("subcomando desconhecido: %s\nuso: lumina dev <pre|go|llm|ide|term|mcp|update>", args[0])
+		return fmt.Errorf("subcomando desconhecido: %s\nuso: lumina dev <pre|go|llm|ide|term|mcp|update|create-workspace|create-stack-php>", args[0])
 	}
 }
 
@@ -271,7 +288,7 @@ func dispatchDB(ctx context.Context, args []string, stdout, stderr io.Writer) er
 
 func dispatchRepo(ctx context.Context, args []string, stdout, stderr io.Writer) error {
 	if len(args) == 0 {
-		return fmt.Errorf("uso: lumina repo <global|init|clone|ident>")
+		return fmt.Errorf("uso: lumina repo <global|init|clone|ident|gitignore|conduct>")
 	}
 	exe := executor.New(stdout, stderr)
 	switch args[0] {
@@ -283,8 +300,12 @@ func dispatchRepo(ctx context.Context, args []string, stdout, stderr io.Writer) 
 		return managerrepo.Clone(ctx, exe, stdout)
 	case "ident":
 		return managerrepo.ApplyIdent(ctx, exe, stdout)
+	case "gitignore":
+		return managergitignore.Generate(ctx, exe, stdout)
+	case "conduct":
+		return managerrepo.CreateConduct(ctx, exe, stdout)
 	default:
-		return fmt.Errorf("subcomando desconhecido: %s\nuso: lumina repo <global|init|clone|ident>", args[0])
+		return fmt.Errorf("subcomando desconhecido: %s\nuso: lumina repo <global|init|clone|ident|gitignore|conduct>", args[0])
 	}
 }
 
@@ -349,6 +370,36 @@ func dispatchSet(args []string, stdout io.Writer) error {
 	}
 	fmt.Fprintln(stdout, "Configuração atualizada.")
 	return nil
+}
+
+func dispatchApps(ctx context.Context, args []string, stdin io.Reader, stdout, stderr io.Writer) error {
+	if len(args) == 0 {
+		return fmt.Errorf("uso: lumina apps <install|uninstall|web>")
+	}
+	switch args[0] {
+	case "install":
+		return apps.SelectInstall(ctx, executor.New(stdout, stderr), stdin, stdout)
+	case "uninstall":
+		return apps.SelectUninstall(ctx, executor.New(stdout, stderr), stdin, stdout)
+	case "web":
+		return apps.ShowWebApps(ctx, nil, stdout)
+	default:
+		return fmt.Errorf("subcomando desconhecido: %s\nuso: lumina apps <install|uninstall|web>", args[0])
+	}
+}
+
+func dispatchAI(ctx context.Context, args []string, stdin io.Reader, stdout, _ io.Writer) error {
+	if len(args) == 0 {
+		return fmt.Errorf("uso: lumina ai <context|clear>")
+	}
+	switch args[0] {
+	case "context":
+		return managerai.GenerateContext(ctx, nil, stdin, stdout)
+	case "clear":
+		return managerai.ClearContext(ctx, nil, stdin, stdout)
+	default:
+		return fmt.Errorf("subcomando desconhecido: %s\nuso: lumina ai <context|clear>", args[0])
+	}
 }
 
 func printHelp(w io.Writer) {

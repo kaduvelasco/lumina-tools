@@ -6,7 +6,6 @@ import (
 	"io"
 	"strings"
 
-	"github.com/kaduvelasco/lumina-tools/internal/config"
 	"github.com/kaduvelasco/lumina-tools/internal/executor"
 	"github.com/kaduvelasco/lumina-tools/internal/ui"
 )
@@ -83,19 +82,26 @@ func SelectUninstall(ctx context.Context, exe *executor.Executor, stdin io.Reade
 }
 
 // Uninstall removes the Flatpak apps identified by flatIDs.
+// Each app is uninstalled from the scope it is actually installed in.
 func Uninstall(ctx context.Context, exe *executor.Executor, stdout io.Writer, flatIDs []string) error {
 	if len(flatIDs) == 0 {
-		fmt.Fprintln(stdout, "Nenhum aplicativo selecionado.")
+		ui.Info(stdout, "Nenhum aplicativo selecionado.")
 		return nil
 	}
+
+	scopeMap := InstalledScopeMap(ctx, exe)
 
 	ui.Info(stdout, fmt.Sprintf("Desinstalando %d aplicativo(s)...", len(flatIDs)))
 	var failed []string
 	for _, id := range flatIDs {
+		scope, ok := scopeMap[id]
+		if !ok {
+			scope = "--system"
+		}
 		ui.Info(stdout, "Desinstalando: "+id)
 		if err := exe.Run(ctx,
 			executor.Options{Stdout: stdout, Stderr: stdout, Env: []string{"TERM=dumb"}},
-			"flatpak", "uninstall", config.FlatpakFlag(), "-y", id,
+			"flatpak", "uninstall", scope, "-y", id,
 		); err != nil {
 			ui.Warning(stdout, fmt.Sprintf("Falha ao desinstalar %s: %v", id, err))
 			failed = append(failed, id)

@@ -50,9 +50,10 @@ func Install(ctx context.Context, exe *executor.Executor, stdout io.Writer) erro
 		ui.Info(stdout, "Instalando "+t.Name+"...")
 		if err := installOne(ctx, exe, stdout, t, family); err != nil {
 			ui.Warning(stdout, "Falha em "+t.Name+": "+err.Error())
-		} else {
-			ui.Success(stdout, t.Name+" instalado.")
+			continue
 		}
+		ui.Success(stdout, t.Name+" instalado.")
+		addContextMenuEntries(t, stdout)
 	}
 
 	ui.WaitEnter(stdout)

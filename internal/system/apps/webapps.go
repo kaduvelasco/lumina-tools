@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"io"
+	"strings"
 
 	"github.com/kaduvelasco/lumina-tools/internal/executor"
 	"github.com/kaduvelasco/lumina-tools/internal/ui"
@@ -22,14 +23,13 @@ var suggestedWebApps = []webApp{
 // ShowWebApps displays suggested web apps with their URLs.
 func ShowWebApps(_ context.Context, _ *executor.Executor, stdout io.Writer) error {
 	ui.PrintHeader(stdout, "Aplicativos — WebApps Sugeridos")
-
-	fmt.Fprintln(stdout)
 	ui.Info(stdout, "Abra os links abaixo no navegador e use 'Instalar como aplicativo' ou 'Criar atalho'.")
-	fmt.Fprintln(stdout)
 
+	var sb strings.Builder
 	for _, app := range suggestedWebApps {
-		fmt.Fprintf(stdout, "  ► %-20s %s\n\n", app.Name, app.URL)
+		sb.WriteString(fmt.Sprintf("  ► %-20s  %s\n", app.Name, app.URL))
 	}
+	ui.PrintBox(stdout, strings.TrimRight(sb.String(), "\n"))
 
 	ui.WaitEnter(stdout)
 	return nil

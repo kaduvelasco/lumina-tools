@@ -173,7 +173,7 @@ func ManageThemes(ctx context.Context, exe *executor.Executor, stdin io.Reader, 
 	whiteSurIcon := "gnome"
 	for _, t := range toInstall {
 		if t.AskIcon {
-			fmt.Fprintf(stdout, "\nEscolha o ícone da barra de título para WhiteSur:\n")
+			ui.Info(stdout, "Escolha o ícone da barra de título para WhiteSur:")
 			idx, ok, ssErr := ui.RunSingleSelect(ctx, stdin, stdout, whiteSurIconOptions)
 			if ssErr != nil {
 				return ssErr

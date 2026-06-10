@@ -25,10 +25,8 @@ func Docker(ctx context.Context, exe *executor.Executor, stdout io.Writer) error
 	family := distro.Detect()
 	ui.Info(stdout, "Distribuição: "+family)
 
-	fmt.Fprintln(stdout, "\nMétodo de instalação:")
-	fmt.Fprintln(stdout, "  1. Via gerenciador de pacotes (recomendado)")
-	fmt.Fprintln(stdout, "  2. Via script oficial (get.docker.com)")
-	fmt.Fprint(stdout, "\nOpção [1]: ")
+	ui.PrintBox(stdout, "1. Via gerenciador de pacotes (recomendado)\n2. Via script oficial (get.docker.com)")
+	fmt.Fprint(stdout, "Opção [1]: ")
 
 	method := strings.TrimSpace(prompt.ReadLine())
 	if method == "" {

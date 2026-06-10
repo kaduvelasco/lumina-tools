@@ -17,6 +17,10 @@ const (
 var (
 	detectOnce     sync.Once
 	detectedFamily string
+
+	rawOnce   sync.Once
+	cachedID  string
+	cachedVer string
 )
 
 // Detect reads /etc/os-release once per process lifetime, checks ID= first and
@@ -32,6 +36,39 @@ func Detect() string {
 		detectedFamily = detect(string(data))
 	})
 	return detectedFamily
+}
+
+// RawID returns the raw ID= field from /etc/os-release (e.g. "linuxmint", "ubuntu", "fedora").
+// Unlike Detect, it does not normalize to a distribution family.
+// Returns an empty string if /etc/os-release cannot be read or lacks the field.
+func RawID() string {
+	initRaw()
+	return cachedID
+}
+
+// VersionID returns the VERSION_ID= field from /etc/os-release (e.g. "24.04", "44").
+// Returns an empty string if /etc/os-release cannot be read or lacks the field.
+func VersionID() string {
+	initRaw()
+	return cachedVer
+}
+
+// initRaw parses /etc/os-release once and caches the raw ID= and VERSION_ID= fields.
+func initRaw() {
+	rawOnce.Do(func() {
+		data, err := os.ReadFile("/etc/os-release")
+		if err != nil {
+			return
+		}
+		for _, line := range strings.Split(string(data), "\n") {
+			switch {
+			case strings.HasPrefix(line, "ID="):
+				cachedID = clean(strings.TrimPrefix(line, "ID="))
+			case strings.HasPrefix(line, "VERSION_ID="):
+				cachedVer = clean(strings.TrimPrefix(line, "VERSION_ID="))
+			}
+		}
+	})
 }
 
 // detect parses os-release content and returns the normalized family.

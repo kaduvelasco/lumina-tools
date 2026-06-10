@@ -159,6 +159,22 @@ if errors.As(err, &ve) {
 
 ## Concurrency
 
+### Create contexts with timeout or cancellation
+
+Always derive contexts from a parent — never use `context.Background()` deep in a call chain.
+
+```go
+// Timeout — cancels automatically after the deadline
+ctx, cancel := context.WithTimeout(parentCtx, 10*time.Second)
+defer cancel()
+
+// Cancellation — caller controls when to stop
+ctx, cancel := context.WithCancel(parentCtx)
+defer cancel()
+```
+
+`defer cancel()` is always required — even when the context times out on its own, calling cancel releases the associated resources immediately.
+
 ### Always pass context as the first parameter
 
 ```go
@@ -172,6 +188,9 @@ func Fetch(ctx context.Context, url string) ([]byte, error) {
         return nil, fmt.Errorf("fetch %s: %w", url, err)
     }
     defer resp.Body.Close()
+    if resp.StatusCode != http.StatusOK {
+        return nil, fmt.Errorf("fetch %s: unexpected status %d", url, resp.StatusCode)
+    }
     return io.ReadAll(resp.Body)
 }
 ```
@@ -204,7 +223,6 @@ func FetchAll(ctx context.Context, urls []string) ([][]byte, error) {
     g, ctx := errgroup.WithContext(ctx)
     results := make([][]byte, len(urls))
     for i, url := range urls {
-        i, url := i, url
         g.Go(func() error {
             data, err := Fetch(ctx, url)
             if err != nil {
@@ -336,11 +354,53 @@ return sb.String()
 ```go
 var pool = sync.Pool{New: func() any { return new(bytes.Buffer) }}
 
-func handle(data []byte) []byte {
+func handle(data []byte) string {
     buf := pool.Get().(*bytes.Buffer)
     defer func() { buf.Reset(); pool.Put(buf) }()
     buf.Write(data)
-    return buf.Bytes()
+    return buf.String() // String copies the bytes — safe to return after defer returns buf to pool
+}
+```
+
+Never return `buf.Bytes()` — the slice points into the buffer's internal array, which may be overwritten once the buffer is returned to the pool. Use `buf.String()` or copy explicitly.
+
+---
+
+## Testing
+
+### Table-driven tests
+
+Use `t.Run` with a slice of test cases. Keep the struct definition inline.
+
+```go
+func TestAdd(t *testing.T) {
+    tests := []struct {
+        name string
+        a, b int
+        want int
+    }{
+        {"positive", 1, 2, 3},
+        {"zero", 0, 0, 0},
+        {"negative", -1, -2, -3},
+    }
+    for _, tt := range tests {
+        t.Run(tt.name, func(t *testing.T) {
+            if got := Add(tt.a, tt.b); got != tt.want {
+                t.Errorf("Add(%d, %d) = %d, want %d", tt.a, tt.b, got, tt.want)
+            }
+        })
+    }
+}
+```
+
+Use `t.Helper()` in shared assertion helpers so failure lines point to the caller, not the helper:
+
+```go
+func assertEqual[T comparable](t *testing.T, got, want T) {
+    t.Helper()
+    if got != want {
+        t.Errorf("got %v, want %v", got, want)
+    }
 }
 ```
 

@@ -4,6 +4,8 @@ import (
 	"context"
 	"fmt"
 	"io"
+	"os"
+	"runtime"
 	"strings"
 
 	"github.com/kaduvelasco/lumina-tools/internal/config"
@@ -94,7 +96,8 @@ func installVAAPI(
 	intel, amd []string,
 	install func(context.Context, *executor.Executor, io.Writer, ...string) error,
 ) {
-	fmt.Fprintf(stdout, "\n  Aceleração de vídeo por hardware:\n  1. Intel\n  2. AMD\n  3. Não instalar\n  Escolha (1/2/3): ")
+	ui.PrintBox(stdout, "1. Intel\n2. AMD\n3. Não instalar")
+	fmt.Fprint(stdout, "Aceleração de vídeo (1/2/3): ")
 	choice := strings.TrimSpace(prompt.ReadLine())
 	switch choice {
 	case "1":
@@ -112,9 +115,228 @@ func installVAAPI(
 	}
 }
 
+// aptComponentEnabled reports whether the given apt component (e.g. "universe")
+// is already present in at least one enabled source. Checks both legacy .list
+// and DEB822 .sources formats. Returns false on any read error (safe to retry).
+func aptComponentEnabled(ctx context.Context, exe *executor.Executor, component string) bool {
+	out, _ := exe.Output(ctx, executor.Options{},
+		"bash", "-c",
+		"grep -rEh '^deb[^-]|^Components:' /etc/apt/sources.list /etc/apt/sources.list.d/ 2>/dev/null")
+	for _, line := range strings.Split(out, "\n") {
+		for _, field := range strings.Fields(line) {
+			if field == component {
+				return true
+			}
+		}
+	}
+	return false
+}
+
+// rpmFusionEnabled reports whether the rpmfusion-free-release package is installed.
+func rpmFusionEnabled(ctx context.Context, exe *executor.Executor) bool {
+	_, err := exe.Output(ctx, executor.Options{}, "rpm", "-q", "rpmfusion-free-release")
+	return err == nil
+}
+
 func stripNewline(s string) string {
 	for len(s) > 0 && (s[len(s)-1] == '\n' || s[len(s)-1] == '\r') {
 		s = s[:len(s)-1]
 	}
 	return s
+}
+
+// removeSnaps lists installed snaps, presents a multi-select to the user, and removes
+// the selected ones with multiple passes to handle dependency ordering.
+// Non-fatal: skips silently if snap is not available.
+func removeSnaps(ctx context.Context, exe *executor.Executor, stdout io.Writer) {
+	out, err := exe.Output(ctx, executor.Options{}, "snap", "list")
+	if err != nil {
+		return // snap not installed or unavailable
+	}
+
+	lines := strings.Split(strings.TrimSpace(out), "\n")
+	if len(lines) <= 1 {
+		ui.Info(stdout, "Nenhum snap instalado.")
+		return
+	}
+
+	items := make([]ui.SelectItem, 0, len(lines)-1)
+	for _, line := range lines[1:] { // skip header row
+		fields := strings.Fields(line)
+		if len(fields) < 2 {
+			continue
+		}
+		items = append(items, ui.SelectItem{
+			ID:    fields[0],
+			Label: fields[0] + "  " + fields[1],
+		})
+	}
+	if len(items) == 0 {
+		ui.Info(stdout, "Nenhum snap instalado.")
+		return
+	}
+
+	ui.Info(stdout, "Snaps instalados. Selecione os que deseja remover:")
+	finalItems, confirmed, err := ui.RunMultiSelect(ctx, os.Stdin, stdout, items)
+	if err != nil {
+		ui.Warning(stdout, "Falha na seleção de snaps: "+err.Error())
+		return
+	}
+	if !confirmed {
+		ui.Info(stdout, "Remoção de snaps cancelada.")
+		return
+	}
+
+	var toRemove []string
+	for _, item := range finalItems {
+		if item.Selected {
+			toRemove = append(toRemove, item.ID)
+		}
+	}
+	if len(toRemove) == 0 {
+		ui.Info(stdout, "Nenhum snap selecionado.")
+		return
+	}
+
+	// Multiple passes handle implicit dependency ordering: if A depends on B and B
+	// is removed first, the next pass will successfully remove A.
+	removed := make(map[string]bool, len(toRemove))
+	for range 3 {
+		progress := false
+		for _, name := range toRemove {
+			if removed[name] {
+				continue
+			}
+			if err := exe.Run(ctx,
+				executor.Options{RequiresSudo: true, Stdout: stdout, Stderr: stdout},
+				"snap", "remove", "--purge", "--", name,
+			); err == nil {
+				removed[name] = true
+				progress = true
+			}
+		}
+		if !progress {
+			break
+		}
+	}
+
+	for _, name := range toRemove {
+		if !removed[name] {
+			ui.Warning(stdout, "Snap não removido (verifique dependências): "+name)
+		}
+	}
+}
+
+// setupSwapfile creates a 4 GB swapfile at /swapfile and persists it in /etc/fstab.
+// Skips silently if /swapfile already exists. Non-fatal: shows warnings on failure.
+func setupSwapfile(ctx context.Context, exe *executor.Executor, stdout io.Writer) {
+	ui.Info(stdout, "Configurando swapfile...")
+
+	if _, err := os.Stat("/swapfile"); err == nil {
+		ui.Info(stdout, "Swapfile já existe em /swapfile, pulando.")
+		return
+	}
+
+	sudo := executor.Options{RequiresSudo: true, Stdout: stdout, Stderr: stdout}
+	sudoSilent := executor.Options{RequiresSudo: true}
+
+	if err := exe.Run(ctx, sudo, "fallocate", "-l", "4G", "/swapfile"); err != nil {
+		ui.Warning(stdout, "Falha ao criar swapfile: "+err.Error())
+		return
+	}
+	if err := exe.Run(ctx, sudo, "chmod", "600", "/swapfile"); err != nil {
+		ui.Warning(stdout, "Falha ao definir permissões do swapfile: "+err.Error())
+		_ = exe.Run(ctx, sudoSilent, "rm", "-f", "--", "/swapfile")
+		return
+	}
+	if err := exe.Run(ctx, sudo, "mkswap", "/swapfile"); err != nil {
+		ui.Warning(stdout, "Falha ao formatar swapfile: "+err.Error())
+		_ = exe.Run(ctx, sudoSilent, "rm", "-f", "--", "/swapfile")
+		return
+	}
+	if err := exe.Run(ctx, sudo, "swapon", "/swapfile"); err != nil {
+		ui.Warning(stdout, "Falha ao ativar swapfile: "+err.Error())
+		return
+	}
+
+	// Append /etc/fstab entry only if absent, preventing duplicates on reruns.
+	const fstabScript = `grep -qF '/swapfile' /etc/fstab || printf '/swapfile none swap sw 0 0\n' >> /etc/fstab`
+	if err := exe.Run(ctx, sudo, "bash", "-c", fstabScript); err != nil {
+		ui.Warning(stdout, "Falha ao atualizar /etc/fstab: "+err.Error())
+	}
+
+	ui.Success(stdout, "Swapfile de 4 GB criado e ativado.")
+}
+
+// chromeInstalled reports whether google-chrome is already present.
+func chromeInstalled(ctx context.Context, exe *executor.Executor) bool {
+	_, err := exe.Output(ctx, executor.Options{}, "which", "google-chrome")
+	return err == nil
+}
+
+// installChromeDeb downloads the google-chrome-stable .deb and installs it via apt.
+// Non-fatal: shows a warning on failure and returns without propagating the error.
+func installChromeDeb(ctx context.Context, exe *executor.Executor, stdout io.Writer) {
+	// DEBT-02: the .deb is amd64-only; skip gracefully on other architectures.
+	if runtime.GOARCH != "amd64" {
+		ui.Warning(stdout, "Google Chrome: instalação automática disponível apenas em amd64 — instale manualmente.")
+		return
+	}
+	if chromeInstalled(ctx, exe) {
+		ui.Info(stdout, "Google Chrome já instalado, pulando.")
+		return
+	}
+	// SEC-01: use os.CreateTemp to avoid predictable /tmp paths (TOCTOU).
+	tmpFile, err := os.CreateTemp("", "google-chrome-*.deb")
+	if err != nil {
+		ui.Warning(stdout, "Falha ao criar arquivo temporário: "+err.Error())
+		return
+	}
+	chromeDeb := tmpFile.Name()
+	_ = tmpFile.Close()
+
+	const chromeURL = "https://dl.google.com/linux/direct/google-chrome-stable_current_amd64.deb"
+	ui.Info(stdout, "Baixando Google Chrome...")
+	if err := exe.Run(ctx, executor.Options{Stdout: stdout, Stderr: stdout},
+		"wget", "-q", "-O", chromeDeb, chromeURL,
+	); err != nil {
+		_ = os.Remove(chromeDeb) // BUG-01: always clean up, even on download failure.
+		ui.Warning(stdout, "Falha ao baixar Google Chrome: "+err.Error())
+		return
+	}
+	ui.Info(stdout, "Instalando Google Chrome...")
+	if err := exe.Run(ctx,
+		executor.Options{
+			RequiresSudo: true,
+			Stdout:       stdout,
+			Stderr:       stdout,
+			Env:          []string{"DEBIAN_FRONTEND=noninteractive"},
+		},
+		"apt-get", "install", "-y", "-o", "Dpkg::Use-Pty=0", "-o", "Dpkg::Progress-Fancy=0", "-o", "APT::Color=0", "--", chromeDeb,
+	); err != nil {
+		ui.Warning(stdout, "Falha ao instalar Google Chrome: "+err.Error())
+	}
+	_ = os.Remove(chromeDeb)
+}
+
+// installChromeFedora installs google-chrome-stable via the direct RPM download URL.
+// Non-fatal: shows a warning on failure and returns without propagating the error.
+func installChromeFedora(ctx context.Context, exe *executor.Executor, stdout io.Writer) {
+	// DEBT-02: the .rpm is x86_64-only; skip gracefully on other architectures.
+	if runtime.GOARCH != "amd64" {
+		ui.Warning(stdout, "Google Chrome: instalação automática disponível apenas em amd64 — instale manualmente.")
+		return
+	}
+	if chromeInstalled(ctx, exe) {
+		ui.Info(stdout, "Google Chrome já instalado, pulando.")
+		return
+	}
+	ui.Info(stdout, "Instalando Google Chrome...")
+	const chromeRPM = "https://dl.google.com/linux/direct/google-chrome-stable_current_x86_64.rpm"
+	if err := exe.Run(ctx,
+		executor.Options{RequiresSudo: true, Stdout: stdout, Stderr: stdout},
+		"dnf", "install", "-y", "--", chromeRPM,
+	); err != nil {
+		ui.Warning(stdout, "Falha ao instalar Google Chrome: "+err.Error())
+	}
 }

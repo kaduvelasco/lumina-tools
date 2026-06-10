@@ -24,6 +24,7 @@ var Catalogue = []App{
 	{Name: "Zen Browser", FlatID: "app.zen_browser.zen"},
 	{Name: "Firefox", FlatID: "org.mozilla.firefox"},
 	{Name: "Chromium", FlatID: "org.chromium.Chromium"},
+	{Name: "Vivaldi", FlatID: "com.vivaldi.Vivaldi"},
 	{Name: "FileZilla", FlatID: "org.filezillaproject.Filezilla"},
 	{Name: "Inkscape", FlatID: "org.inkscape.Inkscape"},
 	{Name: "Krita", FlatID: "org.kde.krita"},
@@ -37,4 +38,6 @@ var Catalogue = []App{
 	{Name: "Ente Auth - Segurança", FlatID: "io.ente.auth"},
 	{Name: "Font Downloader", FlatID: "org.gustavoperedo.FontDownloader"},
 	{Name: "FreeTube - YouTube", FlatID: "io.freetubeapp.FreeTube"},
+	{Name: "Android Studio", FlatID: "com.google.AndroidStudio"},
+	{Name: "Tomatillo - Pomodoro", FlatID: "io.github.diegopvlk.Tomatillo"},
 }

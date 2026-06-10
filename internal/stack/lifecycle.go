@@ -12,6 +12,20 @@ import (
 	"github.com/kaduvelasco/lumina-tools/internal/ui"
 )
 
+// composeDown runs "docker compose down" against the given compose file.
+func composeDown(ctx context.Context, exe *executor.Executor, stdout io.Writer, composeFile string) error {
+	cmd, base := composeCmd()
+	args := append(append([]string(nil), base...), "-f", composeFile, "down")
+	return exe.Run(ctx, executor.Options{Stdout: stdout, Stderr: stdout}, cmd, args...)
+}
+
+// composeUp runs "docker compose up -d --remove-orphans" against the given compose file.
+func composeUp(ctx context.Context, exe *executor.Executor, stdout io.Writer, composeFile string) error {
+	cmd, base := composeCmd()
+	args := append(append([]string(nil), base...), "-f", composeFile, "up", "-d", "--remove-orphans")
+	return exe.Run(ctx, executor.Options{Stdout: stdout, Stderr: stdout}, cmd, args...)
+}
+
 // Start brings the stack up in detached mode.
 func Start(ctx context.Context, exe *executor.Executor, stdout io.Writer, composeDir string) error {
 	ui.PrintHeader(stdout, "Iniciar Stack")
@@ -20,9 +34,7 @@ func Start(ctx context.Context, exe *executor.Executor, stdout io.Writer, compos
 		ui.WaitEnter(stdout)
 		return nil
 	}
-	cmd, base := composeCmd()
-	args := append(append([]string(nil), base...), "-f", filepath.Join(composeDir, "docker-compose.yml"), "up", "-d", "--remove-orphans")
-	if err := exe.Run(ctx, executor.Options{Stdout: stdout, Stderr: stdout}, cmd, args...); err != nil {
+	if err := composeUp(ctx, exe, stdout, filepath.Join(composeDir, "docker-compose.yml")); err != nil {
 		ui.Err(stdout, "Falha ao iniciar stack: "+err.Error())
 		ui.WaitEnter(stdout)
 		return err
@@ -40,14 +52,41 @@ func Stop(ctx context.Context, exe *executor.Executor, stdout io.Writer, compose
 		ui.WaitEnter(stdout)
 		return nil
 	}
-	cmd, base := composeCmd()
-	args := append(append([]string(nil), base...), "-f", filepath.Join(composeDir, "docker-compose.yml"), "down")
-	if err := exe.Run(ctx, executor.Options{Stdout: stdout, Stderr: stdout}, cmd, args...); err != nil {
+	if err := composeDown(ctx, exe, stdout, filepath.Join(composeDir, "docker-compose.yml")); err != nil {
 		ui.Err(stdout, "Falha ao finalizar stack: "+err.Error())
 		ui.WaitEnter(stdout)
 		return err
 	}
 	ui.Success(stdout, "Stack finalizada com sucesso.")
+	ui.WaitEnter(stdout)
+	return nil
+}
+
+// Restart brings the stack down and then up again.
+func Restart(ctx context.Context, exe *executor.Executor, stdout io.Writer, composeDir string) error {
+	ui.PrintHeader(stdout, "Reiniciar Stack")
+	if composeDir == "" {
+		ui.Warning(stdout, "Stack não configurada. Execute 'Configurar > Criar Stack' primeiro.")
+		ui.WaitEnter(stdout)
+		return nil
+	}
+	composeFile := filepath.Join(composeDir, "docker-compose.yml")
+
+	ui.Info(stdout, "Finalizando containers...")
+	if err := composeDown(ctx, exe, stdout, composeFile); err != nil {
+		ui.Err(stdout, "Falha ao finalizar stack: "+err.Error())
+		ui.WaitEnter(stdout)
+		return err
+	}
+
+	ui.Info(stdout, "Iniciando containers...")
+	if err := composeUp(ctx, exe, stdout, composeFile); err != nil {
+		ui.Err(stdout, "Falha ao iniciar stack: "+err.Error())
+		ui.WaitEnter(stdout)
+		return err
+	}
+
+	ui.Success(stdout, "Stack reiniciada com sucesso.")
 	ui.WaitEnter(stdout)
 	return nil
 }

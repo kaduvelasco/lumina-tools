@@ -31,12 +31,22 @@ Do **not** mix languages inside the same file.
 
 ## Agent Behavior
 
+- **When in doubt, always ask.** Do not assume, guess, or proceed with uncertainty — stop and ask the user first.
 - Make **minimal and precise changes**.
 - Modify **only files relevant to the task**.
+- Prefer **editing existing files** over creating new ones; only create a file when the task explicitly requires it.
 - Respect the **existing project structure**.
 - Prefer **simple and readable** solutions.
-- Avoid unnecessary refactoring or large rewrites unless explicitly requested.
-- If a task requires a large refactor, **ask the user before proceeding**.
+- Avoid unnecessary refactoring or large rewrites; if one is truly required, **ask the user before proceeding**.
+
+---
+
+## Communication
+
+- Respond **concisely**. Match response length to request complexity — a simple question gets a direct answer, not headers and sections.
+- Do not add preamble before acting ("I'll now look at X and then...") — just act.
+- Do not summarize what you just did at the end of a response. The user can read the diff.
+- For **exploratory questions** ("what do you think about X?", "how could we approach Y?"), respond with a short recommendation and the main tradeoff — do not implement until the user confirms.
 
 ---
 
@@ -72,6 +82,9 @@ Generated code must:
 - Use clear and consistent naming.
 - Prioritize readability over cleverness.
 - Avoid unnecessary abstractions and overengineering.
+- Default to **no comments**; only comment the WHY when the reason is non-obvious from the code itself.
+- Do not remove or disable existing tests unless explicitly requested.
+- If the project has a test suite, new logic should include corresponding tests.
 
 ---
 
@@ -118,7 +131,7 @@ Made with ❤️ and AI by [Kadu Velasco](https://github.com/kaduvelasco)
 
 ### General Documentation
 
-Internal documents for planning, architecture notes, decisions and technical reference.
+Internal documents for planning, architecture notes, decisions, and technical reference.
 
 **Rules:**
 
@@ -128,7 +141,10 @@ Internal documents for planning, architecture notes, decisions and technical ref
 - Suitable for: implementation plans, architecture decisions, research notes, changelogs, meeting notes.
 - Not required to follow GitHub public conventions (no bilingual copies, no README structure).
 
-**Placement:** `docs/` directory or project root, depending on scope.
+**Placement:**
+
+- `docs/` — internal technical documents not meant for GitHub display.
+- Project root — documents relevant to contributors (e.g., `CHANGELOG.md`, ADRs).
 
 **Examples:** `docs/architecture.md`, `docs/decisions.md`, `CHANGELOG.md`, `implementation-plan.md`
 
@@ -144,14 +160,6 @@ AI agents must never:
 
 If a task appears to require sensitive information, **ask the user instead of generating it**.
 
----
-
-## General Principles
-
-- Implement **only what was requested** — avoid scope creep.
-- Keep solutions **simple and maintainable**.
-- Preserve the existing architecture.
-- When in doubt, **ask the user before proceeding**.
 
 
 ## Language-Specific Standards

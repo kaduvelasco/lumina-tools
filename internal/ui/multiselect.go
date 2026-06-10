@@ -38,25 +38,24 @@ var msKeys = msKeyMap{
 
 // ── model ─────────────────────────────────────────────────────────────────────
 
+const msPageSize = 10
+
 type msModel struct {
 	items     []SelectItem
 	cursor    int
 	confirmed bool
 	aborted   bool
+	width     int
 }
-
-var (
-	msChecked   = lipgloss.NewStyle().Foreground(lipgloss.Color("#00FF88"))
-	msUnchecked = lipgloss.NewStyle().Foreground(lipgloss.Color("#666666"))
-	msActive    = lipgloss.NewStyle().Foreground(lipgloss.Color("#FF99FF")).Bold(true)
-	msHint      = lipgloss.NewStyle().Foreground(lipgloss.Color("#555555"))
-	msCount     = lipgloss.NewStyle().Foreground(lipgloss.Color("#9966FF"))
-)
 
 func (m msModel) Init() tea.Cmd { return nil }
 
 func (m msModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
-	if msg, ok := msg.(tea.KeyMsg); ok {
+	switch msg := msg.(type) {
+	case tea.WindowSizeMsg:
+		m.width = msg.Width
+		return m, nil
+	case tea.KeyMsg:
 		switch {
 		case key.Matches(msg, msKeys.Up):
 			if m.cursor > 0 {
@@ -87,29 +86,81 @@ func (m msModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 }
 
 func (m msModel) View() string {
-	var sb strings.Builder
-	sb.WriteString(msHint.Render("  Setas: navegar  |  Espaco: selecionar  |  Enter: confirmar  |  q: cancelar") + "\n\n")
+	t := loadScriptTheme()
 
-	for i, item := range m.items {
-		checkbox := msUnchecked.Render("[ ]")
+	w := m.width
+	if w < 20 {
+		w = 80
+	}
+	// Width(w-2) + border(2) = w (same formula as printPanel).
+	contentW := w - 2
+	if contentW < 10 {
+		contentW = 10
+	}
+
+	themedPanel := func(color lipgloss.Color, content string) string {
+		return lipgloss.NewStyle().
+			Border(lipgloss.RoundedBorder()).
+			BorderForeground(color).
+			Padding(0, 1).
+			Width(contentW).
+			Render(content)
+	}
+
+	hintStyle    := lipgloss.NewStyle().Foreground(t.muted)
+	checkedStyle := lipgloss.NewStyle().Foreground(t.success)
+	unchecked    := lipgloss.NewStyle().Foreground(t.muted)
+	activeStyle  := lipgloss.NewStyle().Foreground(t.accent).Bold(true)
+	countStyle   := lipgloss.NewStyle().Foreground(t.accent)
+
+	// Instructions panel.
+	hint := hintStyle.Render("Setas: navegar  |  Espaço: selecionar  |  Enter: confirmar  |  q: cancelar")
+
+	// Pagination: show msPageSize items at a time, page derived from cursor.
+	totalPages := (len(m.items) + msPageSize - 1) / msPageSize
+	page := m.cursor / msPageSize
+	start := page * msPageSize
+	end := start + msPageSize
+	if end > len(m.items) {
+		end = len(m.items)
+	}
+
+	// Items list panel (current page only).
+	var listSb strings.Builder
+	for i := start; i < end; i++ {
+		item := m.items[i]
+		checkbox := unchecked.Render("[ ]")
 		if item.Selected {
-			checkbox = msChecked.Render("[x]")
+			checkbox = checkedStyle.Render("[x]")
 		}
 		label := item.Label
 		if i == m.cursor {
-			label = msActive.Render(item.Label)
+			label = activeStyle.Render(item.Label)
 		}
-		sb.WriteString(fmt.Sprintf("  %s  %s\n", checkbox, label))
+		listSb.WriteString(fmt.Sprintf("  %s  %s\n", checkbox, label))
 	}
 
+	// Count + page indicator panel.
 	count := 0
 	for _, it := range m.items {
 		if it.Selected {
 			count++
 		}
 	}
+	countText := fmt.Sprintf("%d selecionado(s)", count)
+	if totalPages > 1 {
+		pageStyle := lipgloss.NewStyle().Foreground(t.muted)
+		countText = countStyle.Render(countText) + "   " + pageStyle.Render(fmt.Sprintf("Página %d de %d", page+1, totalPages))
+	} else {
+		countText = countStyle.Render(countText)
+	}
+
+	var sb strings.Builder
+	sb.WriteString(themedPanel(t.muted, hint))
 	sb.WriteString("\n")
-	sb.WriteString(msCount.Render(fmt.Sprintf("  %d selecionado(s)", count)) + "\n")
+	sb.WriteString(themedPanel(t.primary, strings.TrimRight(listSb.String(), "\n")))
+	sb.WriteString("\n")
+	sb.WriteString(themedPanel(t.primary, countText))
 	return sb.String()
 }
 
@@ -160,13 +211,18 @@ func (m ssModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 }
 
 func (m ssModel) View() string {
+	t := loadScriptTheme()
+	hintStyle    := lipgloss.NewStyle().Foreground(t.muted)
+	activeStyle  := lipgloss.NewStyle().Foreground(t.accent).Bold(true)
+	inactiveStyle := lipgloss.NewStyle().Foreground(t.muted)
+
 	var sb strings.Builder
-	sb.WriteString(msHint.Render("  ↑↓/jk navegar  |  Enter selecionar  |  q/esc cancelar") + "\n\n")
+	sb.WriteString(hintStyle.Render("  ↑↓/jk navegar  |  Enter selecionar  |  q/esc cancelar") + "\n\n")
 	for i, item := range m.items {
 		if i == m.cursor {
-			sb.WriteString(msActive.Render("  › "+item.Label) + "\n")
+			sb.WriteString(activeStyle.Render("  › "+item.Label) + "\n")
 		} else {
-			sb.WriteString(msUnchecked.Render("    "+item.Label) + "\n")
+			sb.WriteString(inactiveStyle.Render("    "+item.Label) + "\n")
 		}
 	}
 	return sb.String()
@@ -207,7 +263,7 @@ func RunSingleSelect(ctx context.Context, stdin io.Reader, stdout io.Writer, ite
 // RunMultiSelect shows an interactive multi-select list.
 // Returns the updated items slice and whether the user confirmed (vs. aborted with q/Esc).
 func RunMultiSelect(ctx context.Context, stdin io.Reader, stdout io.Writer, items []SelectItem) ([]SelectItem, bool, error) {
-	m := msModel{items: items}
+	m := msModel{items: items, width: 80}
 	opts := []tea.ProgramOption{
 		tea.WithOutput(stdout),
 		tea.WithContext(ctx),

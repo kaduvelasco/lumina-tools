@@ -9,6 +9,9 @@ import (
 
 	"github.com/charmbracelet/lipgloss"
 	"golang.org/x/term"
+
+	"github.com/kaduvelasco/lumina-tools/internal/config"
+	"github.com/kaduvelasco/lumina-tools/internal/version"
 )
 
 // ── logo ─────────────────────────────────────────────────────────────────────
@@ -51,59 +54,141 @@ func writerFD(w io.Writer) int {
 
 // ── shared styles ─────────────────────────────────────────────────────────────
 
-var (
-	styleDivider = lipgloss.NewStyle().Foreground(lipgloss.Color("#9966FF"))
-	styleTitle   = lipgloss.NewStyle().Foreground(lipgloss.Color("#FF99FF")).Bold(true)
+var styleDivider = lipgloss.NewStyle().Foreground(lipgloss.Color("#9966FF"))
 
-	panelInfo    = lipgloss.NewStyle().Border(lipgloss.RoundedBorder()).BorderForeground(lipgloss.Color("#9966FF")).Padding(0, 1)
-	panelError   = lipgloss.NewStyle().Border(lipgloss.RoundedBorder()).BorderForeground(lipgloss.Color("#FF4466")).Padding(0, 1)
-	panelWarning = lipgloss.NewStyle().Border(lipgloss.RoundedBorder()).BorderForeground(lipgloss.Color("#FFAA00")).Padding(0, 1)
-	panelSuccess = lipgloss.NewStyle().Border(lipgloss.RoundedBorder()).BorderForeground(lipgloss.Color("#00FF88")).Padding(0, 1)
-)
+// ── theme ─────────────────────────────────────────────────────────────────────
+
+type scriptTheme struct {
+	primary lipgloss.Color
+	accent  lipgloss.Color
+	muted   lipgloss.Color
+	success lipgloss.Color
+	err     lipgloss.Color
+	warning lipgloss.Color
+}
+
+// scriptThemes mirrors the color palette in internal/tui/theme.go.
+var scriptThemes = map[string]scriptTheme{
+	"Lumina":      {"#9966FF", "#FF99FF", "#666666", "#00FF88", "#FF4466", "#FFAA00"},
+	"Claro":       {"#5500CC", "#7700EE", "#777777", "#006633", "#BB0000", "#AA5500"},
+	"Dracula":     {"#BD93F9", "#FF79C6", "#6272A4", "#50FA7B", "#FF5555", "#FFB86C"},
+	"Nord":        {"#81A1C1", "#88C0D0", "#4C566A", "#A3BE8C", "#BF616A", "#EBCB8B"},
+	"Tokyo Night": {"#7AA2F7", "#BB9AF7", "#565F89", "#9ECE6A", "#F7768E", "#E0AF68"},
+	"Gruvbox":     {"#D79921", "#FABD2F", "#928374", "#B8BB26", "#FB4934", "#FE8019"},
+}
+
+func loadScriptTheme() scriptTheme {
+	cfg, err := config.Load()
+	if err != nil || cfg.Theme == "" {
+		return scriptThemes["Lumina"]
+	}
+	t, ok := scriptThemes[cfg.Theme]
+	if !ok {
+		return scriptThemes["Lumina"]
+	}
+	return t
+}
 
 // ── PrintHeader ───────────────────────────────────────────────────────────────
 
-// PrintHeader clears the terminal, prints the LUMINA logo, then a
-// divider / "LUMINA TOOLS :: title" / divider section.
+// PrintHeader clears the terminal and renders the chrome-style header bar:
+// left = brand identity, right = action title (mirrors the TUI v2 header).
+// Colors follow the theme saved in the user's config.
 func PrintHeader(w io.Writer, title string) {
 	fmt.Fprint(w, "\033[2J\033[H")
-	fmt.Fprint(w, cachedHeader)
+	t := loadScriptTheme()
+
+	sAccent  := lipgloss.NewStyle().Foreground(t.accent)
+	sMuted   := lipgloss.NewStyle().Foreground(t.muted)
+	sPrimary := lipgloss.NewStyle().Foreground(t.primary)
+	sBox     := lipgloss.NewStyle().
+		Border(lipgloss.RoundedBorder()).
+		BorderForeground(t.primary).
+		Padding(0, 2)
+
 	width := termWidth(w)
-	div := styleDivider.Render(strings.Repeat("-", width))
-	fmt.Fprintln(w, div)
-	fmt.Fprintln(w, styleTitle.Render("LUMINA TOOLS :: "+title))
-	fmt.Fprintln(w, div)
+	left := lipgloss.JoinHorizontal(lipgloss.Center,
+		sAccent.Render("◈ "),
+		sMuted.Render("lumina"),
+		sPrimary.Bold(true).Render(".tools"),
+		sMuted.Render("  │  "),
+		sMuted.Render(version.Version),
+	)
+	right := sMuted.Render(title)
+
+	// HeaderBox: Padding(0,2)=4 + Border=2 → content = width-6.
+	contentW := width - 6
+	if contentW < 20 {
+		contentW = 20
+	}
+	spacerW := contentW - lipgloss.Width(left) - lipgloss.Width(right)
+	if spacerW < 1 {
+		spacerW = 1
+	}
+	spacer := lipgloss.NewStyle().Width(spacerW).Render("")
+	line := lipgloss.JoinHorizontal(lipgloss.Top, left, spacer, right)
+
+	fmt.Fprintln(w, sBox.Render(line))
 	fmt.Fprintln(w)
 }
 
 // ── panels ────────────────────────────────────────────────────────────────────
 
-func printPanel(w io.Writer, style lipgloss.Style, text string) {
-	maxW := termWidth(w) - 4
-	fmt.Fprintln(w, style.MaxWidth(maxW).Render(text))
+func panel(color lipgloss.Color) lipgloss.Style {
+	return lipgloss.NewStyle().
+		Border(lipgloss.RoundedBorder()).
+		BorderForeground(color).
+		Padding(0, 1)
 }
 
-// Info prints a purple-bordered panel for general messages.
-func Info(w io.Writer, text string) { printPanel(w, panelInfo, text) }
+func printPanel(w io.Writer, style lipgloss.Style, text string) {
+	// Width(n) in lipgloss v1 includes padding; border adds 2.
+	// Panel has Padding(0,1)=2. Width(width-2) → visual = (width-2)+2 = width.
+	width := termWidth(w)
+	contentW := width - 2
+	if contentW < 10 {
+		contentW = 10
+	}
+	fmt.Fprintln(w, style.Width(contentW).Render(text))
+}
 
-// Err prints a red-bordered panel for errors.
-func Err(w io.Writer, text string) { printPanel(w, panelError, text) }
+// Info prints a primary-colored bordered panel for general messages.
+func Info(w io.Writer, text string) {
+	t := loadScriptTheme()
+	printPanel(w, panel(t.primary), text)
+}
 
-// Warning prints a yellow-bordered panel for warnings.
-func Warning(w io.Writer, text string) { printPanel(w, panelWarning, text) }
+// Err prints an error-colored bordered panel.
+func Err(w io.Writer, text string) {
+	t := loadScriptTheme()
+	printPanel(w, panel(t.err), text)
+}
 
-// Success prints a green-bordered panel for success messages.
-func Success(w io.Writer, text string) { printPanel(w, panelSuccess, text) }
+// Warning prints a warning-colored bordered panel.
+func Warning(w io.Writer, text string) {
+	t := loadScriptTheme()
+	printPanel(w, panel(t.warning), text)
+}
+
+// Success prints a success-colored bordered panel.
+func Success(w io.Writer, text string) {
+	t := loadScriptTheme()
+	printPanel(w, panel(t.success), text)
+}
+
+// PrintBox renders content inside a primary-color bordered panel at full terminal width.
+func PrintBox(w io.Writer, content string) {
+	t := loadScriptTheme()
+	printPanel(w, panel(t.primary), content)
+}
 
 // ── WaitEnter ────────────────────────────────────────────────────────────────
 
-// WaitEnter prints a divider and blocks until the user presses Enter.
+// WaitEnter prints a themed panel and blocks until the user presses Enter.
 // Reads from os.Stdin directly — safe inside tea.Exec where the real terminal is active.
 func WaitEnter(w io.Writer) {
-	fmt.Fprintln(w)
-	fmt.Fprintln(w, styleDivider.Render(strings.Repeat("-", termWidth(w))))
-	fmt.Fprint(w, "  Pressione ENTER para continuar...")
+	t := loadScriptTheme()
+	printPanel(w, panel(t.muted), "Pressione ENTER para continuar...")
 	r := bufio.NewReader(os.Stdin)
 	_, _ = r.ReadString('\n')
-	fmt.Fprintln(w)
 }

@@ -31,12 +31,22 @@ Do **not** mix languages inside the same file.
 
 ## Agent Behavior
 
+- **When in doubt, always ask.** Do not assume, guess, or proceed with uncertainty — stop and ask the user first.
 - Make **minimal and precise changes**.
 - Modify **only files relevant to the task**.
+- Prefer **editing existing files** over creating new ones; only create a file when the task explicitly requires it.
 - Respect the **existing project structure**.
 - Prefer **simple and readable** solutions.
-- Avoid unnecessary refactoring or large rewrites unless explicitly requested.
-- If a task requires a large refactor, **ask the user before proceeding**.
+- Avoid unnecessary refactoring or large rewrites; if one is truly required, **ask the user before proceeding**.
+
+---
+
+## Communication
+
+- Respond **concisely**. Match response length to request complexity — a simple question gets a direct answer, not headers and sections.
+- Do not add preamble before acting ("I'll now look at X and then...") — just act.
+- Do not summarize what you just did at the end of a response. The user can read the diff.
+- For **exploratory questions** ("what do you think about X?", "how could we approach Y?"), respond with a short recommendation and the main tradeoff — do not implement until the user confirms.
 
 ---
 
@@ -72,6 +82,9 @@ Generated code must:
 - Use clear and consistent naming.
 - Prioritize readability over cleverness.
 - Avoid unnecessary abstractions and overengineering.
+- Default to **no comments**; only comment the WHY when the reason is non-obvious from the code itself.
+- Do not remove or disable existing tests unless explicitly requested.
+- If the project has a test suite, new logic should include corresponding tests.
 
 ---
 
@@ -118,7 +131,7 @@ Made with ❤️ and AI by [Kadu Velasco](https://github.com/kaduvelasco)
 
 ### General Documentation
 
-Internal documents for planning, architecture notes, decisions and technical reference.
+Internal documents for planning, architecture notes, decisions, and technical reference.
 
 **Rules:**
 
@@ -128,7 +141,10 @@ Internal documents for planning, architecture notes, decisions and technical ref
 - Suitable for: implementation plans, architecture decisions, research notes, changelogs, meeting notes.
 - Not required to follow GitHub public conventions (no bilingual copies, no README structure).
 
-**Placement:** `docs/` directory or project root, depending on scope.
+**Placement:**
+
+- `docs/` — internal technical documents not meant for GitHub display.
+- Project root — documents relevant to contributors (e.g., `CHANGELOG.md`, ADRs).
 
 **Examples:** `docs/architecture.md`, `docs/decisions.md`, `CHANGELOG.md`, `implementation-plan.md`
 
@@ -144,14 +160,6 @@ AI agents must never:
 
 If a task appears to require sensitive information, **ask the user instead of generating it**.
 
----
-
-## General Principles
-
-- Implement **only what was requested** — avoid scope creep.
-- Keep solutions **simple and maintainable**.
-- Preserve the existing architecture.
-- When in doubt, **ask the user before proceeding**.
 
 
 ## Language-Specific Standards
@@ -317,6 +325,22 @@ if errors.As(err, &ve) {
 
 ## Concurrency
 
+### Create contexts with timeout or cancellation
+
+Always derive contexts from a parent — never use `context.Background()` deep in a call chain.
+
+```go
+// Timeout — cancels automatically after the deadline
+ctx, cancel := context.WithTimeout(parentCtx, 10*time.Second)
+defer cancel()
+
+// Cancellation — caller controls when to stop
+ctx, cancel := context.WithCancel(parentCtx)
+defer cancel()
+```
+
+`defer cancel()` is always required — even when the context times out on its own, calling cancel releases the associated resources immediately.
+
 ### Always pass context as the first parameter
 
 ```go
@@ -330,6 +354,9 @@ func Fetch(ctx context.Context, url string) ([]byte, error) {
         return nil, fmt.Errorf("fetch %s: %w", url, err)
     }
     defer resp.Body.Close()
+    if resp.StatusCode != http.StatusOK {
+        return nil, fmt.Errorf("fetch %s: unexpected status %d", url, resp.StatusCode)
+    }
     return io.ReadAll(resp.Body)
 }
 ```
@@ -362,7 +389,6 @@ func FetchAll(ctx context.Context, urls []string) ([][]byte, error) {
     g, ctx := errgroup.WithContext(ctx)
     results := make([][]byte, len(urls))
     for i, url := range urls {
-        i, url := i, url
         g.Go(func() error {
             data, err := Fetch(ctx, url)
             if err != nil {
@@ -494,11 +520,53 @@ return sb.String()
 ```go
 var pool = sync.Pool{New: func() any { return new(bytes.Buffer) }}
 
-func handle(data []byte) []byte {
+func handle(data []byte) string {
     buf := pool.Get().(*bytes.Buffer)
     defer func() { buf.Reset(); pool.Put(buf) }()
     buf.Write(data)
-    return buf.Bytes()
+    return buf.String() // String copies the bytes — safe to return after defer returns buf to pool
+}
+```
+
+Never return `buf.Bytes()` — the slice points into the buffer's internal array, which may be overwritten once the buffer is returned to the pool. Use `buf.String()` or copy explicitly.
+
+---
+
+## Testing
+
+### Table-driven tests
+
+Use `t.Run` with a slice of test cases. Keep the struct definition inline.
+
+```go
+func TestAdd(t *testing.T) {
+    tests := []struct {
+        name string
+        a, b int
+        want int
+    }{
+        {"positive", 1, 2, 3},
+        {"zero", 0, 0, 0},
+        {"negative", -1, -2, -3},
+    }
+    for _, tt := range tests {
+        t.Run(tt.name, func(t *testing.T) {
+            if got := Add(tt.a, tt.b); got != tt.want {
+                t.Errorf("Add(%d, %d) = %d, want %d", tt.a, tt.b, got, tt.want)
+            }
+        })
+    }
+}
+```
+
+Use `t.Helper()` in shared assertion helpers so failure lines point to the caller, not the helper:
+
+```go
+func assertEqual[T comparable](t *testing.T, got, want T) {
+    t.Helper()
+    if got != want {
+        t.Errorf("got %v, want %v", got, want)
+    }
 }
 ```
 
@@ -551,9 +619,9 @@ Use for creating automation scripts, CLI tools, and installers.
 
 ---
 
-## Boilerplate
+## Boilerplate — Lumina Ecosystem Scripts
 
-Every script must start with this exact structure.
+Use for scripts that belong to the Lumina library ecosystem and depend on `lib/utils.sh` and `lib/system.sh`. For standalone scripts, see the minimal boilerplate below.
 
 ```bash
 #!/usr/bin/env bash
@@ -582,10 +650,44 @@ for _lib in utils.sh system.sh; do
 done
 unset _lib
 
+# --- Temp Directory (auto-cleaned on EXIT) ---
+# Uncomment when the script needs a temporary workspace:
+# _tmpdir=$(mktemp -d)
+
 # --- Functions ---
 main() {
     detect_pkg_manager
     show_header "Optional Subtitle"
+    # Logic here
+}
+
+main "$@"
+```
+
+---
+
+## Boilerplate — Standalone Script
+
+Use for scripts that do not depend on Lumina libraries.
+
+```bash
+#!/usr/bin/env bash
+# =============================================================================
+# Script Name : script-name.sh
+# Description : Brief description of the purpose
+# Version     : 1.0.0
+# =============================================================================
+set -Eeuo pipefail
+shopt -s inherit_errexit
+
+readonly SCRIPT_DIR="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd -P)"
+
+trap 'printf "\n\033[0;31mError at %s:%d\033[0m\n" "${BASH_SOURCE[0]}" "$LINENO" >&2' ERR
+trap '[[ -n "${_tmpdir:-}" ]] && rm -rf -- "$_tmpdir"' EXIT
+
+# _tmpdir=$(mktemp -d)   # uncomment when the script needs a temporary workspace
+
+main() {
     # Logic here
 }
 
@@ -631,6 +733,15 @@ Never redefine colors. Use the variables exported by `utils.sh`:
 | `${H1}`, `${H2}` | Default terminal | Headers |
 | `${RESET}` | — | Reset |
 
+Always pair a color variable with `${RESET}` and use `printf '%b\n'` to expand escape sequences:
+
+```bash
+printf '%b\n' "${C1}Error: file not found${RESET}"
+printf '%b\n' "${C2}Done: all packages installed${RESET}"
+printf '%b\n' "${C3}Warning: running as root${RESET}"
+printf '%b\n' "${C4}Info: using apt${RESET}"
+```
+
 ### Output functions
 
 | Function | Description |
@@ -672,6 +783,8 @@ show_lumina_header() {
     printf '%b\n' ""
 }
 ```
+
+Each script defines its own `show_header` wrapper that calls `show_lumina_header` with a custom subtitle:
 
 ```bash
 show_header() {
@@ -718,12 +831,38 @@ require_cmd() {
 
 ### Sensitive files (credentials)
 
-Create with restricted permissions **before** writing data.
+Create with restricted permissions **before** writing data. Always wrap in a function — `local` is only valid inside a function.
 
 ```bash
-local secret_file="$HOME/.secrets"
-(umask 077; touch "$secret_file")
-printf 'TOKEN=%q\n' "$user_token" >> "$secret_file"
+store_secret() {
+    local secret_file="$HOME/.secrets"
+    (umask 077; touch "$secret_file")
+    printf 'TOKEN=%q\n' "$user_token" >> "$secret_file"
+}
+```
+
+### Argument parsing
+
+Use a `while/case` loop for flags and positional arguments. Supports both short and long options.
+
+```bash
+main() {
+    local verbose=0
+    local output=""
+
+    while [[ $# -gt 0 ]]; do
+        case "$1" in
+            -v|--verbose) verbose=1; shift ;;
+            -o|--output)  [[ $# -lt 2 ]] && die "Option $1 requires an argument"
+                          output="$2"; shift 2 ;;
+            --)           shift; break ;;
+            -*)           die "Unknown option: $1" ;;
+            *)            break ;;
+        esac
+    done
+
+    # remaining positional args are now in "$@"
+}
 ```
 
 ---

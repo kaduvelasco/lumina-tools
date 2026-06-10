@@ -25,15 +25,15 @@ type Release struct {
 
 // Run checks for a newer version and applies the update if one is available.
 func Run(ctx context.Context, exe *executor.Executor, stdout io.Writer) error {
-	fmt.Fprintf(stdout, "\n=== Atualizar Lumina Tools ===\n\n")
-	fmt.Fprintf(stdout, "Versao atual: %s\n", version.Version)
+	ui.PrintHeader(stdout, "Atualizar Lumina Tools")
+	ui.Info(stdout, "Versão atual: "+version.Version)
 
 	rel, err := latestRelease(ctx)
 	if err != nil {
 		return fmt.Errorf("verificar atualizacoes: %w", err)
 	}
 
-	fmt.Fprintf(stdout, "Versao disponivel: %s\n\n", rel.Version)
+	ui.Info(stdout, "Versão disponível: "+rel.Version)
 
 	normalize := func(v string) string { return strings.TrimPrefix(strings.TrimSpace(v), "v") }
 	if normalize(rel.Version) == normalize(version.Version) {
@@ -42,12 +42,13 @@ func Run(ctx context.Context, exe *executor.Executor, stdout io.Writer) error {
 		return nil
 	}
 
-	fmt.Fprintf(stdout, "-> Baixando %s (%s/%s)...\n", rel.Version, runtime.GOOS, runtime.GOARCH)
+	ui.Info(stdout, fmt.Sprintf("Baixando %s (%s/%s)...", rel.Version, runtime.GOOS, runtime.GOARCH))
 	if err := apply(ctx, exe, stdout, rel); err != nil {
 		return fmt.Errorf("atualizar binario: %w", err)
 	}
 
-	fmt.Fprintf(stdout, "\n+ Lumina atualizado para %s. Reinicie o programa.\n", rel.Version)
+	ui.Success(stdout, fmt.Sprintf("Lumina atualizado para %s. Reinicie o programa.", rel.Version))
+	ui.WaitEnter(stdout)
 	return nil
 }
 
@@ -116,7 +117,7 @@ func apply(ctx context.Context, exe *executor.Executor, stdout io.Writer, rel *R
 	tmp.Close()
 	defer os.Remove(tmpPath) // no-op if already renamed/moved
 
-	fmt.Fprintf(stdout, "   -> Baixando para %s...\n", tmpPath)
+	ui.Info(stdout, "Baixando para "+tmpPath+"...")
 	if err := downloadFile(ctx, rel.DownloadURL, tmpPath); err != nil {
 		return fmt.Errorf("baixar: %w", err)
 	}
@@ -127,7 +128,7 @@ func apply(ctx context.Context, exe *executor.Executor, stdout io.Writer, rel *R
 
 	// Try atomic rename first; fall back to sudo mv if permission denied.
 	if err := os.Rename(tmpPath, currentExe); err != nil {
-		fmt.Fprintln(stdout, "   -> Permissao negada. Tentando com sudo...")
+		ui.Warning(stdout, "Permissão negada. Tentando com sudo...")
 		if sudoErr := exe.Run(ctx,
 			executor.Options{RequiresSudo: true, Stdout: stdout, Stderr: stdout},
 			"mv", "--", tmpPath, currentExe,

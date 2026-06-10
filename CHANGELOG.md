@@ -6,7 +6,209 @@ O formato segue o padrão [Keep a Changelog](https://keepachangelog.com/pt-BR/1.
 
 ---
 
-## [1.0.5] — em desenvolvimento
+## [2.0.0] — em desenvolvimento
+
+### Adicionado
+
+#### Pós-instalação — Google Chrome (`lumina system pos`)
+- Google Chrome instalado automaticamente ao final da pós-instalação em todas as distribuições suportadas
+- Debian (Mint, ZorinOS, Ubuntu): baixa `google-chrome-stable_current_amd64.deb` direto do CDN do Google e instala via `apt-get install`
+- Fedora: instala `google-chrome-stable_current_x86_64.rpm` via `dnf install <URL>`
+- Pulado automaticamente se `google-chrome` já estiver presente no PATH
+
+#### Gerenciamento Linux — Instalar Linux Toys (`lumina system toys`)
+- Novo item na seção "Gerenciamento Linux" da TUI e subcomando CLI `lumina system toys`
+- Executa o instalador oficial: `curl -fsSL https://linux.toys/install.sh | bash`
+- Implementado em `internal/system/linuxtoys/install.go`
+
+#### Gerenciamento Linux — Instalar MegaSync (`lumina system megasync`)
+- Novo item na seção "Gerenciamento Linux" da TUI e subcomando CLI `lumina system megasync`
+- Detecta automaticamente a distribuição via `ID` + `VERSION_ID` em `/etc/os-release` e baixa o pacote correto:
+  - Linux Mint 22.x → `megasync-xUbuntu_24.04_amd64.deb`
+  - Ubuntu 24.04 → `megasync-xUbuntu_24.04_amd64.deb`
+  - Ubuntu 26.04 → `megasync-xUbuntu_26.04_amd64.deb`
+  - ZorinOS 18.x → `megasync-xUbuntu_24.04_amd64.deb`
+  - Fedora 44 → `megasync-Fedora_44.x86_64.rpm`
+- Pulado automaticamente se `megasync` já estiver presente no PATH
+- Implementado em `internal/system/megasync/install.go`
+
+#### IDEs — DBeaver CE (`lumina dev ide`)
+- DBeaver CE adicionado ao catálogo de IDEs gerenciadas
+- Debian: repositório APT oficial com GPG keyring em `/usr/share/keyrings/dbeaver.gpg.key`
+- Fedora: instala RPM direto via URL (`dbeaver-ce-latest-linux-x86_64.rpm` via `dnf install`)
+- Arch/Unknown: mensagem orientando instalação manual pelo AUR (`yay -S dbeaver`)
+
+#### Aplicativos Flatpak — novos apps (`lumina apps install`)
+- Vivaldi (`com.vivaldi.Vivaldi`) adicionado ao catálogo
+- Android Studio (`com.google.AndroidStudio`) adicionado ao catálogo
+- Tomatillo — Pomodoro (`io.github.diegopvlk.Tomatillo`) adicionado ao catálogo
+- Catálogo passa de 28 para 31 aplicativos
+
+#### Pós-instalação — Remoção seletiva de Snaps (`lumina system pos ubuntu`)
+- Novo passo interativo no início da pós-instalação do Ubuntu 26.04
+- Executa `snap list`, exibe multi-select com todos os snaps instalados e remove os selecionados com `snap remove --purge`
+- Múltiplas passadas garantem a ordem correta de remoção respeitando dependências entre snaps (ex.: `snap-store` antes de `gnome-42-2204`)
+- Passo ignorado silenciosamente se o `snap` não estiver disponível
+
+#### Pós-instalação — Swapfile 4 GB (`lumina system pos`)
+- Criação automática de swapfile de 4 GB nas pós-instalações do Ubuntu 26.04, Linux Mint 22.3 e ZorinOS 18.1
+- Cria `/swapfile` com `fallocate -l 4G`, define permissão `600`, formata via `mkswap` e ativa com `swapon`
+- Persiste automaticamente em `/etc/fstab` (entrada `none swap sw 0 0`); guard `grep -qF` evita duplicatas em reexecuções
+- Passo ignorado silenciosamente se `/swapfile` já existir (idempotente)
+- Limpeza automática de `/swapfile` se `chmod` ou `mkswap` falharem
+- Implementado em `postinstall/common.go` como `setupSwapfile`; compartilhado entre Ubuntu, Mint e ZorinOS
+
+#### Pós-instalação — Ubuntu 26.04 — `gnome-software-plugin-flatpak`
+- `gnome-software-plugin-flatpak` adicionado à lista de pacotes essenciais do Ubuntu 26.04
+- Habilita a gestão de aplicativos Flatpak diretamente pelo GNOME Software
+
+#### Repositórios — Criar Código de Conduta (`lumina repo conduct`)
+- Novo subcomando `lumina repo conduct` e item "Criar Código de Conduta" na seção "Gerenciar Repositórios" da TUI
+- Cria `CODE_OF_CONDUCT.md` (inglês) e `CODIGO_DE_CONDUTA.md` (português) no diretório atual, baseados no Contributor Covenant v2.1
+- Se algum arquivo já existir, exibe aviso e solicita confirmação antes de sobrescrever
+- Implementado em `internal/manager/repo/conduct.go`
+
+#### Configurar Lumina (`lumina self-config`)
+- Nova ação interativa para editar workspace, diretório Docker Compose, tema e escopo Flatpak
+- Disponível via TUI (Home → Configurar Lumina) e CLI (`lumina self-config`)
+- Implementado em `internal/selfupdate/configure.go`
+
+#### Stack — reiniciar containers (`lumina stack restart`)
+- `stack.Restart` em `internal/stack/lifecycle.go`: `docker compose down` + `up -d --remove-orphans` em uma única ação
+- Disponível via TUI e CLI
+
+#### Novos comandos top-level: `lumina apps` e `lumina gnome`
+- `lumina apps <install|uninstall|web>` — atalho direto para aplicativos Flatpak (era `lumina system apps`)
+- `lumina gnome <pre|ext|themes|icons|cursor|flatpak>` — atalho direto para personalização GNOME (era `lumina system gnome`)
+- `lumina system apps` e `lumina system gnome` mantidos por compatibilidade
+
+#### `lumina ai context` e `lumina ai clear`
+- `lumina ai` reestruturado com subcomandos explícitos: `context` (gerar) e `clear` (remover)
+- `ClearContext` em `internal/manager/ai/context.go`: remove CLAUDE.md, GEMINI.md, AGENTS.md, arquivos de regras, ignore files, instruções de modelo e diretório php-references; reporta contagem de itens removidos
+
+#### `lumina repo gitignore`
+- `gitignore` adicionado como subcomando de `lumina repo`
+- Anterior: `lumina gitignore` era top-level
+
+#### `lumina dev create-workspace` e `lumina dev create-stack-php`
+- Atalhos diretos no CLI para criação de workspace e docker-compose da stack PHP
+- Equivalentes a `lumina stack config workspace` e `lumina stack config stack`
+
+#### Terminais — integração com gerenciadores de arquivos (`lumina dev term`)
+- Ao instalar um terminal, entradas "Abrir no [Terminal]" são criadas automaticamente nos menus de contexto do Nautilus, Nemo e Dolphin
+- Ao desinstalar, as entradas são removidas automaticamente
+- Suporte: Kitty (`--directory`), Alacritty (`--working-directory`), Black Box (`flatpak run com.raggesilver.BlackBox --working-directory`), GNOME Console (`--working-directory`)
+- Starship não recebe entradas de menu (sem conceito de diretório de abertura)
+- Implementado em `internal/dev/terminal/contextmenu.go`
+
+### Alterado
+
+#### Criar Contexto AI — saída agrupada em painel único (`lumina ai context`)
+- Todas as mensagens `+ arquivo criado.` e `- arquivo removido.` são coletadas durante a execução e exibidas em um único `PrintBox` ao final, em vez de serem impressas inline uma a uma
+- A mensagem de info "Atualizando arquivos de contexto para: ..." é exibida antes das operações de arquivo, garantindo a ordem correta: info → box com lista → success → WaitEnter
+
+#### Limpar Contexto AI — seleção antes da remoção (`lumina ai clear`)
+- Antes de remover qualquer arquivo, exibe multi-select com todos os arquivos de contexto presentes no diretório atual — todos pré-selecionados (remover tudo por padrão)
+- O usuário pode desmarcar arquivos que deseja preservar; apenas os itens marcados são removidos
+- Função promovida de não-interativa para interativa: `ClearContext` agora aceita `stdin io.Reader`, despacho na TUI atualizado de `exec` para `execInteractive`
+
+### Corrigido
+
+#### Pós-instalação — Chrome e MegaSync: arquivo temporário não removido em falha de download
+- `installChromeDeb` em `postinstall/common.go`: arquivo `.deb` temporário agora é removido quando o `wget` falha, eliminando arquivo órfão em `/tmp`
+- `megasync/install.go`: mesma correção aplicada; o arquivo temporário é removido em todos os caminhos de erro
+
+#### Pós-instalação — Chrome e MegaSync: caminhos previsíveis em `/tmp` (TOCTOU)
+- Migração de caminhos fixos como `/tmp/google-chrome.deb` para `os.CreateTemp("", "google-chrome-*.deb")` em `installChromeDeb` e `megasync/install.go`
+- Elimina condição de corrida TOCTOU: um arquivo temporário de nome previsível pode ser substituído por um link simbólico entre a checagem e a abertura
+
+#### IDEs — DBeaver CE: keyring sobrescrito a cada reinstalação (`lumina dev ide`)
+- Guard `[ -f "$KEYRING" ] ||` adicionado ao script de instalação APT — o keyring e o arquivo de fontes só são criados se ainda não existirem
+
+#### IDEs — DBeaver CE: prompts interativos e ESC sequences durante instalação (`lumina dev ide`)
+- `DEBIAN_FRONTEND=noninteractive` e flags `-o Dpkg::Use-Pty=0 -o Dpkg::Progress-Fancy=0 -o APT::Color=0` adicionados à instalação APT do DBeaver, alinhando com o padrão dos demais instaladores
+
+#### MegaSync — falha silenciosa com `/etc/os-release` incompleto
+- Guard adicionado em `resolvePackage`: retorna erro descritivo se o campo `ID` estiver vazio no `/etc/os-release`
+
+#### Chrome, MegaSync, DBeaver — instalação silenciosa falha em arquiteturas não-amd64
+- Guard `runtime.GOARCH != "amd64"` adicionado em `installChromeDeb`, `installChromeFedora`, `megasync.Install` e `installDBeaver` (caso Fedora)
+- Em vez de falhar no meio da instalação com erro de pacote incompatível, exibe mensagem clara e orienta instalação manual
+
+### Refatorado
+
+#### Detecção de distribuição — `distro.RawID()` e `distro.VersionID()`
+- `internal/distro` expõe `RawID()` (campo `ID=` bruto, ex.: `"linuxmint"`) e `VersionID()` (campo `VERSION_ID=`, ex.: `"24.04"`), ambos com cache `sync.Once`
+- `megasync/install.go` migrado para usar as novas funções; funções locais `parseOSRelease` e `osReleaseTrim` removidas (eliminada duplicação de lógica de parsing)
+- `resolvePackage` passa a aceitar `(id, ver string)` — testável sem I/O de sistema de arquivos
+
+#### MegaSync — helper de download encapsulado
+- `downloadToTemp(ctx, exe, url, pattern)` extraído em `megasync/install.go`: encapsula `os.CreateTemp` + `wget`, remove o arquivo temporário automaticamente se o download falhar
+
+#### Testes unitários — `megasync` e `conduct`
+- `megasync/install_test.go`: 10 casos de tabela para `resolvePackage` cobrindo Mint 22.x, Ubuntu 24.04/26.04, ZorinOS 18.x, Fedora 44 e casos não suportados
+- `manager/repo/conduct_test.go`: verifica presença de todas as seções obrigatórias em `conductEN` e `conductPT` e os nomes dos arquivos de saída
+
+### Removido
+
+#### Pós-instalação — Fedora KDE 44 e Kubuntu 26.04
+- Scripts `internal/system/postinstall/fedora_kde.go` e `kubuntu.go` removidos
+- Menu "Personalizar Linux": "Pré-requisitos KDE" e "Temas KDE" removidos
+
+#### `lumina gitignore` (top-level)
+- Removido — use `lumina repo gitignore`
+
+#### Limpeza de planejamento
+- `new-lumina-tolls/` (scratch Go de planejamento) removido
+- `lumina-tools-2-planner.md` removido
+
+### Corrigido
+
+#### Stack — `$CFG->dataroot is not writable` no Moodle (`lumina dev create-stack-php`)
+- Dockerfile do PHP gerado por `Compose()` agora recebe o UID do host como build arg (`ARG UID=1000` com fallback; `RUN usermod -u ${UID} www-data`) em vez de fixar `usermod -u 1000 www-data`
+- `buildCompose` passa a receber `uid int` (detectado via `os.Getuid()` em `Compose()`) e injeta `UID: %d` em `build.args` de cada serviço PHP no `docker-compose.yml`
+- Causa: em máquinas onde o usuário principal não tem UID 1000 (ex.: contas adicionais, ambientes corporativos), o `www-data` do container ficava com dono diferente do diretório montado como `$CFG->dataroot`, mesmo após `FixPerms` — resultando em "dataroot is not writable"
+- **Stacks já existentes precisam reconstruir as imagens PHP** para a correção ter efeito: `docker compose build --no-cache && docker compose up -d --force-recreate`, seguido de "Ajustar Permissões"
+
+#### Flatpak — desinstalação usava escopo configurado em vez do escopo real do app (`lumina apps uninstall`)
+- `Uninstall` em `apps/uninstall.go` agora detecta via `InstalledScopeMap` o escopo real (`--system` ou `--user`) de cada app antes de desinstalar
+- Anterior: usava sempre `config.FlatpakFlag()` — apps instalados em escopo diferente do configurado falhavam na desinstalação
+
+#### TUI — entrada direta para "Criar Stack PHP" navegava para seção errada
+- `RunAtStackConfig` apontava para seção "Aplicativos Linux" (cursor em "Desinstalar") em vez de "Ambiente de Desenvolvimento" → "Criar Stack PHP"
+- Introduzido durante a migração para o layout v2; corrigido com constantes nomeadas para todos os índices de seção em `internal/tui/content.go`
+
+#### Pós-instalação — execuções duplicadas de `add-apt-repository`
+- Mint, Ubuntu e ZorinOS verificam se o componente apt já está habilitado antes de chamar `add-apt-repository universe/multiverse`
+- `aptComponentEnabled` em `postinstall/common.go` suporta formato `.list` (legado) e DEB822 `.sources`
+
+#### Pós-instalação — Flathub duplicado em ZorinOS e Fedora
+- `zorin.go` e `fedora.go`: chamadas a `ensureFlatpakReady` removidas — Flathub já vem pré-configurado nessas distros
+- `fedora.go`: `rpmFusionEnabled` guard adicionado — RPM Fusion não é reinstalado se já estiver presente
+
+### Reformulado
+
+#### TUI — layout e navegação completamente redesenhados
+
+O modelo de navegação em pilha (menu → submenu → ação) foi substituído por um layout de três níveis fixos:
+
+- **Cabeçalho persistente**: marca `◈ lumina.tools · <versão>` e indicador de conectividade à internet (DNS lookup periódico de `github.com` a cada 45s)
+- **Painel duplo**: submenu à esquerda + painel de conteúdo à direita
+  - `Tab` / `Shift+Tab` alternam foco entre os painéis
+  - No submenu: `↑↓` navegam o cursor; seleção atualiza o conteúdo em tempo real (master-detail)
+  - No conteúdo: título e comando CLI do item selecionado; executável com `Enter`
+- **Rodapé contextual**: hints mudam conforme o painel em foco ou overlay ativo
+
+#### TUI — overlays
+
+- **Confirmação de saída**: `q` abre overlay "Deseja encerrar o Lumina Tools?"; `Enter`/`y`/`s` confirmam; `Esc`/`q`/`n` cancelam — `Ctrl+C` sai instantaneamente sem overlay
+- **Seletor de tema**: `t` abre overlay com lista de temas; preview ao vivo ao mover o cursor; `Enter` confirma e salva; `Esc` cancela e restaura o tema anterior
+
+#### TUI — remoção do código v1
+
+- `internal/tui/model.go`, `menus.go`, `header.go`, `footer.go`, `styles.go` removidos — substituídos por `model_v2.go`, `content.go` e `chrome.go`
+
+## [1.0.5] — 2026-06-04
 
 ### Adicionado
 

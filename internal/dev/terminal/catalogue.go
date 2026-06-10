@@ -10,18 +10,20 @@ import (
 
 // Terminal describes a terminal emulator managed by lumina.
 type Terminal struct {
-	Name   string
-	Cmd    string
-	FlatID string // non-empty when installed via Flatpak
+	Name     string
+	Cmd      string
+	FlatID   string // non-empty when installed via Flatpak
+	DirFlag  string // flag to open in a directory (empty = no context menu, e.g. Starship)
+	MenuExec string // exec command for context menus; defaults to Cmd when empty
 }
 
 // Catalogue lists all terminals and shell tools managed by lumina.
 var Catalogue = []Terminal{
-	{Name: "Kitty", Cmd: "kitty", FlatID: ""},
-	{Name: "Alacritty", Cmd: "alacritty", FlatID: ""},
-	{Name: "Black Box", Cmd: "blackbox-terminal", FlatID: "com.raggesilver.BlackBox"},
-	{Name: "GNOME Console", Cmd: "kgx", FlatID: ""},
-	{Name: "Starship", Cmd: "starship", FlatID: ""},
+	{Name: "Kitty", Cmd: "kitty", DirFlag: "--directory"},
+	{Name: "Alacritty", Cmd: "alacritty", DirFlag: "--working-directory"},
+	{Name: "Black Box", Cmd: "blackbox-terminal", FlatID: "com.raggesilver.BlackBox", DirFlag: "--working-directory", MenuExec: "flatpak run com.raggesilver.BlackBox"},
+	{Name: "GNOME Console", Cmd: "kgx", DirFlag: "--working-directory"},
+	{Name: "Starship", Cmd: "starship"},
 }
 
 // InstalledMap returns which terminals are currently installed (by Name).

@@ -35,14 +35,20 @@ var ubuntuPackages = []string{
 	"software-properties-common",
 	"ubuntu-drivers-common",
 	"timeshift",
+	"gnome-software-plugin-flatpak",
 }
 
 // Ubuntu runs the post-install routine for Ubuntu 26.04.
 func Ubuntu(ctx context.Context, exe *executor.Executor, stdout io.Writer) error {
 	ui.PrintHeader(stdout, "Pós Instalação — Ubuntu 26.04")
 
+	removeSnaps(ctx, exe, stdout)
+
 	ui.Info(stdout, "Habilitando repositórios universe e multiverse...")
 	for _, repo := range []string{"universe", "multiverse"} {
+		if aptComponentEnabled(ctx, exe, repo) {
+			continue
+		}
 		if err := exe.Run(ctx,
 			executor.Options{RequiresSudo: true, Stdout: stdout, Stderr: stdout},
 			"add-apt-repository", "-y", repo,
@@ -70,6 +76,8 @@ func Ubuntu(ctx context.Context, exe *executor.Executor, stdout io.Writer) error
 		ui.Warning(stdout, "Falha ao aplicar sysctl: "+err.Error())
 	}
 
+	setupSwapfile(ctx, exe, stdout)
+
 	if err := step(ctx, exe, stdout, "Ativando TRIM para SSDs...",
 		"systemctl", "enable", "--now", "fstrim.timer"); err != nil {
 		ui.Warning(stdout, "Falha ao ativar TRIM: "+err.Error())
@@ -90,6 +98,8 @@ func Ubuntu(ctx context.Context, exe *executor.Executor, stdout io.Writer) error
 	}
 
 	_ = step(ctx, exe, stdout, "Detectando drivers adicionais...", "ubuntu-drivers", "autoinstall")
+
+	installChromeDeb(ctx, exe, stdout)
 
 	ui.Success(stdout, "Pós-instalação do Ubuntu concluída.")
 	ui.Warning(stdout, "Reinicie o sistema para aplicar todas as mudanças.")

@@ -75,13 +75,11 @@ func Fedora(ctx context.Context, exe *executor.Executor, stdout io.Writer) error
 		dnfInstall,
 	)
 
-	if err := ensureFlatpakReady(ctx, exe, stdout); err != nil {
-		ui.Warning(stdout, "Falha ao configurar Flatpak: "+err.Error())
-	}
-
 	ui.Info(stdout, "Limpando pacotes desnecessários...")
 	_ = exe.Run(ctx, executor.Options{RequiresSudo: true, Stdout: stdout, Stderr: stdout}, "dnf", "autoremove", "-y")
 	_ = exe.Run(ctx, executor.Options{RequiresSudo: true, Stdout: stdout, Stderr: stdout}, "dnf", "clean", "all")
+
+	installChromeFedora(ctx, exe, stdout)
 
 	ui.Success(stdout, "Pós-instalação do Fedora concluída.")
 	ui.Warning(stdout, "Reinicie o sistema para aplicar todas as mudanças.")
@@ -91,6 +89,11 @@ func Fedora(ctx context.Context, exe *executor.Executor, stdout io.Writer) error
 
 func enableRPMFusion(ctx context.Context, exe *executor.Executor, stdout io.Writer) error {
 	ui.Info(stdout, "Habilitando repositórios RPM Fusion...")
+
+	if rpmFusionEnabled(ctx, exe) {
+		ui.Info(stdout, "RPM Fusion já habilitado, pulando.")
+		return nil
+	}
 
 	ver, err := exe.Output(ctx, executor.Options{}, "rpm", "-E", "%fedora")
 	if err != nil {

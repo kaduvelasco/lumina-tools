@@ -12,12 +12,15 @@ _lumina() {
     case $state in
         cmd_args)
             case $line[1] in
-                system)  _lumina_system  ;;
-                stack)   _lumina_stack   ;;
-                dev)     _lumina_dev     ;;
-                db)      _lumina_db      ;;
-                repo)    _lumina_repo    ;;
-                set)     _lumina_set     ;;
+                system)    _lumina_system   ;;
+                stack)     _lumina_stack    ;;
+                dev)       _lumina_dev      ;;
+                apps)      _lumina_apps     ;;
+                gnome)     _lumina_gnome    ;;
+                ai)        _lumina_ai       ;;
+                db)        _lumina_db       ;;
+                repo)      _lumina_repo     ;;
+                set)       _lumina_set      ;;
             esac
             ;;
     esac
@@ -29,13 +32,15 @@ _lumina_cmds() {
         'system:Gerenciamento Linux (pós-install, fontes, apps, update)'
         'stack:DevStack Docker (config, lifecycle, banco)'
         'dev:Ferramentas de desenvolvimento (LLMs, IDEs, terminais, MCP)'
-        'ai:Gerar contexto AI (CLAUDE.md, GEMINI.md, AGENTS.md…)'
-        'gitignore:Criar/atualizar .gitignore com base na stack detectada'
+        'apps:Aplicativos Flatpak (instalar, desinstalar, webapps)'
+        'gnome:Personalização GNOME (temas, ícones, cursor, extensões)'
+        'ai:Contextos AI (gerar, limpar)'
         'db:Operações MariaDB (backup, restore, otimizar)'
-        'repo:Identidade Git (global, init, clone, ident)'
-        'set:Configurar Lumina (workspace, docker, theme)'
+        'repo:Repositórios Git (global, init, clone, ident, gitignore, conduct)'
+        'set:Configurar Lumina (workspace, docker, theme, flatpak)'
         'self-update:Verificar e instalar atualizações'
         'self-uninstall:Remover o binário e as configurações'
+        'self-config:Configurar Lumina interativamente'
         'version:Exibir a versão instalada'
         'help:Exibir referência de comandos'
     )
@@ -55,7 +60,7 @@ _lumina_system() {
         args)
             case $line[1] in
                 pos)  _values 'distro' 'mint' 'zorin' 'ubuntu' 'fedora' ;;
-                apps) _values 'ação' 'install' 'uninstall' ;;
+                apps) _values 'ação' 'install' 'uninstall' 'webapps' ;;
             esac
             ;;
     esac
@@ -68,8 +73,11 @@ _lumina_system_cmds() {
         'fonts:Gerenciar fontes'
         'templates:Templates de arquivos em ~/Templates'
         'apps:Instalar/desinstalar aplicativos Flatpak'
+        'gnome:Personalização GNOME'
         'update:Atualizar sistema completo'
         'ulauncher:Instalar Ulauncher e temas'
+        'toys:Instalar Linux Toys'
+        'megasync:Instalar MegaSync'
     )
     _describe 'subcomando' cmds
 }
@@ -86,7 +94,7 @@ _lumina_stack() {
     case $state in
         args)
             case $line[1] in
-                config) _values 'etapa' 'pre' 'docker' 'workspace' 'stack' ;;
+                config) _values 'etapa' 'docker' 'workspace' 'stack' ;;
             esac
             ;;
     esac
@@ -95,9 +103,10 @@ _lumina_stack() {
 _lumina_stack_cmds() {
     local -a cmds
     cmds=(
-        'config:Configurar stack (pre, docker, workspace, stack)'
+        'config:Configurar stack (docker, workspace, stack)'
         'start:Iniciar stack de containers'
         'end:Finalizar stack de containers'
+        'restart:Reiniciar stack de containers'
         'log:Visualizar logs em tempo real'
         'status:Status e uso de recursos'
         'db:Exibir dados de conexão do banco'
@@ -112,11 +121,52 @@ _lumina_dev() {
     local -a cmds
     cmds=(
         'pre:Instalar pré-requisitos (git, libsecret, gnome-keyring)'
+        'go:Gerenciar instalação do Go'
         'llm:Gerenciar CLIs LLM (Claude Code, Gemini, Codex, OpenCode)'
         'ide:Gerenciar IDEs (Zed, Windsurf, VS Code, VSCodium)'
         'term:Gerenciar terminais (Kitty, Alacritty, Black Box)'
         'mcp:Gerenciar servidores MCP'
         'update:Atualizar todas as ferramentas instaladas'
+        'create-workspace:Criar estrutura de workspace'
+        'create-stack-php:Criar/atualizar docker-compose da stack PHP'
+    )
+    _describe 'subcomando' cmds
+}
+
+# ── apps ──────────────────────────────────────────────────────────────────────
+
+_lumina_apps() {
+    local -a cmds
+    cmds=(
+        'install:Instalar aplicativos Flatpak'
+        'uninstall:Desinstalar aplicativos Flatpak'
+        'web:WebApps recomendados'
+    )
+    _describe 'subcomando' cmds
+}
+
+# ── gnome ─────────────────────────────────────────────────────────────────────
+
+_lumina_gnome() {
+    local -a cmds
+    cmds=(
+        'pre:Instalar pré-requisitos GNOME'
+        'ext:Extensões GNOME recomendadas'
+        'themes:Gerenciar temas GTK'
+        'icons:Gerenciar pacotes de ícones'
+        'cursor:Gerenciar temas de cursor'
+        'flatpak:Aplicar tema GTK nos apps Flatpak'
+    )
+    _describe 'subcomando' cmds
+}
+
+# ── ai ────────────────────────────────────────────────────────────────────────
+
+_lumina_ai() {
+    local -a cmds
+    cmds=(
+        'context:Gerar/atualizar contextos AI no diretório atual'
+        'clear:Remover contextos AI do diretório atual'
     )
     _describe 'subcomando' cmds
 }
@@ -144,6 +194,8 @@ _lumina_repo() {
         'init:Iniciar novo repositório'
         'clone:Clonar repositório'
         'ident:Aplicar identidade local ao repositório atual'
+        'gitignore:Criar/atualizar .gitignore com base na stack detectada'
+        'conduct:Criar CODE_OF_CONDUCT.md e CODIGO_DE_CONDUTA.md'
     )
     _describe 'subcomando' cmds
 }

@@ -13,8 +13,10 @@ _lumina_completions() {
     if [[ $cword -eq 1 ]]; then
         COMPREPLY=($(compgen -W "
             system stack dev
-            ai gitignore db repo set
-            self-update self-uninstall version help
+            apps gnome ai
+            db repo set
+            self-update self-uninstall self-config
+            version help
         " -- "$cur"))
         return 0
     fi
@@ -25,19 +27,28 @@ _lumina_completions() {
     if [[ $cword -eq 2 ]]; then
         case "$cmd" in
             system)
-                COMPREPLY=($(compgen -W "pos fonts templates apps update ulauncher" -- "$cur"))
+                COMPREPLY=($(compgen -W "pos fonts templates apps gnome update ulauncher toys megasync" -- "$cur"))
                 ;;
             stack)
-                COMPREPLY=($(compgen -W "config start end log status db fix-perm" -- "$cur"))
+                COMPREPLY=($(compgen -W "config start end restart log status db fix-perm" -- "$cur"))
                 ;;
             dev)
-                COMPREPLY=($(compgen -W "pre llm ide term mcp update" -- "$cur"))
+                COMPREPLY=($(compgen -W "pre go llm ide term mcp update create-workspace create-stack-php" -- "$cur"))
+                ;;
+            apps)
+                COMPREPLY=($(compgen -W "install uninstall web" -- "$cur"))
+                ;;
+            gnome)
+                COMPREPLY=($(compgen -W "pre ext themes icons cursor flatpak" -- "$cur"))
+                ;;
+            ai)
+                COMPREPLY=($(compgen -W "context clear" -- "$cur"))
                 ;;
             db)
                 COMPREPLY=($(compgen -W "backup restore remove optimize moodle" -- "$cur"))
                 ;;
             repo)
-                COMPREPLY=($(compgen -W "global init clone ident" -- "$cur"))
+                COMPREPLY=($(compgen -W "global init clone ident gitignore conduct" -- "$cur"))
                 ;;
             set)
                 COMPREPLY=($(compgen -W "workspace docker theme flatpak" -- "$cur"))
@@ -55,10 +66,10 @@ _lumina_completions() {
                 COMPREPLY=($(compgen -W "mint zorin ubuntu fedora" -- "$cur"))
                 ;;
             system/apps)
-                COMPREPLY=($(compgen -W "install uninstall" -- "$cur"))
+                COMPREPLY=($(compgen -W "install uninstall webapps" -- "$cur"))
                 ;;
             stack/config)
-                COMPREPLY=($(compgen -W "pre docker workspace stack" -- "$cur"))
+                COMPREPLY=($(compgen -W "docker workspace stack" -- "$cur"))
                 ;;
             set/theme)
                 COMPREPLY=($(compgen -W "lumina light dracula nord tokyo gruvbox" -- "$cur"))

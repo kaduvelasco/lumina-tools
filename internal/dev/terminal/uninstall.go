@@ -59,9 +59,10 @@ func Uninstall(ctx context.Context, exe *executor.Executor, stdout io.Writer) er
 		ui.Info(stdout, "Desinstalando "+t.Name+"...")
 		if err := uninstallOne(ctx, exe, stdout, t, family); err != nil {
 			ui.Warning(stdout, "Falha: "+err.Error())
-		} else {
-			ui.Success(stdout, t.Name+" removido.")
+			continue
 		}
+		ui.Success(stdout, t.Name+" removido.")
+		removeContextMenuEntries(t, stdout)
 	}
 
 	ui.WaitEnter(stdout)

@@ -39,7 +39,7 @@ curl -fsSL https://starship.rs/install.sh | sh -s -- --yes --bin-dir "$HOME/.loc
 	}
 
 	if _, statErr := os.Stat(filepath.Join(home, ".config", "starship.toml")); os.IsNotExist(statErr) {
-		fmt.Fprintln(stdout, "\nEscolha um preset do Starship:")
+		ui.Info(stdout, "Escolha um preset do Starship:")
 		for i, p := range starshipPresets {
 			fmt.Fprintf(stdout, "  %d. %s\n", i+1, p)
 		}

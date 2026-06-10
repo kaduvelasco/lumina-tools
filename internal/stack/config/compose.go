@@ -44,7 +44,7 @@ func Compose(ctx context.Context, exe *executor.Executor, stdout io.Writer) erro
 	dockerDir := filepath.Join(workspace, "docker")
 
 	// PHP versions
-	fmt.Fprintf(stdout, "Versões PHP suportadas: %s\n", strings.Join(supportedPHP, " "))
+	ui.PrintBox(stdout, "Versões PHP suportadas: "+strings.Join(supportedPHP, " "))
 	fmt.Fprint(stdout, "Versões desejadas (ex: 8.1 8.2): ")
 	rawVersions := strings.TrimSpace(prompt.ReadLine())
 	if rawVersions == "" {
@@ -68,7 +68,7 @@ func Compose(ctx context.Context, exe *executor.Executor, stdout io.Writer) erro
 	dbPass := strings.TrimSpace(prompt.ReadLine())
 	if dbPass == "" {
 		dbPass = genPassword()
-		fmt.Fprintln(stdout, "  Senha gerada e salva no arquivo .env")
+		ui.Info(stdout, "Senha gerada e salva no arquivo .env")
 	}
 	dbRoot := genPassword()
 
@@ -99,7 +99,7 @@ func Compose(ctx context.Context, exe *executor.Executor, stdout io.Writer) erro
 	defaultVer := strings.ReplaceAll(versions[0], ".", "")
 
 	// docker-compose.yml
-	compose := buildCompose(versions, workspace)
+	compose := buildCompose(versions, workspace, os.Getuid())
 	if err := os.WriteFile(filepath.Join(dockerDir, "docker-compose.yml"), []byte(compose), 0o644); err != nil {
 		return fmt.Errorf("escrever docker-compose.yml: %w", err)
 	}
@@ -202,7 +202,7 @@ func genPassword() string {
 	return s
 }
 
-func buildCompose(versions []string, workspace string) string {
+func buildCompose(versions []string, workspace string, uid int) string {
 	var phpServices, nginxDeps strings.Builder
 	for _, v := range versions {
 		name := "php" + strings.ReplaceAll(v, ".", "")
@@ -214,6 +214,7 @@ func buildCompose(versions []string, workspace string) string {
       dockerfile: php/Dockerfile
       args:
         PHP_VERSION: %s
+        UID: %d
     restart: unless-stopped
     volumes:
       - %s/www/html:/var/www/html
@@ -242,7 +243,7 @@ func buildCompose(versions []string, workspace string) string {
           memory: 1G
     networks:
       - docker-php-network
-`, name, name, v, workspace, workspace, workspace, name))
+`, name, name, v, uid, workspace, workspace, workspace, name))
 
 		nginxDeps.WriteString(fmt.Sprintf("      %s:\n        condition: service_healthy\n", name))
 	}
@@ -374,6 +375,8 @@ server {
 const phpDockerfile = `ARG PHP_VERSION=8.1
 FROM php:${PHP_VERSION}-fpm
 
+ARG UID=1000
+
 RUN apt-get update && apt-get install -y --no-install-recommends \
     libzip-dev libpng-dev libicu-dev libxml2-dev libonig-dev \
     libjpeg-dev libfreetype6-dev libpq-dev libcurl4-openssl-dev libxslt-dev \
@@ -389,7 +392,7 @@ RUN pecl install xdebug || true && docker-php-ext-enable xdebug || true
 
 COPY --from=composer:latest /usr/bin/composer /usr/bin/composer
 
-RUN usermod -u 1000 www-data
+RUN usermod -u ${UID} www-data
 WORKDIR /var/www/html
 `
 

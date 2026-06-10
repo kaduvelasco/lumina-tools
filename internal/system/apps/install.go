@@ -12,20 +12,48 @@ import (
 	"github.com/kaduvelasco/lumina-tools/internal/ui"
 )
 
-// InstalledIDs returns a set of Flatpak app IDs currently installed on the system.
-func InstalledIDs(ctx context.Context, exe *executor.Executor) map[string]bool {
-	out, err := exe.Output(ctx, executor.Options{}, "flatpak", "list", config.FlatpakFlag(), "--app", "--columns=application")
+// installedByScope returns app IDs installed in a specific Flatpak scope.
+func installedByScope(ctx context.Context, exe *executor.Executor, scope string) map[string]bool {
+	out, err := exe.Output(ctx, executor.Options{}, "flatpak", "list", scope, "--app", "--columns=application")
 	if err != nil {
 		return map[string]bool{}
 	}
 	result := make(map[string]bool)
 	for _, line := range strings.Split(out, "\n") {
-		id := strings.TrimSpace(line)
-		if id != "" {
+		if id := strings.TrimSpace(line); id != "" {
 			result[id] = true
 		}
 	}
 	return result
+}
+
+// listAll returns a map from app ID to its scope flag ("--system" or "--user"),
+// querying both scopes in a single pass. System takes precedence over user.
+func listAll(ctx context.Context, exe *executor.Executor) map[string]string {
+	result := make(map[string]string)
+	for id := range installedByScope(ctx, exe, "--user") {
+		result[id] = "--user"
+	}
+	for id := range installedByScope(ctx, exe, "--system") {
+		result[id] = "--system"
+	}
+	return result
+}
+
+// InstalledIDs returns all Flatpak app IDs installed in either system or user scope.
+func InstalledIDs(ctx context.Context, exe *executor.Executor) map[string]bool {
+	all := listAll(ctx, exe)
+	out := make(map[string]bool, len(all))
+	for id := range all {
+		out[id] = true
+	}
+	return out
+}
+
+// InstalledScopeMap returns a map from app ID to its scope flag ("--system" or "--user").
+// When an app is installed in both scopes, "--system" takes precedence.
+func InstalledScopeMap(ctx context.Context, exe *executor.Executor) map[string]string {
+	return listAll(ctx, exe)
 }
 
 // EnsureFlatpak checks whether flatpak is available and offers to install it if not.
@@ -34,7 +62,7 @@ func EnsureFlatpak(ctx context.Context, exe *executor.Executor, stdout io.Writer
 	if _, err := exe.Output(ctx, executor.Options{}, "which", "flatpak"); err == nil {
 		return nil
 	}
-	fmt.Fprintln(stdout, "→ Flatpak não encontrado. Instalando...")
+	ui.Info(stdout, "Flatpak não encontrado. Instalando...")
 	opts := executor.Options{RequiresSudo: true, Stdout: stdout, Stderr: stdout}
 	switch distro.Detect() {
 	case distro.Debian:
@@ -118,7 +146,7 @@ func SelectInstall(ctx context.Context, exe *executor.Executor, stdin io.Reader,
 // Install installs the Flatpak apps identified by flatIDs from Flathub.
 func Install(ctx context.Context, exe *executor.Executor, stdout io.Writer, flatIDs []string) error {
 	if len(flatIDs) == 0 {
-		fmt.Fprintln(stdout, "Nenhum aplicativo selecionado.")
+		ui.Info(stdout, "Nenhum aplicativo selecionado.")
 		return nil
 	}
 

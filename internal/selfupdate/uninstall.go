@@ -67,7 +67,7 @@ func Uninstall(ctx context.Context, exe *executor.Executor, stdout io.Writer) er
 	}
 
 	ui.Success(stdout, "Lumina Tools desinstalado com sucesso.")
-	fmt.Fprintln(stdout, "\nObrigado por usar o Lumina! Até a próxima.")
+	ui.Info(stdout, "Obrigado por usar o Lumina! Até a próxima.")
 	ui.WaitEnter(stdout)
 	return ErrUninstalled
 }

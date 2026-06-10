@@ -93,10 +93,10 @@ lumina-tools/
 
 ## Adicionando uma Nova Ação ao Menu
 
-1. Adicione uma constante `actXxx` em `internal/tui/menus.go`.
-2. Adicione `{label: "...", action: actXxx}` ao submenu correspondente em `itemsFor()`.
+1. Adicione uma constante `actXxx` no bloco iota em `internal/tui/content.go`.
+2. Adicione uma entrada `submenuEntry{title: "...", cmd: "lumina ...", action: actXxx}` ao slice `items` da seção correspondente em `sections`.
 3. Implemente a função de domínio no pacote apropriado.
-4. Adicione um `case actXxx:` em `runAction()` em `internal/tui/model.go`.
+4. Adicione um `case actXxx:` em `runActionV2()` em `internal/tui/model_v2.go`.
 5. Adicione o subcomando CLI correspondente em `internal/app/app.go`.
 
 ---
