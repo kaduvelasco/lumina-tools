@@ -5,6 +5,15 @@ Defines architecture, implementation rules, and best practices for secure, proto
 
 ---
 
+## Language
+
+| Context | Language |
+|---|---|
+| Responses to the user | Brazilian Portuguese (pt-BR) |
+| Code comments | English |
+
+---
+
 ## Core Philosophy
 
 MCP servers bridge AI assistants to external systems. Every decision must prioritize:
@@ -325,7 +334,13 @@ Never do any of the following:
 
 ---
 
-## Pre-commit Checklist
+## Quality
+
+```bash
+tsc --noEmit    # type-check without emitting
+eslint src/     # lint TypeScript source
+npm test        # run test suite (Vitest or Jest)
+```
 
 Before considering any tool implementation complete, verify:
 

@@ -23,16 +23,8 @@
 | Fontes | Instalar/remover JetBrains Mono, Noto, Carlito, Caladea e outros |
 | Templates de Arquivos | Criar templates em branco (Office, LibreOffice, código) em `~/Templates` |
 | Atualizar Sistema | Atualiza pacotes (apt/dnf/pacman), Snap e Flatpak em uma única etapa |
-| Ulauncher | Instalar ou desinstalar o Ulauncher com temas libadwaita |
 | Linux Toys | Instalar Linux Toys via instalador oficial |
 | MegaSync | Instalar o cliente MegaSync — pacote detectado automaticamente pela distro/versão |
-
-### Aplicativos (`lumina apps`)
-
-| Funcionalidade | Descrição |
-|---|---|
-| Aplicativos Flatpak | Instalar/remover a partir de um catálogo curado de 31 aplicativos |
-| WebApps sugeridos | Lista de aplicativos web com URL para abrir no navegador como PWA |
 
 #### O que a pós-instalação configura
 
@@ -58,7 +50,14 @@ Cada script é adaptado à distro alvo e realiza as seguintes etapas:
 
 > ¹ ZorinOS e Fedora já incluem Flatpak e Flathub pré-configurados — o script não os reinstala.
 
-### Personalização GNOME (`lumina gnome`)
+### Aplicativos Linux (`lumina apps`)
+
+| Funcionalidade | Descrição |
+|---|---|
+| Aplicativos Flatpak | Instalar/remover a partir de um catálogo curado de aplicativos |
+| WebApps recomendados | Lista de aplicativos web com URL para abrir no navegador como PWA |
+
+### Personalizar Linux (`lumina gnome`)
 
 Requer GNOME como desktop ativo. Todas as operações verificam o ambiente antes de executar.
 
@@ -71,22 +70,13 @@ Requer GNOME como desktop ativo. Todas as operações verificam o ambiente antes
 | Cursores | 4 temas: Layan, Sweet, Colloid, Future |
 | Flatpak | Aplicar tema GTK a todos os apps Flatpak via `flatpak override --user` |
 
-### DevStack (`lumina stack`)
-
-Ambiente de desenvolvimento PHP com Docker (multi-versão PHP + Nginx + MariaDB).
+### Ambiente de Desenvolvimento (`lumina dev`)
 
 | Funcionalidade | Descrição |
 |---|---|
-| Configurar | Docker Engine, workspace e docker-compose |
-| Ciclo de vida | Iniciar, finalizar, reiniciar, visualizar logs, monitorar recursos em tempo real |
-| Banco de Dados | Exibir credenciais de conexão MariaDB |
-| Permissões | Corrigir propriedade e permissões do workspace |
-
-### DevStuff (`lumina dev`)
-
-| Funcionalidade | Descrição |
-|---|---|
-| Pré-requisitos | Selecionar e instalar: pacotes base, ferramentas DevStuff, GitHub CLI, Docker Engine e Node.js via nvm (multi-seleção) |
+| Pré-requisitos | Selecionar e instalar: pacotes base, ferramentas dev, GitHub CLI, Docker Engine e Node.js via nvm (multi-seleção) |
+| Workspace | Criar estrutura de diretórios do workspace |
+| Stack PHP | Criar ou atualizar o `docker-compose.yml` da stack PHP |
 | Go | Instalar ou atualizar Go via tarball oficial (`go.dev/dl`) |
 | LLMs | Instalar/remover Claude Code, Antigravity CLI, Codex CLI, OpenCode CLI |
 | IDEs | Instalar/remover Zed, Windsurf, VS Code, VSCodium, DBeaver CE |
@@ -94,24 +84,52 @@ Ambiente de desenvolvimento PHP com Docker (multi-versão PHP + Nginx + MariaDB)
 | Servidores MCP | Instalar/remover servidores a partir de catálogo YAML embutido |
 | Atualizar Ferramentas | Atualizar todos os CLIs, IDEs e terminais instalados |
 
-### DevManager
+### Gerenciar Stack PHP (`lumina stack`)
+
+Ambiente de desenvolvimento PHP com Docker (multi-versão PHP + Nginx + MariaDB).
 
 | Funcionalidade | Descrição |
 |---|---|
-| Contexto AI | Gerar/atualizar `CLAUDE.md`, `GEMINI.md`, `AGENTS.md` e arquivos de regras para o projeto — saída agrupada exibida em painel único ao final |
-| Limpar Contexto AI | Remover contextos AI — exibe multi-select com todos os arquivos presentes para o usuário escolher o que remover |
+| Ciclo de vida | Iniciar, parar, reiniciar, visualizar logs e monitorar recursos em tempo real |
+| Permissões | Corrigir propriedade e permissões do workspace |
+
+### Gerenciar banco de Dados (`lumina db`)
+
+| Funcionalidade | Descrição |
+|---|---|
+| Backup | Realizar backup de banco MariaDB |
+| Restore | Restaurar banco a partir de backup |
+| Remover | Remover banco de dados |
+| Otimizar | Otimizar tabelas do banco |
+| Otimizar para Moodle | Ajustar MariaDB com parâmetros recomendados para Moodle |
+
+### Gerenciar Repositórios (`lumina repo`)
+
+| Funcionalidade | Descrição |
+|---|---|
+| Identidade Global | Configurar nome e e-mail globais do Git |
+| Iniciar repositório | Executar `git init` na pasta atual |
+| Clonar | Clonar repositório remoto |
+| Aplicar identificação | Aplicar credenciais Git a um repositório existente |
 | .gitignore | Criar/atualizar `.gitignore` com base na stack detectada em `.instructions/` |
-| Banco de Dados | Backup, restaurar, remover, otimizar tabelas e ajustar MariaDB para Moodle |
-| Repositórios | Configurar identidade Git global/local, init, clone, aplicar credenciais e criar código de conduta |
+| Código de Conduta | Criar arquivo de código de conduta |
 
-### Configurações Lumina
+### Gerenciar Contextos IA (`lumina ai`)
 
 | Funcionalidade | Descrição |
 |---|---|
+| Contexto AI | Gerar/atualizar `CLAUDE.md`, `GEMINI.md`, `AGENTS.md` e arquivos de regras para o projeto |
+| Limpar Contexto AI | Remover contextos AI — exibe multi-select com todos os arquivos presentes |
+
+### Home
+
+| Funcionalidade | Descrição |
+|---|---|
+| Sobre | Versão instalada e informações do projeto |
 | Configurar | Editar workspace, diretório Docker Compose, tema e escopo Flatpak interativamente |
 | Atualizar | Verificar e instalar a versão mais recente |
-| Desinstalar | Remover o binário e as configurações do sistema |
 | Ajuda | Referência completa de comandos com rolagem (Markdown renderizado via Glamour) |
+| Desinstalar | Remover o binário e as configurações do sistema |
 
 ---
 
@@ -163,7 +181,6 @@ A interface usa um layout em dois painéis: submenu à esquerda e painel de cont
 
 | Tecla | Ação |
 |---|---|
-| `1` `2` `3` `4` | Trocar seção |
 | `↑` `↓` | Navegar no submenu (ou ciclar botões no painel de conteúdo) |
 | `Tab` / `Shift+Tab` | Alternar foco entre submenu e conteúdo |
 | `Enter` | Executar botão selecionado |
@@ -194,21 +211,19 @@ lumina system pos [mint|zorin|ubuntu|fedora]   Pós-instalação (sem arg abre m
 lumina system fonts                            Gerenciar fontes (multi-seleção)
 lumina system templates                        Gerenciar templates de arquivos
 lumina system update                           Atualizar o sistema completo
-lumina system ulauncher                        Instalar Ulauncher e temas
-lumina system ulauncher uninstall              Desinstalar Ulauncher e remover dados
 lumina system toys                             Instalar Linux Toys
 lumina system megasync                         Instalar MegaSync (pacote detectado pela distro)
 ```
 
-#### Aplicativos
+#### Aplicativos Linux
 
 ```
 lumina apps install     Instalar aplicativos Flatpak (multi-seleção)
 lumina apps uninstall   Desinstalar aplicativos Flatpak (multi-seleção)
-lumina apps web         Lista de WebApps sugeridos
+lumina apps web         Lista de WebApps recomendados
 ```
 
-#### Personalização GNOME
+#### Personalizar Linux
 
 ```
 lumina gnome pre        Instalar pré-requisitos GNOME
@@ -219,12 +234,26 @@ lumina gnome cursor     Gerenciar temas de cursor (multi-seleção)
 lumina gnome flatpak    Aplicar tema GTK em apps Flatpak
 ```
 
-#### DevStack
+#### Ambiente de Desenvolvimento
+
+```
+lumina dev pre                Selecionar e instalar pré-requisitos (multi-seleção)
+lumina dev go                 Instalar ou atualizar Go via tarball oficial
+lumina dev llm                Gerenciar CLIs LLM (multi-seleção)
+lumina dev ide                Gerenciar IDEs (multi-seleção)
+lumina dev term               Gerenciar terminais (multi-seleção)
+lumina dev mcp                Gerenciar servidores MCP (multi-seleção)
+lumina dev update             Atualizar todas as ferramentas de desenvolvimento
+lumina dev create-workspace   Criar estrutura de workspace
+lumina dev create-stack-php   Criar/atualizar docker-compose da stack PHP
+```
+
+#### Gerenciar Stack PHP
 
 ```
 lumina stack config [docker|workspace|stack]   Configurar stack (sem arg abre menu)
 lumina stack start                             Iniciar stack de containers
-lumina stack end                               Finalizar stack de containers
+lumina stack end                               Parar stack de containers
 lumina stack restart                           Reiniciar stack de containers
 lumina stack log                               Visualizar logs em tempo real
 lumina stack status                            Status e uso de recursos
@@ -232,27 +261,32 @@ lumina stack db                                Exibir dados de conexão do banco
 lumina stack fix-perm                          Corrigir permissões do workspace
 ```
 
-#### DevStuff
+#### Gerenciar banco de Dados
 
 ```
-lumina dev pre                Selecionar e instalar pré-requisitos (pacotes base, DevStuff, GitHub CLI, Docker, Node.js)
-lumina dev go                 Instalar ou atualizar Go via tarball oficial
-lumina dev llm                Gerenciar CLIs LLM (multi-seleção)
-lumina dev ide                Gerenciar IDEs (multi-seleção)
-lumina dev term               Gerenciar terminais — Kitty, Alacritty, Black Box, GNOME Console, Starship (multi-seleção)
-lumina dev mcp                Gerenciar servidores MCP (multi-seleção)
-lumina dev update             Atualizar todas as ferramentas de desenvolvimento
-lumina dev create-workspace   Criar estrutura de workspace
-lumina dev create-stack-php   Criar/atualizar docker-compose da stack PHP
+lumina db backup    Realizar backup de banco MariaDB
+lumina db restore   Restaurar banco a partir de backup
+lumina db remove    Remover banco de dados
+lumina db optimize  Otimizar tabelas
+lumina db moodle    Otimizar MariaDB para Moodle
 ```
 
-#### DevManager
+#### Gerenciar Repositórios
 
 ```
-lumina ai context                                      Gerar/atualizar contexto AI (multi-seleção)
-lumina ai clear                                        Remover todos os contextos AI do diretório atual
-lumina db [backup|restore|remove|optimize|moodle]      Gerenciar banco de dados MariaDB
-lumina repo [global|init|clone|ident|gitignore|conduct] Gerenciar identidade Git e arquivos de projeto
+lumina repo global    Configurar identidade Git global
+lumina repo init      Iniciar repositório na pasta atual
+lumina repo clone     Clonar repositório remoto
+lumina repo ident     Aplicar identificação a repositório existente
+lumina repo gitignore Criar/atualizar .gitignore pela stack detectada
+lumina repo conduct   Criar código de conduta
+```
+
+#### Gerenciar Contextos IA
+
+```
+lumina ai context   Gerar/atualizar contexto AI (multi-seleção)
+lumina ai clear     Remover contextos AI do diretório atual
 ```
 
 #### Configuração via CLI

@@ -67,7 +67,7 @@ func TestGenerateSharedFiles_CreatesExpectedFiles(t *testing.T) {
 
 	var buf bytes.Buffer
 	active := []Model{models[0]} // Go
-	if err := generateSharedFiles(active, false, strings.NewReader(""), &buf); err != nil {
+	if err := generateSharedFiles(active, false, strings.NewReader(""), &buf, &strings.Builder{}); err != nil {
 		t.Fatalf("generateSharedFiles: %v", err)
 	}
 
@@ -88,7 +88,7 @@ func TestGenerateSharedFiles_ContainsInstructionReference(t *testing.T) {
 
 	var buf bytes.Buffer
 	active := []Model{models[0]} // Go — instruction: templates/instructions/GOLANG.md
-	if err := generateSharedFiles(active, false, strings.NewReader(""), &buf); err != nil {
+	if err := generateSharedFiles(active, false, strings.NewReader(""), &buf, &strings.Builder{}); err != nil {
 		t.Fatalf("generateSharedFiles: %v", err)
 	}
 
@@ -106,7 +106,7 @@ func TestGenerateSharedFiles_MultipleModels(t *testing.T) {
 
 	var buf bytes.Buffer
 	active := []Model{models[0], models[1]} // Go + Linux Bash
-	if err := generateSharedFiles(active, false, strings.NewReader(""), &buf); err != nil {
+	if err := generateSharedFiles(active, false, strings.NewReader(""), &buf, &strings.Builder{}); err != nil {
 		t.Fatalf("generateSharedFiles: %v", err)
 	}
 
@@ -127,7 +127,7 @@ func TestWriteInstruction_CreatesFile(t *testing.T) {
 
 	var buf bytes.Buffer
 	m := models[0] // Go
-	if err := writeInstruction(m, false, strings.NewReader(""), &buf); err != nil {
+	if err := writeInstruction(m, false, strings.NewReader(""), &buf, &strings.Builder{}); err != nil {
 		t.Fatalf("writeInstruction: %v", err)
 	}
 

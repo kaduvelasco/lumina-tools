@@ -293,6 +293,21 @@ final class InMemoryUserRepository implements UserRepositoryInterface
 
 ---
 
+## Anti-Patterns
+
+| Anti-pattern | Why |
+|---|---|
+| Catching `\Throwable` or `\Exception` broadly | Silences unexpected failures; catch specific types instead |
+| Hardcoded SQL strings in controllers or services | Mixes persistence with business logic; use repositories |
+| Reading `$_GET`/`$_POST`/`$_REQUEST` directly | Bypasses sanitization; use framework input helpers |
+| `new SomeService()` inline inside another class | Couples classes together and makes unit testing impossible |
+| `echo` or `print` inside domain or service classes | Couples business logic to output; return data and render at the boundary |
+| Magic numbers and bare string literals | Use named constants or enums for values with domain meaning |
+| Suppressing errors with `@` | Hides failures silently; handle errors explicitly |
+| Returning `null` instead of throwing on not-found | Forces callers to check return values; throw a specific exception instead |
+
+---
+
 ## Quality
 
 ```bash

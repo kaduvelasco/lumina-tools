@@ -5,6 +5,15 @@ Covers file structure, API usage, architecture patterns, and common mistakes.
 
 ---
 
+## Language
+
+| Context | Language |
+|---|---|
+| Responses to the user | Brazilian Portuguese (pt-BR) |
+| Code comments | English |
+
+---
+
 ## Development Environment
 
 - **Moodle Version:** {{MOODLE_VERSION}}
@@ -509,3 +518,13 @@ require(['local_example/example'], function(mod) {
 - SQL table names in raw queries must use `{bracket_format}`.
 - Follow **Moodle Coding Style** (based on PSR-12).
 - **Exclude from indexing:** `.git`, `node_modules`, `vendor`, `.grunt`, `moodledata`, `cache`.
+
+---
+
+## Quality
+
+```bash
+vendor/bin/phpcs --standard=moodle local/example/
+```
+
+- **moodle-cs** — Moodle coding style; install via `composer require --dev moodlehq/moodle-cs`.
