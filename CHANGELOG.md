@@ -6,7 +6,7 @@ O formato segue o padrão [Keep a Changelog](https://keepachangelog.com/pt-BR/1.
 
 ---
 
-## [2.0.0] — em desenvolvimento
+## [2.0.0] — 2026-06-10
 
 ### Adicionado
 
@@ -103,6 +103,17 @@ O formato segue o padrão [Keep a Changelog](https://keepachangelog.com/pt-BR/1.
 
 ### Alterado
 
+#### Templates de IA — padronização de seções entre `instructions/*.md`
+- `MOODLE.md`: adicionadas seções `## Language` e `## Quality` (moodle-cs) que estavam ausentes
+- `MCP.md`: adicionada seção `## Language`; `## Pre-commit Checklist` renomeada para `## Quality` com comandos de tooling (`tsc --noEmit`, `eslint src/`, `npm test`) antes da checklist
+- `BASH.md`: adicionada seção `## Anti-Patterns` com 8 padrões a evitar (echo colorizado, variáveis sem aspas, parsing de `ls`, `cd` sem guard, `eval`, `which`, `local` ausente, declaração + substituição de comando em passo único)
+- `PHP.md`: adicionada seção `## Anti-Patterns` com 8 padrões a evitar (catch broad, SQL hardcoded, `$_POST` direto, `new` inline, `echo` em domain classes, magic numbers, `@` supressor, retornar null em vez de exceção)
+
+#### Templates de IA — `ONLY-CLAUDE.md`
+- Modelo Opus atualizado de `claude-opus-4-7` (Opus 4.7) para `claude-opus-4-8` (Opus 4.8)
+- Nota da tabela de modelos traduzida de português para inglês: `(use no orquestrador, não em subagents)` → `(use in the orchestrator, not in subagents)`
+- Parágrafo de Escalation traduzido para inglês — arquivo misturava idiomas violando a regra do próprio `BASIC.md`
+
 #### Criar Contexto AI — saída agrupada em painel único (`lumina ai context`)
 - Todas as mensagens `+ arquivo criado.` e `- arquivo removido.` são coletadas durante a execução e exibidas em um único `PrintBox` ao final, em vez de serem impressas inline uma a uma
 - A mensagem de info "Atualizando arquivos de contexto para: ..." é exibida antes das operações de arquivo, garantindo a ordem correta: info → box com lista → success → WaitEnter
@@ -113,6 +124,16 @@ O formato segue o padrão [Keep a Changelog](https://keepachangelog.com/pt-BR/1.
 - Função promovida de não-interativa para interativa: `ClearContext` agora aceita `stdin io.Reader`, despacho na TUI atualizado de `exec` para `execInteractive`
 
 ### Corrigido
+
+#### Testes — `manager/ai`: argumentos faltando em chamadas de funções internas
+- `context_test.go`: 4 chamadas a `generateSharedFiles` e `writeInstruction` estavam sem o argumento `log *strings.Builder` adicionado recentemente às assinaturas — causava falha de compilação no CI (`not enough arguments in call`)
+
+#### Documentação — `README.md` revisado para refletir o estado atual da aplicação
+- Ulauncher removido das features e da referência de comandos (não acessível via TUI)
+- Teclas numéricas `1`–`4` removidas da tabela de atalhos (não implementadas no layout v2)
+- Seções renomeadas para corresponder à TUI: "Aplicativos" → "Aplicativos Linux", "Personalização GNOME" → "Personalizar Linux", "DevStack" → "Gerenciar Stack PHP", "DevStuff" → "Ambiente de Desenvolvimento", "Configurações Lumina" → "Home"
+- "DevManager" dividido em três seções independentes: "Gerenciar banco de Dados", "Gerenciar Repositórios", "Gerenciar Contextos IA"
+- Referência CLI reorganizada e alinhada com os subcomandos reais de cada dispatcher
 
 #### Pós-instalação — Chrome e MegaSync: arquivo temporário não removido em falha de download
 - `installChromeDeb` em `postinstall/common.go`: arquivo `.deb` temporário agora é removido quando o `wget` falha, eliminando arquivo órfão em `/tmp`
