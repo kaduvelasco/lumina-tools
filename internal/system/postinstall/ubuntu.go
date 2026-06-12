@@ -13,7 +13,6 @@ var ubuntuPackages = []string{
 	"ubuntu-restricted-extras",
 	"ffmpeg",
 	"gnome-tweaks",
-	"gnome-shell-extension-manager",
 	"build-essential",
 	"gparted",
 	"gdebi",
@@ -39,10 +38,10 @@ var ubuntuPackages = []string{
 }
 
 // Ubuntu runs the post-install routine for Ubuntu 26.04.
-func Ubuntu(ctx context.Context, exe *executor.Executor, stdout io.Writer) error {
+func Ubuntu(ctx context.Context, exe *executor.Executor, stdin io.Reader, stdout io.Writer) error {
 	ui.PrintHeader(stdout, "Pós Instalação — Ubuntu 26.04")
 
-	removeSnaps(ctx, exe, stdout)
+	removeSnaps(ctx, exe, stdin, stdout)
 
 	ui.Info(stdout, "Habilitando repositórios universe e multiverse...")
 	for _, repo := range []string{"universe", "multiverse"} {
@@ -98,8 +97,6 @@ func Ubuntu(ctx context.Context, exe *executor.Executor, stdout io.Writer) error
 	}
 
 	_ = step(ctx, exe, stdout, "Detectando drivers adicionais...", "ubuntu-drivers", "autoinstall")
-
-	installChromeDeb(ctx, exe, stdout)
 
 	ui.Success(stdout, "Pós-instalação do Ubuntu concluída.")
 	ui.Warning(stdout, "Reinicie o sistema para aplicar todas as mudanças.")

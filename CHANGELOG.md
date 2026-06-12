@@ -6,6 +6,55 @@ O formato segue o padrão [Keep a Changelog](https://keepachangelog.com/pt-BR/1.
 
 ---
 
+## [2.0.2] — em desenvolvimento
+
+### Adicionado
+
+#### Aplicativos Flatpak — novos apps (`lumina apps install`)
+- **Google Chrome** (`com.google.Chrome`) adicionado ao catálogo
+- **AppImage Pool** (`io.github.prateekmedia.appimagepool`) adicionado ao catálogo
+- **Bazaar** (`io.github.kolunmi.Bazaar`) adicionado ao catálogo
+- **DBeaver Community** (`io.dbeaver.DBeaverCommunity`) adicionado ao catálogo; executa `flatpak override --share=network` automaticamente após instalação
+- **Beekeeper Studio** (`io.beekeeperstudio.Studio`) adicionado ao catálogo
+- Catálogo passa de 31 para 36 aplicativos (Krita, FileZilla, LibreOffice e Extension Manager já constavam)
+- Suporte técnico: `App` ganhou campo `FlatpakOverride []string` — args passados a `flatpak override <id>` após instalação bem-sucedida
+
+### Alterado
+
+#### Aplicativos Flatpak — correções de ESC sequences (`lumina apps install/uninstall`)
+- `--noninteractive` adicionado a todas as chamadas `flatpak install`, `flatpak uninstall` e `flatpak update` no codebase (`apps/install.go`, `apps/uninstall.go`, `gnome/prereqs.go`, `terminal/install.go`, `terminal/uninstall.go`, `update/update.go`, `postinstall/common.go`)
+- Corrige escape sequences (`^[[24;63R`) que apareciam na saída do Flatpak — `TERM=dumb` suprime o nome do terminal mas não o `isatty()` check que o Flatpak usa para ativar barras de progresso com cursor position queries; `--noninteractive` desativa isso na camada do Flatpak
+
+#### Aplicativos Flatpak — desinstalação (`lumina apps uninstall`)
+- `RequiresSudo` agora é definido dinamicamente por escopo: `scope == "--system"` → `RequiresSudo: true`
+- `SelectUninstall` reduzido de 4 para 2 chamadas a `flatpak list` — `scopeMap` construído uma única vez e reutilizado na desinstalação
+- Iteração dupla sobre `Catalogue` em `SelectUninstall` eliminada — `inCatalogue` e `items` agora montados em um único loop
+- Apps não instalados em `Uninstall()` geram aviso descritivo em vez de tentar desinstalar com escopo `--system` por padrão
+
+#### IDEs — DBeaver (`lumina dev ide`)
+- DBeaver CE removido do catálogo de IDEs gerenciadas (instalação via apt/rpm descontinuada)
+- Migrado para o catálogo Flatpak como **DBeaver Community** (`io.dbeaver.DBeaverCommunity`)
+
+#### Pós-instalação — Google Chrome
+- Instalação automática do Google Chrome removida de todas as pós-instalações (Ubuntu, Mint, ZorinOS, Fedora)
+- Chrome disponível exclusivamente via catálogo Flatpak (`lumina apps install`)
+
+#### GNOME — Pré-requisitos de customização (`lumina gnome prereqs`)
+- `inkscape` e `x11-apps` removidos dos pré-requisitos — eram dependências dos cursores Oreo (removidos em versão anterior); não têm mais uso no fluxo de customização
+
+#### GNOME — Aplicar tema no Flatpak (`lumina gnome flatpak`)
+- Lógica de `flatpak override` extraída para função privada `applyFlatpakTheme` — elimina duplicação entre `offerFlatpak` e `ApplyFlatpakTheme`
+- Erro no `flatpak override --filesystem` deixou de ser silenciado; falha exibe warning e interrompe o fluxo antes do segundo override
+
+#### GNOME — Temas GTK — Yaru (Ubuntu 26.04)
+- Script de instalação migrado de URLs hardcoded com versão (`yaru-theme-gtk_26.04.5.1ubuntu_all.deb`) para descoberta dinâmica via índice HTML do pool Ubuntu — resistente a atualizações de pacote
+
+#### Pós-instalação — Ubuntu 26.04 (`lumina system pos ubuntu`)
+- Remoção seletiva de snaps (`removeSnaps`) agora recebe `stdin` injetado em vez de ler `os.Stdin` diretamente
+- `Ubuntu()` migrado para assinatura interativa (`stdin io.Reader`) — TUI passou de `exec` para `execInteractive`
+
+---
+
 ## [2.0.1] — em desenvolvimento
 
 ### Adicionado

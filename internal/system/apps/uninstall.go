@@ -15,26 +15,24 @@ func SelectUninstall(ctx context.Context, exe *executor.Executor, stdin io.Reade
 	ui.PrintHeader(stdout, "Desinstalar Aplicativos")
 	ui.Info(stdout, "Verificando aplicativos instalados...")
 
-	installed := InstalledIDs(ctx, exe)
-	if len(installed) == 0 {
+	// Single call: 2 flatpak list processes, reused for both the menu and the uninstall.
+	scopeMap := InstalledScopeMap(ctx, exe)
+	if len(scopeMap) == 0 {
 		ui.Info(stdout, "Nenhum aplicativo Flatpak instalado.")
 		ui.WaitEnter(stdout)
 		return nil
 	}
 
-	// Build list from catalogue intersected with installed IDs.
+	// Single pass over Catalogue: build inCatalogue set and items list together.
+	inCatalogue := make(map[string]bool, len(Catalogue))
 	var items []ui.SelectItem
 	for _, a := range Catalogue {
-		if installed[a.FlatID] {
+		inCatalogue[a.FlatID] = true
+		if _, ok := scopeMap[a.FlatID]; ok {
 			items = append(items, ui.SelectItem{Label: a.Name, ID: a.FlatID})
 		}
 	}
-	// Include installed apps not in the catalogue.
-	inCatalogue := make(map[string]bool)
-	for _, a := range Catalogue {
-		inCatalogue[a.FlatID] = true
-	}
-	for id := range installed {
+	for id := range scopeMap {
 		if !inCatalogue[id] {
 			items = append(items, ui.SelectItem{Label: id, ID: id})
 		}
@@ -70,7 +68,7 @@ func SelectUninstall(ctx context.Context, exe *executor.Executor, stdin io.Reade
 	}
 
 	ui.PrintHeader(stdout, "Desinstalar Aplicativos")
-	if err := Uninstall(ctx, exe, stdout, selected); err != nil {
+	if err := doUninstall(ctx, exe, stdout, selected, scopeMap); err != nil {
 		ui.Err(stdout, "Erro durante a desinstalacao: "+err.Error())
 		ui.WaitEnter(stdout)
 		return err
@@ -88,20 +86,22 @@ func Uninstall(ctx context.Context, exe *executor.Executor, stdout io.Writer, fl
 		ui.Info(stdout, "Nenhum aplicativo selecionado.")
 		return nil
 	}
+	return doUninstall(ctx, exe, stdout, flatIDs, InstalledScopeMap(ctx, exe))
+}
 
-	scopeMap := InstalledScopeMap(ctx, exe)
-
+func doUninstall(ctx context.Context, exe *executor.Executor, stdout io.Writer, flatIDs []string, scopeMap map[string]string) error {
 	ui.Info(stdout, fmt.Sprintf("Desinstalando %d aplicativo(s)...", len(flatIDs)))
 	var failed []string
 	for _, id := range flatIDs {
 		scope, ok := scopeMap[id]
 		if !ok {
-			scope = "--system"
+			ui.Warning(stdout, fmt.Sprintf("%s não está instalado, ignorando.", id))
+			continue
 		}
 		ui.Info(stdout, "Desinstalando: "+id)
 		if err := exe.Run(ctx,
-			executor.Options{Stdout: stdout, Stderr: stdout, Env: []string{"TERM=dumb"}},
-			"flatpak", "uninstall", scope, "-y", id,
+			executor.Options{RequiresSudo: scope == "--system", Stdout: stdout, Stderr: stdout, Env: []string{"TERM=dumb"}},
+			"flatpak", "uninstall", "--noninteractive", scope, "-y", id,
 		); err != nil {
 			ui.Warning(stdout, fmt.Sprintf("Falha ao desinstalar %s: %v", id, err))
 			failed = append(failed, id)

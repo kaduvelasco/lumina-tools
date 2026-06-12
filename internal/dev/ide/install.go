@@ -4,7 +4,6 @@ import (
 	"context"
 	"fmt"
 	"io"
-	"runtime"
 	"strings"
 
 	"github.com/kaduvelasco/lumina-tools/internal/distro"
@@ -75,9 +74,6 @@ func installOne(ctx context.Context, exe *executor.Executor, stdout io.Writer, e
 
 	case "codium":
 		return installVSCodium(ctx, exe, stdout, family)
-
-	case "dbeaver":
-		return installDBeaver(ctx, exe, stdout, family, sudo)
 	}
 	return fmt.Errorf("instalador desconhecido para %s", e.Name)
 }
@@ -137,44 +133,6 @@ dnf install -y code
 		return exe.Run(ctx, sudo, "bash", "-c", script)
 	default:
 		return fmt.Errorf("instale o VS Code manualmente no Arch via AUR (yay -S visual-studio-code-bin)")
-	}
-}
-
-func installDBeaver(ctx context.Context, exe *executor.Executor, stdout io.Writer, family string, _ executor.Options) error {
-	switch family {
-	case distro.Debian:
-		// BUG-02: guard prevents overwriting the keyring on every reinstall.
-		// BUG-03: DEBIAN_FRONTEND and dpkg flags suppress interactive prompts and ESC sequences.
-		sudo := executor.Options{
-			RequiresSudo: true,
-			Stdout:       stdout,
-			Stderr:       stdout,
-			Env:          []string{"DEBIAN_FRONTEND=noninteractive"},
-		}
-		script := `
-set -e
-KEYRING="/usr/share/keyrings/dbeaver.gpg.key"
-SOURCES="/etc/apt/sources.list.d/dbeaver.list"
-[ -f "$KEYRING" ] || wget -qO- https://dbeaver.io/debs/dbeaver.gpg.key \
-  | gpg --dearmor -o "$KEYRING"
-[ -f "$SOURCES" ] || echo "deb [signed-by=${KEYRING}] https://dbeaver.io/debs/dbeaver-ce /" \
-  | tee "$SOURCES" > /dev/null
-apt-get update -qq
-apt-get install -y -o Dpkg::Use-Pty=0 -o Dpkg::Progress-Fancy=0 -o APT::Color=0 dbeaver-ce
-`
-		return exe.Run(ctx, sudo, "bash", "-c", script)
-	case distro.Fedora:
-		// DEBT-02: the RPM is x86_64-only; return a clear message on other architectures.
-		if runtime.GOARCH != "amd64" {
-			return fmt.Errorf("instalação automática do DBeaver no Fedora disponível apenas em amd64 — instale manualmente de https://dbeaver.io")
-		}
-		const rpmURL = "https://dbeaver.io/files/dbeaver-ce-latest-linux-x86_64.rpm"
-		return exe.Run(ctx,
-			executor.Options{RequiresSudo: true, Stdout: stdout, Stderr: stdout},
-			"dnf", "install", "-y", "--", rpmURL,
-		)
-	default:
-		return fmt.Errorf("instale o DBeaver manualmente no Arch via AUR (yay -S dbeaver)")
 	}
 }
 

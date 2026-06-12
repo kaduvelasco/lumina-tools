@@ -100,8 +100,6 @@ func Mint(ctx context.Context, exe *executor.Executor, stdout io.Writer) error {
 
 	_ = step(ctx, exe, stdout, "Detectando drivers adicionais...", "ubuntu-drivers", "autoinstall")
 
-	installChromeDeb(ctx, exe, stdout)
-
 	ui.Success(stdout, "Pós-instalação do Linux Mint concluída.")
 	ui.Warning(stdout, "Reinicie o sistema para aplicar todas as mudanças.")
 	ui.WaitEnter(stdout)

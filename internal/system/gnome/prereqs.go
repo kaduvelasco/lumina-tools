@@ -29,7 +29,6 @@ func InstallPrereqs(ctx context.Context, exe *executor.Executor, stdout io.Write
 			executor.Options{RequiresSudo: true, Stdout: stdout, Stderr: stdout},
 			"apt-get", "install", "-y", "--",
 			"gnome-tweaks", "gnome-themes-extra", "gtk2-engines-murrine", "sassc", "git",
-			"inkscape", "x11-apps",
 		); err != nil {
 			ui.Err(stdout, "Falha ao instalar pacotes: "+err.Error())
 			ui.WaitEnter(stdout)
@@ -67,7 +66,7 @@ func InstallPrereqs(ctx context.Context, exe *executor.Executor, stdout io.Write
 	for _, app := range []string{"org.gnome.Extensions", "com.mattjakeman.ExtensionManager"} {
 		if err := exe.Run(ctx,
 			executor.Options{RequiresSudo: requiresSudo, Stdout: stdout, Stderr: stdout, Env: []string{"TERM=dumb"}},
-			"flatpak", "install", flatpakFlag, "-y", "flathub", app,
+			"flatpak", "install", "--noninteractive", flatpakFlag, "-y", "flathub", app,
 		); err != nil {
 			ui.Warning(stdout, "Falha ao instalar "+app+": "+err.Error())
 		}

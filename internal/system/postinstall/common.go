@@ -5,7 +5,6 @@ import (
 	"fmt"
 	"io"
 	"os"
-	"runtime"
 	"strings"
 
 	"github.com/kaduvelasco/lumina-tools/internal/config"
@@ -56,7 +55,7 @@ func ensureFlatpakReady(ctx context.Context, exe *executor.Executor, stdout io.W
 
 // flatpakInstall installs Flatpak apps from Flathub using the configured scope.
 func flatpakInstall(ctx context.Context, exe *executor.Executor, stdout io.Writer, appIDs ...string) error {
-	args := append([]string{"install", config.FlatpakFlag(), "-y", "flathub"}, appIDs...)
+	args := append([]string{"install", "--noninteractive", config.FlatpakFlag(), "-y", "flathub"}, appIDs...)
 	return exe.Run(ctx, executor.Options{Stdout: stdout, Stderr: stdout, Env: []string{"TERM=dumb"}}, "flatpak", args...)
 }
 
@@ -148,7 +147,7 @@ func stripNewline(s string) string {
 // removeSnaps lists installed snaps, presents a multi-select to the user, and removes
 // the selected ones with multiple passes to handle dependency ordering.
 // Non-fatal: skips silently if snap is not available.
-func removeSnaps(ctx context.Context, exe *executor.Executor, stdout io.Writer) {
+func removeSnaps(ctx context.Context, exe *executor.Executor, stdin io.Reader, stdout io.Writer) {
 	out, err := exe.Output(ctx, executor.Options{}, "snap", "list")
 	if err != nil {
 		return // snap not installed or unavailable
@@ -177,7 +176,7 @@ func removeSnaps(ctx context.Context, exe *executor.Executor, stdout io.Writer) 
 	}
 
 	ui.Info(stdout, "Snaps instalados. Selecione os que deseja remover:")
-	finalItems, confirmed, err := ui.RunMultiSelect(ctx, os.Stdin, stdout, items)
+	finalItems, confirmed, err := ui.RunMultiSelect(ctx, stdin, stdout, items)
 	if err != nil {
 		ui.Warning(stdout, "Falha na seleção de snaps: "+err.Error())
 		return
@@ -268,75 +267,3 @@ func setupSwapfile(ctx context.Context, exe *executor.Executor, stdout io.Writer
 	ui.Success(stdout, "Swapfile de 4 GB criado e ativado.")
 }
 
-// chromeInstalled reports whether google-chrome is already present.
-func chromeInstalled(ctx context.Context, exe *executor.Executor) bool {
-	_, err := exe.Output(ctx, executor.Options{}, "which", "google-chrome")
-	return err == nil
-}
-
-// installChromeDeb downloads the google-chrome-stable .deb and installs it via apt.
-// Non-fatal: shows a warning on failure and returns without propagating the error.
-func installChromeDeb(ctx context.Context, exe *executor.Executor, stdout io.Writer) {
-	// DEBT-02: the .deb is amd64-only; skip gracefully on other architectures.
-	if runtime.GOARCH != "amd64" {
-		ui.Warning(stdout, "Google Chrome: instalação automática disponível apenas em amd64 — instale manualmente.")
-		return
-	}
-	if chromeInstalled(ctx, exe) {
-		ui.Info(stdout, "Google Chrome já instalado, pulando.")
-		return
-	}
-	// SEC-01: use os.CreateTemp to avoid predictable /tmp paths (TOCTOU).
-	tmpFile, err := os.CreateTemp("", "google-chrome-*.deb")
-	if err != nil {
-		ui.Warning(stdout, "Falha ao criar arquivo temporário: "+err.Error())
-		return
-	}
-	chromeDeb := tmpFile.Name()
-	_ = tmpFile.Close()
-
-	const chromeURL = "https://dl.google.com/linux/direct/google-chrome-stable_current_amd64.deb"
-	ui.Info(stdout, "Baixando Google Chrome...")
-	if err := exe.Run(ctx, executor.Options{Stdout: stdout, Stderr: stdout},
-		"wget", "-q", "-O", chromeDeb, chromeURL,
-	); err != nil {
-		_ = os.Remove(chromeDeb) // BUG-01: always clean up, even on download failure.
-		ui.Warning(stdout, "Falha ao baixar Google Chrome: "+err.Error())
-		return
-	}
-	ui.Info(stdout, "Instalando Google Chrome...")
-	if err := exe.Run(ctx,
-		executor.Options{
-			RequiresSudo: true,
-			Stdout:       stdout,
-			Stderr:       stdout,
-			Env:          []string{"DEBIAN_FRONTEND=noninteractive"},
-		},
-		"apt-get", "install", "-y", "-o", "Dpkg::Use-Pty=0", "-o", "Dpkg::Progress-Fancy=0", "-o", "APT::Color=0", "--", chromeDeb,
-	); err != nil {
-		ui.Warning(stdout, "Falha ao instalar Google Chrome: "+err.Error())
-	}
-	_ = os.Remove(chromeDeb)
-}
-
-// installChromeFedora installs google-chrome-stable via the direct RPM download URL.
-// Non-fatal: shows a warning on failure and returns without propagating the error.
-func installChromeFedora(ctx context.Context, exe *executor.Executor, stdout io.Writer) {
-	// DEBT-02: the .rpm is x86_64-only; skip gracefully on other architectures.
-	if runtime.GOARCH != "amd64" {
-		ui.Warning(stdout, "Google Chrome: instalação automática disponível apenas em amd64 — instale manualmente.")
-		return
-	}
-	if chromeInstalled(ctx, exe) {
-		ui.Info(stdout, "Google Chrome já instalado, pulando.")
-		return
-	}
-	ui.Info(stdout, "Instalando Google Chrome...")
-	const chromeRPM = "https://dl.google.com/linux/direct/google-chrome-stable_current_x86_64.rpm"
-	if err := exe.Run(ctx,
-		executor.Options{RequiresSudo: true, Stdout: stdout, Stderr: stdout},
-		"dnf", "install", "-y", "--", chromeRPM,
-	); err != nil {
-		ui.Warning(stdout, "Falha ao instalar Google Chrome: "+err.Error())
-	}
-}

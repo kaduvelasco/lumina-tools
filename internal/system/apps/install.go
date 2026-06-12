@@ -154,16 +154,26 @@ func Install(ctx context.Context, exe *executor.Executor, stdout io.Writer, flat
 		return err
 	}
 
+	appByID := make(map[string]App, len(Catalogue))
+	for _, a := range Catalogue {
+		appByID[a.FlatID] = a
+	}
+
 	ui.Info(stdout, fmt.Sprintf("Instalando %d aplicativo(s)...", len(flatIDs)))
 	var failed []string
 	for _, id := range flatIDs {
 		ui.Info(stdout, "Instalando: "+id)
 		if err := exe.Run(ctx,
 			executor.Options{Stdout: stdout, Stderr: stdout, Env: []string{"TERM=dumb"}},
-			"flatpak", "install", config.FlatpakFlag(), "-y", "flathub", id,
+			"flatpak", "install", "--noninteractive", config.FlatpakFlag(), "-y", "flathub", id,
 		); err != nil {
 			ui.Warning(stdout, fmt.Sprintf("Falha ao instalar %s: %v", id, err))
 			failed = append(failed, id)
+		} else if app, ok := appByID[id]; ok && len(app.FlatpakOverride) > 0 {
+			overrideArgs := append([]string{"override", id}, app.FlatpakOverride...)
+			if err := exe.Run(ctx, executor.Options{Stdout: stdout, Stderr: stdout}, "flatpak", overrideArgs...); err != nil {
+				ui.Warning(stdout, fmt.Sprintf("Override do %s falhou: %v", id, err))
+			}
 		}
 	}
 

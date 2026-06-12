@@ -79,8 +79,6 @@ func uninstallOne(ctx context.Context, exe *executor.Executor, stdout io.Writer,
 		return aptDnfRemove(ctx, exe, "code", family, opts)
 	case "codium":
 		return aptDnfRemove(ctx, exe, "codium", family, opts)
-	case "dbeaver":
-		return aptDnfRemove(ctx, exe, "dbeaver-ce", family, opts)
 	}
 	return fmt.Errorf("desinstalador desconhecido para %s", e.Name)
 }

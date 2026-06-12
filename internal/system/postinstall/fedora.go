@@ -79,8 +79,6 @@ func Fedora(ctx context.Context, exe *executor.Executor, stdout io.Writer) error
 	_ = exe.Run(ctx, executor.Options{RequiresSudo: true, Stdout: stdout, Stderr: stdout}, "dnf", "autoremove", "-y")
 	_ = exe.Run(ctx, executor.Options{RequiresSudo: true, Stdout: stdout, Stderr: stdout}, "dnf", "clean", "all")
 
-	installChromeFedora(ctx, exe, stdout)
-
 	ui.Success(stdout, "Pós-instalação do Fedora concluída.")
 	ui.Warning(stdout, "Reinicie o sistema para aplicar todas as mudanças.")
 	ui.WaitEnter(stdout)

@@ -110,10 +110,13 @@ var themeCatalogue = []themeEntry{
 TMP=$(mktemp -d)
 trap 'rm -rf -- "$TMP"' EXIT
 cd -- "$TMP"
-wget -q http://archive.ubuntu.com/ubuntu/pool/main/y/yaru-theme/yaru-theme-gtk_26.04.5.1ubuntu_all.deb
-wget -q http://archive.ubuntu.com/ubuntu/pool/main/y/yaru-theme/yaru-theme-icon_26.04.5.1ubuntu_all.deb
-wget -q http://archive.ubuntu.com/ubuntu/pool/main/y/yaru-theme/yaru-theme-sound_26.04.5.1ubuntu_all.deb
-DEBIAN_FRONTEND=noninteractive apt-get install -y -o Dpkg::Use-Pty=0 -o Dpkg::Progress-Fancy=0 -o APT::Color=0 ./yaru-theme-gtk_26.04.5.1ubuntu_all.deb ./yaru-theme-icon_26.04.5.1ubuntu_all.deb ./yaru-theme-sound_26.04.5.1ubuntu_all.deb`,
+POOL="http://archive.ubuntu.com/ubuntu/pool/main/y/yaru-theme"
+for pkg in yaru-theme-gtk yaru-theme-icon yaru-theme-sound; do
+    deb=$(wget -qO- "${POOL}/" | grep -oE "${pkg}_[^\"]+_all\.deb" | sort -rV | head -1)
+    [ -n "$deb" ] || { printf 'Aviso: %s não encontrado no pool, ignorando.\n' "$pkg"; continue; }
+    wget -q "${POOL}/${deb}"
+done
+DEBIAN_FRONTEND=noninteractive apt-get install -y -o Dpkg::Use-Pty=0 -o Dpkg::Progress-Fancy=0 -o APT::Color=0 -- ./*.deb`,
 		PurgePackages: []string{"yaru-theme-gtk", "yaru-theme-icon", "yaru-theme-sound"},
 		FlatpakName:   "Yaru",
 	},
@@ -343,6 +346,25 @@ done
 	)
 }
 
+// applyFlatpakTheme configures Flatpak to use the given GTK theme for all apps.
+// It grants filesystem access to ~/.themes and sets GTK_THEME via flatpak override.
+func applyFlatpakTheme(ctx context.Context, exe *executor.Executor, stdout io.Writer, chosen, homeDir string) error {
+	themesPath := filepath.Join(homeDir, ".themes")
+	if err := exe.Run(ctx,
+		executor.Options{Stdout: stdout, Stderr: stdout},
+		"flatpak", "override", "--user", "--filesystem="+themesPath,
+	); err != nil {
+		return fmt.Errorf("configurar acesso ao diretório de temas: %w", err)
+	}
+	if err := exe.Run(ctx,
+		executor.Options{Stdout: stdout, Stderr: stdout},
+		"flatpak", "override", "--user", "--env=GTK_THEME="+chosen,
+	); err != nil {
+		return fmt.Errorf("configurar GTK_THEME: %w", err)
+	}
+	return nil
+}
+
 // offerFlatpak prompts the user to apply a GTK theme override to all Flatpak apps.
 func offerFlatpak(ctx context.Context, exe *executor.Executor, stdin io.Reader, stdout io.Writer, td string) {
 	var installed []ui.SelectItem
@@ -377,14 +399,7 @@ func offerFlatpak(ctx context.Context, exe *executor.Executor, stdin io.Reader, 
 	}
 
 	ui.Info(stdout, "Configurando Flatpak para o tema "+chosen+"...")
-	_ = exe.Run(ctx,
-		executor.Options{Stdout: stdout, Stderr: stdout},
-		"flatpak", "override", "--user", "--filesystem="+filepath.Join(h, ".themes"),
-	)
-	if err := exe.Run(ctx,
-		executor.Options{Stdout: stdout, Stderr: stdout},
-		"flatpak", "override", "--user", "--env=GTK_THEME="+chosen,
-	); err != nil {
+	if err := applyFlatpakTheme(ctx, exe, stdout, chosen, h); err != nil {
 		ui.Warning(stdout, "Falha ao configurar Flatpak: "+err.Error())
 		return
 	}
@@ -453,14 +468,7 @@ func ApplyFlatpakTheme(ctx context.Context, exe *executor.Executor, stdin io.Rea
 	}
 
 	ui.Info(stdout, "Configurando Flatpak para o tema "+chosen+"...")
-	_ = exe.Run(ctx,
-		executor.Options{Stdout: stdout, Stderr: stdout},
-		"flatpak", "override", "--user", "--filesystem="+filepath.Join(h, ".themes"),
-	)
-	if err := exe.Run(ctx,
-		executor.Options{Stdout: stdout, Stderr: stdout},
-		"flatpak", "override", "--user", "--env=GTK_THEME="+chosen,
-	); err != nil {
+	if err := applyFlatpakTheme(ctx, exe, stdout, chosen, h); err != nil {
 		ui.Warning(stdout, "Falha ao configurar Flatpak: "+err.Error())
 		ui.WaitEnter(stdout)
 		return nil

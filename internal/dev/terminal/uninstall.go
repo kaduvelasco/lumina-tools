@@ -86,7 +86,7 @@ func uninstallOne(ctx context.Context, exe *executor.Executor, stdout io.Writer,
 		}
 	case "blackbox-terminal":
 		flatOpts := executor.Options{Stdout: stdout, Stderr: stdout, Env: []string{"TERM=dumb"}}
-		return exe.Run(ctx, flatOpts, "flatpak", "uninstall", config.FlatpakFlag(), "-y", t.FlatID)
+		return exe.Run(ctx, flatOpts, "flatpak", "uninstall", "--noninteractive", config.FlatpakFlag(), "-y", t.FlatID)
 	case "kgx":
 		switch family {
 		case distro.Fedora:

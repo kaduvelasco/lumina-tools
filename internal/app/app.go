@@ -119,7 +119,7 @@ func dispatchSystem(ctx context.Context, args []string, stdin io.Reader, stdout,
 		case "zorin":
 			return postinstall.Zorin(ctx, exe, stdout)
 		case "ubuntu":
-			return postinstall.Ubuntu(ctx, exe, stdout)
+			return postinstall.Ubuntu(ctx, exe, stdin, stdout)
 		case "fedora":
 			return postinstall.Fedora(ctx, exe, stdout)
 		default:

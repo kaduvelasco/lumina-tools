@@ -18,7 +18,6 @@ var Catalogue = []IDE{
 	{Name: "Windsurf", Cmd: "windsurf"},
 	{Name: "VS Code", Cmd: "code"},
 	{Name: "VSCodium", Cmd: "codium"},
-	{Name: "DBeaver CE", Cmd: "dbeaver"},
 }
 
 // InstalledMap returns which IDEs are currently installed (by Name).

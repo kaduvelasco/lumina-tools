@@ -15,7 +15,6 @@ var zorinPackages = []string{
 	"gstreamer1.0-plugins-bad",
 	"gstreamer1.0-plugins-ugly",
 	"gstreamer1.0-libav",
-	"gnome-shell-extension-manager",
 	"build-essential",
 	"git",
 	"curl",
@@ -87,8 +86,6 @@ func Zorin(ctx context.Context, exe *executor.Executor, stdout io.Writer) error 
 		[]string{"mesa-va-drivers"},
 		aptInstall,
 	)
-
-	installChromeDeb(ctx, exe, stdout)
 
 	ui.Success(stdout, "Pós-instalação do ZorinOS concluída.")
 	ui.Warning(stdout, "Reinicie o sistema para aplicar todas as mudanças.")

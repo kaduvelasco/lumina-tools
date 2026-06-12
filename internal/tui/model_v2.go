@@ -300,7 +300,7 @@ func (m ModelV2) runActionV2(a actionID) tea.Cmd {
 	case actSystemPostZorin:
 		return exec(postinstall.Zorin)
 	case actSystemPostUbuntu:
-		return exec(postinstall.Ubuntu)
+		return execInteractive(postinstall.Ubuntu)
 	case actSystemPostFedora:
 		return exec(postinstall.Fedora)
 

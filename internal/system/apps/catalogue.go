@@ -2,8 +2,9 @@ package apps
 
 // App describes a Flatpak application managed by lumina.
 type App struct {
-	Name   string
-	FlatID string
+	Name            string
+	FlatID          string
+	FlatpakOverride []string // extra args passed to "flatpak override <FlatID> <args...>" after install
 }
 
 // Catalogue lists all Flatpak apps available for installation.
@@ -19,10 +20,13 @@ var Catalogue = []App{
 	{Name: "Apostrophe - Markdown", FlatID: "org.gnome.gitlab.somas.Apostrophe"},
 	{Name: "Eyedropper - Conta Gotas", FlatID: "com.github.finefindus.eyedropper"},
 	{Name: "Gear Lever - AppImages", FlatID: "it.mijorus.gearlever"},
+	{Name: "AppImage Pool", FlatID: "io.github.prateekmedia.appimagepool"},
 	{Name: "Web Apps", FlatID: "net.codelogistics.webapps"},
 	{Name: "Flatseal - Gerenciar Flatpak", FlatID: "com.github.tchx84.Flatseal"},
+	{Name: "Bazaar", FlatID: "io.github.kolunmi.Bazaar"},
 	{Name: "Zen Browser", FlatID: "app.zen_browser.zen"},
 	{Name: "Firefox", FlatID: "org.mozilla.firefox"},
+	{Name: "Google Chrome", FlatID: "com.google.Chrome"},
 	{Name: "Chromium", FlatID: "org.chromium.Chromium"},
 	{Name: "Vivaldi", FlatID: "com.vivaldi.Vivaldi"},
 	{Name: "FileZilla", FlatID: "org.filezillaproject.Filezilla"},
@@ -32,6 +36,8 @@ var Catalogue = []App{
 	{Name: "LibreOffice", FlatID: "org.libreoffice.LibreOffice"},
 	{Name: "OnlyOffice", FlatID: "org.onlyoffice.desktopeditors"},
 	{Name: "AnyDesk", FlatID: "com.anydesk.Anydesk"},
+	{Name: "DBeaver Community", FlatID: "io.dbeaver.DBeaverCommunity", FlatpakOverride: []string{"--share=network"}},
+	{Name: "Beekeeper Studio", FlatID: "io.beekeeperstudio.Studio"},
 	{Name: "Meld - File Compare", FlatID: "org.gnome.meld"},
 	{Name: "Minecraft", FlatID: "io.mrarm.mcpelauncher"},
 	{Name: "Minecraft Java", FlatID: "org.prismlauncher.PrismLauncher"},
@@ -40,4 +46,5 @@ var Catalogue = []App{
 	{Name: "FreeTube - YouTube", FlatID: "io.freetubeapp.FreeTube"},
 	{Name: "Android Studio", FlatID: "com.google.AndroidStudio"},
 	{Name: "Tomatillo - Pomodoro", FlatID: "io.github.diegopvlk.Tomatillo"},
+	{Name: "Extension Manager (GNOME)", FlatID: "com.mattjakeman.ExtensionManager"},
 }

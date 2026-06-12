@@ -113,10 +113,10 @@ func updateFlatpak(ctx context.Context, exe *executor.Executor, stdout io.Writer
 	}
 	ui.Info(stdout, "Atualizando Flatpaks...")
 	opts := executor.Options{Stdout: stdout, Stderr: stdout, Env: []string{"TERM=dumb"}}
-	if err := exe.Run(ctx, opts, "flatpak", "update", config.FlatpakFlag(), "-y"); err != nil {
+	if err := exe.Run(ctx, opts, "flatpak", "update", "--noninteractive", config.FlatpakFlag(), "-y"); err != nil {
 		return fmt.Errorf("flatpak update: %w", err)
 	}
-	if err := exe.Run(ctx, opts, "flatpak", "uninstall", config.FlatpakFlag(), "--unused", "-y"); err != nil {
+	if err := exe.Run(ctx, opts, "flatpak", "uninstall", "--noninteractive", config.FlatpakFlag(), "--unused", "-y"); err != nil {
 		ui.Warning(stdout, "Falha ao remover flatpaks nao utilizados: "+err.Error())
 	}
 	return nil
