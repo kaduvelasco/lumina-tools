@@ -47,9 +47,10 @@ type ModelV2 struct {
 	width  int
 	height int
 
-	theme  Theme
-	styles TUIStyles
-	online bool
+	theme         Theme
+	styles        TUIStyles
+	online        bool
+	distroDisplay string
 
 	section int
 	cursor  int
@@ -73,14 +74,15 @@ func NewV2(ctx context.Context, cfg *config.Config) ModelV2 {
 		t = detectDefaultTheme()
 	}
 	return ModelV2{
-		ctx:    ctx,
-		cfg:    cfg,
-		width:  80,
-		height: 24,
-		theme:  t,
-		styles: buildStyles(t),
-		online: true,
-		focus:  focusSubmenu,
+		ctx:           ctx,
+		cfg:           cfg,
+		width:         80,
+		height:        24,
+		theme:         t,
+		styles:        buildStyles(t),
+		online:        true,
+		focus:         focusSubmenu,
+		distroDisplay: distroDisplayName(cfg.Distro),
 	}
 }
 
@@ -183,7 +185,7 @@ func (m ModelV2) handleKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 
 	case key.Matches(msg, keys.Select):
 		if m.focus == focusContent {
-			entry := sections[m.section].items[m.cursor]
+			entry := m.visibleItems(m.section)[m.cursor]
 			if entry.pending {
 				m.msgKind = msgWarning
 				m.msg = "Em breve"
@@ -328,6 +330,10 @@ func (m ModelV2) runActionV2(a actionID) tea.Cmd {
 		return exec(gnome.ShowExtensions)
 	case actGnomeThemes:
 		return execInteractive(gnome.ManageThemes)
+	case actCinnamonPrereqs:
+		return exec(gnome.InstallCinnamonPrereqs)
+	case actCinnamonThemes:
+		return execInteractive(gnome.ManageCinnamonThemes)
 	case actGnomeIcons:
 		return execInteractive(gnome.ManageIcons)
 	case actGnomeCursors:
@@ -353,7 +359,7 @@ func (m ModelV2) runActionV2(a actionID) tea.Cmd {
 	case actStackWorkspace:
 		return exec(stackconfig.Workspace)
 	case actStackCompose:
-		return exec(stackconfig.Compose)
+		return execInteractive(stackconfig.Compose)
 
 	case actStackStart:
 		composeDir := m.cfg.DockerComposeDir
@@ -432,6 +438,28 @@ func (m ModelV2) runActionV2(a actionID) tea.Cmd {
 
 // ── movement helpers ──────────────────────────────────────────────────────────
 
+// visibleItems returns the items for the given section, applying filters:
+//   - gnomeOnly items are hidden when cfg.DE != "gnome"
+//   - cinnamonOnly items are hidden when cfg.DE != "cinnamon"
+//   - distro-tagged items are hidden when cfg.Distro is set and does not match
+func (m ModelV2) visibleItems(sec int) []submenuEntry {
+	items := sections[sec].items
+	result := make([]submenuEntry, 0, len(items))
+	for _, item := range items {
+		if item.gnomeOnly && m.cfg.DE != "gnome" {
+			continue
+		}
+		if item.cinnamonOnly && m.cfg.DE != "cinnamon" {
+			continue
+		}
+		if item.distro != "" && m.cfg.Distro != "" && item.distro != m.cfg.Distro {
+			continue
+		}
+		result = append(result, item)
+	}
+	return result
+}
+
 // moveSection changes the active section and resets the item cursor.
 func (m *ModelV2) moveSection(delta int) {
 	n := len(sections)
@@ -441,7 +469,7 @@ func (m *ModelV2) moveSection(delta int) {
 
 // moveCursor shifts the item cursor in the right panel, wrapping at both ends.
 func (m *ModelV2) moveCursor(delta int) {
-	n := len(sections[m.section].items)
+	n := len(m.visibleItems(m.section))
 	if n == 0 {
 		return
 	}
@@ -487,7 +515,7 @@ func (m ModelV2) View() string {
 	s := m.styles
 
 	var sb strings.Builder
-	sb.WriteString(renderChromeHeader(m.width, m.online, s))
+	sb.WriteString(renderChromeHeader(m.width, m.online, m.distroDisplay, s))
 	sb.WriteString("\n")
 	sb.WriteString(m.renderBody())
 	if m.msg != "" {
@@ -503,7 +531,7 @@ func (m ModelV2) renderThemeOverlay() string {
 	s := m.styles
 
 	var sb strings.Builder
-	sb.WriteString(renderChromeHeader(m.width, m.online, s))
+	sb.WriteString(renderChromeHeader(m.width, m.online, m.distroDisplay, s))
 	sb.WriteString("\n\n")
 
 	for i, t := range availableThemes {
@@ -547,7 +575,7 @@ func (m ModelV2) renderQuitOverlay() string {
 		Width(contentW)
 
 	var sb strings.Builder
-	sb.WriteString(renderChromeHeader(m.width, m.online, s))
+	sb.WriteString(renderChromeHeader(m.width, m.online, m.distroDisplay, s))
 	sb.WriteString("\n\n")
 	sb.WriteString(box.Render(content))
 	sb.WriteString("\n")
@@ -667,7 +695,7 @@ func (m ModelV2) renderSobrePanel() string {
 // a scrolling viewport to handle sections with many entries (e.g. DevManager).
 func (m ModelV2) renderItemsList(height int) string {
 	s := m.styles
-	items := sections[m.section].items
+	items := m.visibleItems(m.section)
 	if len(items) == 0 {
 		return ""
 	}

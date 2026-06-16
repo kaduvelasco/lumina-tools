@@ -2,7 +2,6 @@ package gnome
 
 import (
 	"context"
-	"fmt"
 	"io"
 	"path/filepath"
 
@@ -11,46 +10,17 @@ import (
 )
 
 type cursorEntry struct {
-	Name          string
-	DirPattern    string // glob under ~/.local/share/icons/ for detection and removal
-	RepoURL       string
-	Branch        string // non-empty: clone this branch
-	HasInstall    bool   // true: run ./install.sh from InstallSubDir (or repo root)
-	InstallSubDir string // subdir to cd into before running install.sh
-	BuildScript   string // non-empty: run this command in the repo root before copying
-	CopyFrom      string // non-empty: copy matching dirs from this subdir
-	CopyGlob      string // non-empty: glob within CopyFrom (or repo root) to copy
+	Name          string `yaml:"name"`
+	DirPattern    string `yaml:"dir_pattern"`
+	RepoURL       string `yaml:"repo_url"`
+	Branch        string `yaml:"branch,omitempty"`
+	HasInstall    bool   `yaml:"has_install,omitempty"`
+	InstallSubDir string `yaml:"install_sub_dir,omitempty"`
+	BuildScript   string `yaml:"build_script,omitempty"`
+	CopyFrom      string `yaml:"copy_from,omitempty"`
+	CopyGlob      string `yaml:"copy_glob,omitempty"`
 }
 
-var cursorCatalogue = []cursorEntry{
-	{
-		Name:       "Layan",
-		DirPattern: "Layan-cursors",
-		RepoURL:    "https://github.com/vinceliuice/Layan-cursors.git",
-		HasInstall: true,
-	},
-	{
-		Name:       "Sweet",
-		DirPattern: "Sweet-cursors",
-		RepoURL:    "https://github.com/EliverLara/Sweet.git",
-		Branch:     "nova",
-		CopyFrom:   "kde/cursors",
-		CopyGlob:   "Sweet-cursors",
-	},
-	{
-		Name:          "Colloid",
-		DirPattern:    "Colloid-cursors*",
-		RepoURL:       "https://github.com/vinceliuice/Colloid-icon-theme.git",
-		HasInstall:    true,
-		InstallSubDir: "cursors",
-	},
-	{
-		Name:       "Future",
-		DirPattern: "Future-cursors*",
-		RepoURL:    "https://github.com/yeyushengfan258/Future-cursors.git",
-		HasInstall: true,
-	},
-}
 
 func isCursorInstalled(ce cursorEntry, id string) bool {
 	return globExists(filepath.Join(id, ce.DirPattern))
@@ -58,13 +28,7 @@ func isCursorInstalled(ce cursorEntry, id string) bool {
 
 // ManageCursors shows a multi-select for cursor themes and applies the diff.
 func ManageCursors(ctx context.Context, exe *executor.Executor, stdin io.Reader, stdout io.Writer) error {
-	ui.PrintHeader(stdout, "Customizar GNOME — Cursores")
-
-	if !isGnome() {
-		ui.Err(stdout, ErrNotGnome.Error())
-		ui.WaitEnter(stdout)
-		return nil
-	}
+	ui.PrintHeader(stdout, "Customizar — Cursores")
 
 	id, err := iconsDir()
 	if err != nil {
@@ -73,59 +37,21 @@ func ManageCursors(ctx context.Context, exe *executor.Executor, stdin io.Reader,
 		return err
 	}
 
-	ui.Info(stdout, "Verificando cursores instalados...")
-	items := make([]ui.SelectItem, len(cursorCatalogue))
-	for i, ce := range cursorCatalogue {
-		items[i] = ui.SelectItem{Label: ce.Name, ID: ce.Name, Selected: isCursorInstalled(ce, id)}
-	}
-
-	finalItems, confirmed, err := ui.RunMultiSelect(ctx, stdin, stdout, items)
+	catalogue, err := loadCursorCatalogue()
 	if err != nil {
+		ui.Err(stdout, "Erro ao carregar catálogo de cursores: "+err.Error())
+		ui.WaitEnter(stdout)
 		return err
 	}
-	if !confirmed {
-		ui.Warning(stdout, "Operação cancelada.")
-		ui.WaitEnter(stdout)
-		return nil
-	}
 
-	var toInstall, toRemove []cursorEntry
-	for i, item := range finalItems {
-		ce := cursorCatalogue[i]
-		wasInstalled := items[i].Selected
-		switch {
-		case item.Selected && !wasInstalled:
-			toInstall = append(toInstall, ce)
-		case !item.Selected && wasInstalled:
-			toRemove = append(toRemove, ce)
-		}
-	}
-
-	if len(toInstall) == 0 && len(toRemove) == 0 {
-		ui.Info(stdout, "Nenhuma alteração necessária.")
-		ui.WaitEnter(stdout)
-		return nil
-	}
-
-	ui.PrintHeader(stdout, "Customizar GNOME — Cursores")
-
-	for _, ce := range toRemove {
-		ui.Info(stdout, "Removendo "+ce.Name+"...")
-		if rErr := removeCursor(ctx, exe, stdout, ce, id); rErr != nil {
-			ui.Warning(stdout, fmt.Sprintf("Falha ao remover %s: %v", ce.Name, rErr))
-		}
-	}
-
-	for _, ce := range toInstall {
-		ui.Info(stdout, "Instalando "+ce.Name+"...")
-		if iErr := installCursor(ctx, exe, stdout, ce, id); iErr != nil {
-			ui.Warning(stdout, fmt.Sprintf("Falha ao instalar %s: %v", ce.Name, iErr))
-		}
-	}
-
-	ui.Success(stdout, "Cursores atualizados!")
-	ui.WaitEnter(stdout)
-	return nil
+	return manageCatalogue(ctx, exe, stdin, stdout,
+		"Customizar — Cursores", id, catalogue,
+		func(ce cursorEntry) string { return ce.Name },
+		isCursorInstalled,
+		installCursor,
+		removeCursor,
+		"Cursores atualizados!",
+	)
 }
 
 func installCursor(ctx context.Context, exe *executor.Executor, stdout io.Writer, ce cursorEntry, id string) error {
@@ -149,7 +75,7 @@ func installCursor(ctx context.Context, exe *executor.Executor, stdout io.Writer
 		script := `
 set -e
 TMP=$(mktemp -d)
-trap 'rm -rf "$TMP"' EXIT
+trap 'rm -rf -- "$TMP"' EXIT
 git clone --depth=1 ` + branchFlag + `"$1" "$TMP/repo"
 cd "$TMP/repo/` + subdir + `"
 bash ./install.sh

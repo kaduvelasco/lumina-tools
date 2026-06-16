@@ -21,6 +21,8 @@ type Config struct {
 	DockerComposeDir string      `yaml:"docker_compose_dir"`
 	Theme            string      `yaml:"theme,omitempty"`
 	FlatpakScope     string      `yaml:"flatpak_scope,omitempty"`
+	Distro           string      `yaml:"distro,omitempty"`
+	DE               string      `yaml:"de,omitempty"`
 	Stack            StackConfig `yaml:"stack,omitempty"`
 }
 

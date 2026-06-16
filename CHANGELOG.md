@@ -6,7 +6,32 @@ O formato segue o padrão [Keep a Changelog](https://keepachangelog.com/pt-BR/1.
 
 ---
 
-## [2.0.2] — em desenvolvimento
+## [2.1.0] — 2026-06-16
+
+### Adicionado
+
+#### Personalizar Linux — catálogos YAML embutidos (`lumina theme`)
+- Temas GTK (GNOME e Cinnamon), cursores e pacotes de ícones agora definidos em arquivos YAML externos embutidos no binário (`//go:embed`) em vez de slices Go hardcoded
+- Novos arquivos: `gnome_themes.yaml` (11 temas), `cinnamon_themes.yaml` (5 temas), `cursors.yaml` (4 cursores), `icons.yaml` (7 ícones)
+- Cada catálogo é parseado uma única vez com `sync.Once` — mesmo padrão do catálogo MCP (`internal/dev/mcp/servers.yaml`)
+- Permite atualizar temas, cursores e ícones sem recompilar o Go: basta editar o YAML antes do build
+
+### Corrigido
+
+#### Aplicativos Flatpak — override falhava para apps instalados no escopo system (`lumina apps install`)
+- `flatpak override <id>` chamado sem flag de escopo tentava o escopo system, exigia root e falhava com `exit status 1` — corrigido passando o mesmo `scope` (`--system` ou `--user`) retornado por `config.FlatpakFlag()` e ajustando `RequiresSudo: scope == "--system"` dinamicamente
+- Afetava principalmente o DBeaver Community (`io.dbeaver.DBeaverCommunity`), que usa `FlatpakOverride: ["--share=network"]`
+
+### Alterado
+
+#### Stack PHP — seleção de versões PHP via multi-select (`lumina stack config stack`)
+- Substitui prompt de texto livre para as versões PHP por seleção interativa (`ui.RunMultiSelect`)
+- Apenas versões suportadas (`8.1`, `8.2`, `8.3`, `8.4`) são exibidas como opções; ao menos uma deve ser selecionada
+- `Compose` passa a aceitar `stdin io.Reader` — mesmo padrão das demais funções interativas
+
+---
+
+## [2.0.2] — 2026-06-12
 
 ### Adicionado
 
@@ -55,7 +80,7 @@ O formato segue o padrão [Keep a Changelog](https://keepachangelog.com/pt-BR/1.
 
 ---
 
-## [2.0.1] — em desenvolvimento
+## [2.0.1] — 2026-06-10
 
 ### Adicionado
 

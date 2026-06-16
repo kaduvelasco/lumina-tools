@@ -113,3 +113,36 @@ func classify(id string) string {
 func clean(s string) string {
 	return strings.ToLower(strings.Trim(strings.TrimSpace(s), `"`))
 }
+
+// NormalizedDistro maps the raw OS ID to the lumina distro token
+// (mint | zorin | ubuntu | fedora). Returns "" for unsupported distros.
+func NormalizedDistro() string {
+	switch RawID() {
+	case "linuxmint":
+		return "mint"
+	case "zorin":
+		return "zorin"
+	case "ubuntu", "kubuntu":
+		return "ubuntu"
+	case "fedora":
+		return "fedora"
+	}
+	return ""
+}
+
+// DetectDE returns the normalized desktop environment token
+// (cinnamon | gnome | other). Reads XDG_CURRENT_DESKTOP with DESKTOP_SESSION
+// as fallback.
+func DetectDE() string {
+	desktop := strings.ToLower(os.Getenv("XDG_CURRENT_DESKTOP"))
+	if desktop == "" {
+		desktop = strings.ToLower(os.Getenv("DESKTOP_SESSION"))
+	}
+	switch {
+	case strings.Contains(desktop, "cinnamon"):
+		return "cinnamon"
+	case strings.Contains(desktop, "gnome"):
+		return "gnome"
+	}
+	return "other"
+}

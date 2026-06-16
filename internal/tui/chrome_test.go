@@ -18,7 +18,7 @@ func TestRenderChromeHeaderShowsBrandAndConnectionState(t *testing.T) {
 	}
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
-			out := renderChromeHeader(80, tc.online, s)
+			out := renderChromeHeader(80, tc.online, "", s)
 			// Brand is split into separately styled segments; check the parts.
 			if !strings.Contains(out, "lumina") || !strings.Contains(out, ".tools") {
 				t.Errorf("renderChromeHeader(%v) missing brand 'lumina.tools':\n%s", tc.online, out)

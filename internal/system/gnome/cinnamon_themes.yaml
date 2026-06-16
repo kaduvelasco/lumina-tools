@@ -1,0 +1,36 @@
+# Cinnamon GTK Theme Catalogue — Lumina Tools
+#
+# Same fields as gnome_themes.yaml.
+# ask_icon: true prompts the user for the WhiteSur -i (titlebar icon) flag.
+
+themes:
+  - name: "Catppuccin"
+    dir_pattern: "Catppuccin*"
+    repo_url: "https://github.com/Fausto-Korpsvart/Catppuccin-GTK-Theme.git"
+    install_dir: "themes"
+    flatpak_name: "Catppuccin-Mocha"
+
+  - name: "WhiteSur"
+    dir_pattern: "WhiteSur*"
+    repo_url: "https://github.com/vinceliuice/WhiteSur-gtk-theme.git"
+    install_args: ["-t", "all"]
+    ask_icon: true
+    flatpak_name: "WhiteSur-Dark"
+
+  - name: "Dracula"
+    dir_pattern: "Dracula"
+    repo_url: "https://github.com/dracula/gtk.git"
+    clone_target: "Dracula"
+    flatpak_name: "Dracula"
+
+  - name: "Graphite"
+    dir_pattern: "Graphite*"
+    repo_url: "https://github.com/vinceliuice/Graphite-gtk-theme.git"
+    install_args: ["-t", "all"]
+    flatpak_name: "Graphite-Dark"
+
+  - name: "Everforest"
+    dir_pattern: "Everforest*"
+    repo_url: "https://github.com/Fausto-Korpsvart/Everforest-GTK-Theme.git"
+    install_dir: "themes"
+    flatpak_name: "Everforest-Dark"

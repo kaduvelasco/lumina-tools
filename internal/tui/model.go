@@ -47,6 +47,9 @@ func runAtV2(ctx context.Context, stdin io.Reader, stdout io.Writer, section, cu
 	if err != nil {
 		return fmt.Errorf("carregar config: %w", err)
 	}
+	if err := ensureSystemInfo(ctx, stdin, stdout, cfg); err != nil {
+		return fmt.Errorf("configurar sistema: %w", err)
+	}
 	m := NewV2(ctx, cfg)
 	m.section = section
 	m.cursor = cursor

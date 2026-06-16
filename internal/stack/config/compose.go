@@ -20,7 +20,7 @@ var supportedPHP = []string{"8.1", "8.2", "8.3", "8.4"}
 
 // Compose generates docker-compose.yml and all supporting config files.
 // Returns an error immediately if Docker is not installed.
-func Compose(ctx context.Context, exe *executor.Executor, stdout io.Writer) error {
+func Compose(ctx context.Context, exe *executor.Executor, stdin io.Reader, stdout io.Writer) error {
 	ui.PrintHeader(stdout, "Criar Stack Docker")
 
 	if _, err := exe.Output(ctx, executor.Options{}, "which", "docker"); err != nil {
@@ -44,18 +44,33 @@ func Compose(ctx context.Context, exe *executor.Executor, stdout io.Writer) erro
 	dockerDir := filepath.Join(workspace, "docker")
 
 	// PHP versions
-	ui.PrintBox(stdout, "Versões PHP suportadas: "+strings.Join(supportedPHP, " "))
-	fmt.Fprint(stdout, "Versões desejadas (ex: 8.1 8.2): ")
-	rawVersions := strings.TrimSpace(prompt.ReadLine())
-	if rawVersions == "" {
-		rawVersions = "8.1 8.2"
+	ui.Info(stdout, "Selecione as versões PHP desejadas:")
+	phpItems := make([]ui.SelectItem, len(supportedPHP))
+	for i, v := range supportedPHP {
+		phpItems[i] = ui.SelectItem{Label: "PHP " + v, ID: v}
 	}
-	versions, err := validatePHP(rawVersions)
+	finalPHP, confirmed, err := ui.RunMultiSelect(ctx, stdin, stdout, phpItems)
 	if err != nil {
-		ui.Err(stdout, err.Error())
-		ui.WaitEnter(stdout)
 		return err
 	}
+	if !confirmed {
+		ui.Warning(stdout, "Operação cancelada.")
+		ui.WaitEnter(stdout)
+		return nil
+	}
+	var versions []string
+	for _, item := range finalPHP {
+		if item.Selected {
+			versions = append(versions, item.ID)
+		}
+	}
+	if len(versions) == 0 {
+		ui.Warning(stdout, "Selecione ao menos uma versão PHP.")
+		ui.WaitEnter(stdout)
+		return fmt.Errorf("nenhuma versao PHP selecionada")
+	}
+
+	ui.PrintHeader(stdout, "Criar Stack Docker")
 
 	// DB credentials
 	fmt.Fprint(stdout, "\nUsuário do banco [admin]: ")
@@ -162,29 +177,6 @@ func Compose(ctx context.Context, exe *executor.Executor, stdout io.Writer) erro
 	return nil
 }
 
-func validatePHP(raw string) ([]string, error) {
-	supported := make(map[string]bool)
-	for _, v := range supportedPHP {
-		supported[v] = true
-	}
-	fields := strings.Fields(raw)
-	if len(fields) == 0 {
-		return nil, fmt.Errorf("informe ao menos uma versao PHP")
-	}
-	seen := make(map[string]bool)
-	var unique []string
-	for _, v := range fields {
-		if !supported[v] {
-			return nil, fmt.Errorf("versao PHP %q nao suportada. Disponiveis: %s", v, strings.Join(supportedPHP, " "))
-		}
-		if seen[v] {
-			return nil, fmt.Errorf("versao PHP %q duplicada", v)
-		}
-		seen[v] = true
-		unique = append(unique, v)
-	}
-	return unique, nil
-}
 
 func genPassword() string {
 	b := make([]byte, 16)

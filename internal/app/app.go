@@ -79,8 +79,8 @@ func dispatch(ctx context.Context, args []string, stdin io.Reader, stdout, stder
 	case "apps":
 		return dispatchApps(ctx, args[1:], stdin, stdout, stderr)
 
-	case "gnome":
-		return dispatchGnome(ctx, args[1:], stdin, stdout, stderr)
+	case "theme":
+		return dispatchTheme(ctx, args[1:], stdin, stdout, stderr)
 
 	case "ai":
 		return dispatchAI(ctx, args[1:], stdin, stdout, stderr)
@@ -105,7 +105,7 @@ func dispatch(ctx context.Context, args []string, stdin io.Reader, stdout, stder
 
 func dispatchSystem(ctx context.Context, args []string, stdin io.Reader, stdout, stderr io.Writer) error {
 	if len(args) == 0 {
-		return fmt.Errorf("uso: lumina system <pos|gnome|fonts|templates|apps|update|ulauncher|toys|megasync>")
+		return fmt.Errorf("uso: lumina system <pos|fonts|templates|apps|update|ulauncher|toys|megasync>")
 	}
 	exe := executor.New(stdout, stderr)
 	switch args[0] {
@@ -125,8 +125,6 @@ func dispatchSystem(ctx context.Context, args []string, stdin io.Reader, stdout,
 		default:
 			return fmt.Errorf("distro desconhecida: %s\nuso: lumina system pos [mint|zorin|ubuntu|fedora]", args[1])
 		}
-	case "gnome":
-		return dispatchGnome(ctx, args[1:], stdin, stdout, stderr)
 	case "fonts":
 		return fonts.Select(ctx, exe, stdin, stdout)
 	case "templates":
@@ -163,30 +161,34 @@ func dispatchSystem(ctx context.Context, args []string, stdin io.Reader, stdout,
 	case "megasync":
 		return megasync.Install(ctx, exe, stdout)
 	default:
-		return fmt.Errorf("subcomando desconhecido: %s\nuso: lumina system <pos|gnome|fonts|templates|apps|update|ulauncher|toys|megasync>", args[0])
+		return fmt.Errorf("subcomando desconhecido: %s\nuso: lumina system <pos|fonts|templates|apps|update|ulauncher|toys|megasync>", args[0])
 	}
 }
 
-func dispatchGnome(ctx context.Context, args []string, stdin io.Reader, stdout, _ io.Writer) error {
+func dispatchTheme(ctx context.Context, args []string, stdin io.Reader, stdout, _ io.Writer) error {
 	if len(args) == 0 {
-		return fmt.Errorf("uso: lumina gnome <pre|ext|themes|icons|cursor|flatpak>")
+		return fmt.Errorf("uso: lumina theme <gnome-pre|gnome|extensions|cinnamon-pre|cinnamon|cursor|icons|flatpak>")
 	}
 	exe := executor.New(stdout, stdout)
 	switch args[0] {
-	case "pre":
+	case "gnome-pre":
 		return gnome.InstallPrereqs(ctx, exe, stdout)
-	case "ext":
-		return gnome.ShowExtensions(ctx, exe, stdout)
-	case "themes":
+	case "gnome":
 		return gnome.ManageThemes(ctx, exe, stdin, stdout)
+	case "extensions":
+		return gnome.ShowExtensions(ctx, exe, stdout)
+	case "cinnamon-pre":
+		return gnome.InstallCinnamonPrereqs(ctx, exe, stdout)
+	case "cinnamon":
+		return gnome.ManageCinnamonThemes(ctx, exe, stdin, stdout)
+	case "cursor", "cursors":
+		return gnome.ManageCursors(ctx, exe, stdin, stdout)
 	case "icons":
 		return gnome.ManageIcons(ctx, exe, stdin, stdout)
-	case "cursors", "cursor":
-		return gnome.ManageCursors(ctx, exe, stdin, stdout)
 	case "flatpak":
 		return gnome.ApplyFlatpakTheme(ctx, exe, stdin, stdout)
 	default:
-		return fmt.Errorf("subcomando desconhecido: %s\nuso: lumina gnome <pre|ext|themes|icons|cursor|flatpak>", args[0])
+		return fmt.Errorf("subcomando desconhecido: %s\nuso: lumina theme <gnome-pre|gnome|extensions|cinnamon-pre|cinnamon|cursor|icons|flatpak>", args[0])
 	}
 }
 
@@ -206,7 +208,7 @@ func dispatchStack(ctx context.Context, args []string, stdin io.Reader, stdout, 
 		case "workspace":
 			return stackconfig.Workspace(ctx, exe, stdout)
 		case "stack":
-			return stackconfig.Compose(ctx, exe, stdout)
+			return stackconfig.Compose(ctx, exe, stdin, stdout)
 		default:
 			return fmt.Errorf("subcomando desconhecido: %s\nuso: lumina stack config [docker|workspace|stack]", args[1])
 		}
@@ -259,7 +261,7 @@ func dispatchDev(ctx context.Context, args []string, stdin io.Reader, stdout, st
 	case "create-workspace":
 		return stackconfig.Workspace(ctx, exe, stdout)
 	case "create-stack-php":
-		return stackconfig.Compose(ctx, exe, stdout)
+		return stackconfig.Compose(ctx, exe, stdin, stdout)
 	default:
 		return fmt.Errorf("subcomando desconhecido: %s\nuso: lumina dev <pre|go|llm|ide|term|mcp|update|create-workspace|create-stack-php>", args[0])
 	}

@@ -1,0 +1,107 @@
+# GNOME GTK Theme Catalogue — Lumina Tools
+#
+# Fields:
+#   name:           Display name shown in the menu
+#   dir_pattern:    Glob for detection. Absolute path = system-wide; relative = under ~/.themes/
+#   repo_url:       Git repository URL
+#   clone_target:   Clone the entire repo as ~/.themes/<clone_target>
+#   copy_sub_dir:   Clone to tmp, copy each subdir from this path to ~/.themes/
+#   install_dir:    Subdir containing install.sh; empty = repo root
+#   install_args:   Args passed to ./install.sh
+#   flatpak_name:   GTK_THEME value used for Flatpak override
+#   custom_script:  Run as root via "bash -c" instead of clone-based flows
+#   purge_packages: Remove via apt-get purge instead of glob deletion
+
+themes:
+  - name: "Orchis"
+    dir_pattern: "Orchis*"
+    repo_url: "https://github.com/vinceliuice/Orchis-theme.git"
+    install_args: ["-t", "all"]
+    flatpak_name: "Orchis"
+
+  - name: "Nordic"
+    dir_pattern: "Nordic"
+    repo_url: "https://github.com/EliverLara/Nordic.git"
+    clone_target: "Nordic"
+    flatpak_name: "Nordic"
+
+  - name: "Colloid"
+    dir_pattern: "Colloid*"
+    repo_url: "https://github.com/vinceliuice/Colloid-gtk-theme.git"
+    install_args: ["-t", "all"]
+    flatpak_name: "Colloid"
+
+  - name: "Fluent"
+    dir_pattern: "Fluent*"
+    repo_url: "https://github.com/vinceliuice/Fluent-gtk-theme.git"
+    install_args: ["-t", "all"]
+    flatpak_name: "Fluent"
+
+  - name: "Tokyonight"
+    dir_pattern: "Tokyonight*"
+    repo_url: "https://github.com/Fausto-Korpsvart/Tokyonight-GTK-Theme.git"
+    install_dir: "themes"
+    flatpak_name: "Tokyonight-Dark"
+
+  - name: "Everforest"
+    dir_pattern: "Everforest*"
+    repo_url: "https://github.com/Fausto-Korpsvart/Everforest-GTK-Theme.git"
+    install_dir: "themes"
+    flatpak_name: "Everforest-Dark"
+
+  - name: "Rose Pine"
+    dir_pattern: "rose-pine*"
+    repo_url: "https://github.com/rose-pine/gtk.git"
+    copy_sub_dir: "gtk3"
+    flatpak_name: "rose-pine-gtk"
+
+  - name: "Gruvbox"
+    dir_pattern: "Gruvbox*"
+    repo_url: "https://github.com/Fausto-Korpsvart/Gruvbox-GTK-Theme.git"
+    install_dir: "themes"
+    flatpak_name: "Gruvbox-Dark"
+
+  - name: "Graphite"
+    dir_pattern: "Graphite*"
+    repo_url: "https://github.com/vinceliuice/Graphite-gtk-theme.git"
+    install_args: ["-t", "all"]
+    flatpak_name: "Graphite-Dark"
+
+  - name: "Zorin"
+    dir_pattern: "Zorin*"
+    repo_url: "https://github.com/ZorinOS/zorin-desktop-themes.git"
+    copy_sub_dir: "."
+    flatpak_name: "ZorinBlue-Dark"
+
+  - name: "Yaru"
+    dir_pattern: "/usr/share/themes/Yaru*"
+    flatpak_name: "Yaru"
+    purge_packages:
+      - fonts-ubuntu
+      - yaru-theme-gtk
+      - yaru-theme-icon
+      - yaru-theme-sound
+      - yaru-theme-gnome-shell
+    custom_script: |
+      set -e
+      VER=$(grep "^VERSION_ID=" /etc/os-release 2>/dev/null | cut -d= -f2 | tr -d '"')
+      case "$VER" in
+          24.04)
+              DEBIAN_FRONTEND=noninteractive apt-get install -y \
+                  -o Dpkg::Use-Pty=0 -o Dpkg::Progress-Fancy=0 -o APT::Color=0 \
+                  fonts-ubuntu yaru-theme-gtk yaru-theme-icon yaru-theme-sound yaru-theme-gnome-shell
+              ;;
+          *)
+              TMP=$(mktemp -d)
+              trap 'rm -rf -- "$TMP"' EXIT
+              cd -- "$TMP"
+              POOL="https://archive.ubuntu.com/ubuntu/pool/main/y/yaru-theme"
+              for pkg in yaru-theme-gtk yaru-theme-icon yaru-theme-sound; do
+                  deb=$(wget -qO- "${POOL}/" | grep -oE "${pkg}_[^\"]+_all\\.deb" | sort -rV | head -1)
+                  [ -n "$deb" ] || { printf 'Aviso: %s não encontrado no pool, ignorando.\n' "$pkg"; continue; }
+                  wget -q "${POOL}/${deb}"
+              done
+              DEBIAN_FRONTEND=noninteractive apt-get install -y \
+                  -o Dpkg::Use-Pty=0 -o Dpkg::Progress-Fancy=0 -o APT::Color=0 -- ./*.deb
+              ;;
+      esac

@@ -6,7 +6,6 @@ type actionID int
 
 const (
 	actNone actionID = iota
-	actBack
 	actPrereqs
 	// System
 	actSystemPostMint
@@ -60,6 +59,8 @@ const (
 	actGnomeIcons
 	actGnomeCursors
 	actGnomeFlatpak
+	actCinnamonPrereqs
+	actCinnamonThemes
 	// New in reorganization
 	actLuminaConfig
 	actStackRestart
@@ -93,12 +94,18 @@ const (
 // submenuEntry is one actionable item in the right-panel list.
 // cmd is shown as the second line; if empty, desc is shown instead.
 // pending marks items that are not yet implemented — shown as disabled.
+// gnomeOnly hides the item when the configured DE is not GNOME.
+// cinnamonOnly hides the item when the configured DE is not Cinnamon.
+// distro, when non-empty, hides the item when it does not match cfg.Distro.
 type submenuEntry struct {
-	title   string
-	cmd     string
-	desc    string
-	action  actionID
-	pending bool
+	title        string
+	cmd          string
+	desc         string
+	action       actionID
+	pending      bool
+	gnomeOnly    bool
+	cinnamonOnly bool
+	distro       string
 }
 
 // section is one of the persistent entries in the left-panel sidebar.
@@ -123,10 +130,10 @@ var sections = []section{
 	{
 		label: "Gerenciamento Linux",
 		items: []submenuEntry{
-			{title: "Pós instalação · Mint 22.3", cmd: "lumina system pos mint", action: actSystemPostMint},
-			{title: "Pós instalação · ZorinOS 18.1", cmd: "lumina system pos zorin", action: actSystemPostZorin},
-			{title: "Pós instalação · Ubuntu 26.04", cmd: "lumina system pos ubuntu", action: actSystemPostUbuntu},
-			{title: "Pós instalação · Fedora Gnome 44", cmd: "lumina system pos fedora", action: actSystemPostFedora},
+			{title: "Pós instalação · Mint 22.3", cmd: "lumina system pos mint", action: actSystemPostMint, distro: "mint"},
+			{title: "Pós instalação · ZorinOS 18.1", cmd: "lumina system pos zorin", action: actSystemPostZorin, distro: "zorin"},
+			{title: "Pós instalação · Ubuntu 26.04", cmd: "lumina system pos ubuntu", action: actSystemPostUbuntu, distro: "ubuntu"},
+			{title: "Pós instalação · Fedora Gnome 44", cmd: "lumina system pos fedora", action: actSystemPostFedora, distro: "fedora"},
 			{title: "Gerenciar Fontes", cmd: "lumina system fonts", action: actSystemFonts},
 			{title: "Gerenciar Templates de Arquivos", cmd: "lumina system templates", action: actSystemTemplates},
 			{title: "Instalar Linux Toys", cmd: "lumina system toys", action: actLinuxToys},
@@ -144,11 +151,14 @@ var sections = []section{
 	{
 		label: "Personalizar Linux",
 		items: []submenuEntry{
-			{title: "Pré-requisitos Gnome", cmd: "lumina gnome pre", action: actGnomePrereqs},
-			{title: "Temas Gnome", cmd: "lumina gnome themes", action: actGnomeThemes},
-			{title: "Cursor", cmd: "lumina gnome cursor", action: actGnomeCursors},
-			{title: "Ícones", cmd: "lumina gnome icons", action: actGnomeIcons},
-			{title: "Aplicar tema Flathub", cmd: "lumina system gnome flatpak", action: actGnomeFlatpak},
+			{title: "Pré-requisitos Gnome", cmd: "lumina theme gnome-pre", action: actGnomePrereqs, gnomeOnly: true},
+			{title: "Temas Gnome", cmd: "lumina theme gnome", action: actGnomeThemes, gnomeOnly: true},
+			{title: "Extensões GNOME", cmd: "lumina theme extensions", action: actGnomeExtensions, gnomeOnly: true},
+			{title: "Pré-requisitos Cinnamon", cmd: "lumina theme cinnamon-pre", action: actCinnamonPrereqs, cinnamonOnly: true},
+			{title: "Temas Cinnamon", cmd: "lumina theme cinnamon", action: actCinnamonThemes, cinnamonOnly: true},
+			{title: "Cursor", cmd: "lumina theme cursor", action: actGnomeCursors},
+			{title: "Ícones", cmd: "lumina theme icons", action: actGnomeIcons},
+			{title: "Aplicar tema Flatpak", cmd: "lumina theme flatpak", action: actGnomeFlatpak},
 		},
 	},
 	{

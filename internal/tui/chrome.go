@@ -53,9 +53,9 @@ func tickConnectivity() tea.Cmd {
 }
 
 // renderChromeHeader renders the persistent header inside a rounded border box.
-// Left side: ◈ lumina.tools  │  version  — three distinct colors like the reference design.
+// Left side: ◈ lumina.tools  │  version  │  distro (when set).
 // Right side: ● (green/red) + dim status text.
-func renderChromeHeader(width int, online bool, s TUIStyles) string {
+func renderChromeHeader(width int, online bool, distroLabel string, s TUIStyles) string {
 	// Left: brand identity split into styled segments.
 	left := lipgloss.JoinHorizontal(lipgloss.Center,
 		s.ActiveBar.Render("◈ "),
@@ -64,6 +64,13 @@ func renderChromeHeader(width int, online bool, s TUIStyles) string {
 		s.Footer.Render("  │  "),
 		s.Footer.Render(version.Version),
 	)
+	if distroLabel != "" {
+		left = lipgloss.JoinHorizontal(lipgloss.Center,
+			left,
+			s.Footer.Render("  │  "),
+			s.Breadcrumb.Render(distroLabel),
+		)
+	}
 
 	// Right: colored dot + dim status text (separate styles like the reference).
 	var right string

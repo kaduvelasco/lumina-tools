@@ -2,7 +2,6 @@ package gnome
 
 import (
 	"context"
-	"fmt"
 	"io"
 	"path/filepath"
 
@@ -11,45 +10,13 @@ import (
 )
 
 type iconEntry struct {
-	Name       string
-	DirPattern string // glob under ~/.local/share/icons/ for detection and removal
-	RepoURL    string
-	CloneAs    string // non-empty: clone directly as ~/.local/share/icons/<CloneAs>
-	CopyGlob   string // non-empty: clone to tmp, copy matching subdirs into icons dir
+	Name       string `yaml:"name"`
+	DirPattern string `yaml:"dir_pattern"`
+	RepoURL    string `yaml:"repo_url"`
+	CloneAs    string `yaml:"clone_as,omitempty"`
+	CopyGlob   string `yaml:"copy_glob,omitempty"`
 }
 
-var iconCatalogue = []iconEntry{
-	{
-		Name:       "Gruvbox Plus",
-		DirPattern: "Gruvbox-Plus-*",
-		RepoURL:    "https://github.com/SylEleuth/gruvbox-plus-icon-pack.git",
-		CopyGlob:   "Gruvbox-Plus-*",
-	},
-	{
-		Name:       "Kora",
-		DirPattern: "kora",
-		RepoURL:    "https://github.com/bikass/kora.git",
-		CopyGlob:   "kora*",
-	},
-	{
-		Name:       "Candy Icons",
-		DirPattern: "candy-icons",
-		RepoURL:    "https://github.com/EliverLara/candy-icons.git",
-		CloneAs:    "candy-icons",
-	},
-	{
-		Name:       "Flatery",
-		DirPattern: "Flatery",
-		RepoURL:    "https://github.com/cbrnix/Flatery.git",
-		CopyGlob:   "Flatery*",
-	},
-	{
-		Name:       "Newaita",
-		DirPattern: "Newaita*",
-		RepoURL:    "https://github.com/cbrnix/Newaita-reborn.git",
-		CopyGlob:   "Newaita*",
-	},
-}
 
 func isIconInstalled(ic iconEntry, id string) bool {
 	return globExists(filepath.Join(id, ic.DirPattern))
@@ -57,13 +24,7 @@ func isIconInstalled(ic iconEntry, id string) bool {
 
 // ManageIcons shows a multi-select for icon packs and applies the diff.
 func ManageIcons(ctx context.Context, exe *executor.Executor, stdin io.Reader, stdout io.Writer) error {
-	ui.PrintHeader(stdout, "Customizar GNOME — Ícones")
-
-	if !isGnome() {
-		ui.Err(stdout, ErrNotGnome.Error())
-		ui.WaitEnter(stdout)
-		return nil
-	}
+	ui.PrintHeader(stdout, "Customizar — Ícones")
 
 	id, err := iconsDir()
 	if err != nil {
@@ -72,59 +33,21 @@ func ManageIcons(ctx context.Context, exe *executor.Executor, stdin io.Reader, s
 		return err
 	}
 
-	ui.Info(stdout, "Verificando pacotes de ícones instalados...")
-	items := make([]ui.SelectItem, len(iconCatalogue))
-	for i, ic := range iconCatalogue {
-		items[i] = ui.SelectItem{Label: ic.Name, ID: ic.Name, Selected: isIconInstalled(ic, id)}
-	}
-
-	finalItems, confirmed, err := ui.RunMultiSelect(ctx, stdin, stdout, items)
+	catalogue, err := loadIconCatalogue()
 	if err != nil {
+		ui.Err(stdout, "Erro ao carregar catálogo de ícones: "+err.Error())
+		ui.WaitEnter(stdout)
 		return err
 	}
-	if !confirmed {
-		ui.Warning(stdout, "Operação cancelada.")
-		ui.WaitEnter(stdout)
-		return nil
-	}
 
-	var toInstall, toRemove []iconEntry
-	for i, item := range finalItems {
-		ic := iconCatalogue[i]
-		wasInstalled := items[i].Selected
-		switch {
-		case item.Selected && !wasInstalled:
-			toInstall = append(toInstall, ic)
-		case !item.Selected && wasInstalled:
-			toRemove = append(toRemove, ic)
-		}
-	}
-
-	if len(toInstall) == 0 && len(toRemove) == 0 {
-		ui.Info(stdout, "Nenhuma alteração necessária.")
-		ui.WaitEnter(stdout)
-		return nil
-	}
-
-	ui.PrintHeader(stdout, "Customizar GNOME — Ícones")
-
-	for _, ic := range toRemove {
-		ui.Info(stdout, "Removendo "+ic.Name+"...")
-		if rErr := removeIcon(ctx, exe, stdout, ic, id); rErr != nil {
-			ui.Warning(stdout, fmt.Sprintf("Falha ao remover %s: %v", ic.Name, rErr))
-		}
-	}
-
-	for _, ic := range toInstall {
-		ui.Info(stdout, "Instalando "+ic.Name+"...")
-		if iErr := installIcon(ctx, exe, stdout, ic, id); iErr != nil {
-			ui.Warning(stdout, fmt.Sprintf("Falha ao instalar %s: %v", ic.Name, iErr))
-		}
-	}
-
-	ui.Success(stdout, "Ícones atualizados!")
-	ui.WaitEnter(stdout)
-	return nil
+	return manageCatalogue(ctx, exe, stdin, stdout,
+		"Customizar — Ícones", id, catalogue,
+		func(ic iconEntry) string { return ic.Name },
+		isIconInstalled,
+		installIcon,
+		removeIcon,
+		"Ícones atualizados!",
+	)
 }
 
 func installIcon(ctx context.Context, exe *executor.Executor, stdout io.Writer, ic iconEntry, id string) error {
@@ -154,7 +77,7 @@ gtk-update-icon-cache -f -t "$2" 2>/dev/null || true
 	script := `
 set -e
 TMP=$(mktemp -d)
-trap 'rm -rf "$TMP"' EXIT
+trap 'rm -rf -- "$TMP"' EXIT
 git clone --depth=1 "$1" "$TMP/pack"
 shopt -s nullglob
 for d in "$TMP/pack"/$2; do

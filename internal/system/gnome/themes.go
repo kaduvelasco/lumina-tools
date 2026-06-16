@@ -7,119 +7,23 @@ import (
 	"os"
 	"path/filepath"
 
+	"github.com/kaduvelasco/lumina-tools/internal/config"
 	"github.com/kaduvelasco/lumina-tools/internal/executor"
 	"github.com/kaduvelasco/lumina-tools/internal/ui"
 )
 
 type themeEntry struct {
-	Name          string
-	DirPattern    string   // glob for detection; absolute path = system install, relative = under ~/.themes/
-	RepoURL       string
-	CloneTarget   string   // non-empty: clone entire repo to ~/.themes/<CloneTarget> (e.g. Nordic)
-	CopySubDir    string   // non-empty: copy all subdirs from CopySubDir of the repo to ~/.themes/ (e.g. Rose Pine)
-	InstallDir    string   // subdir containing install.sh; empty means repo root (e.g. "themes" for Fausto-Korpsvart)
-	InstallArgs   []string // args for ./install.sh (when CloneTarget and CopySubDir are both empty)
-	AskIcon       bool     // true: prompt the user for the -i <icon> flag (WhiteSur)
-	FlatpakName   string   // theme name used for GTK_THEME flatpak override
-	CustomScript  string   // when non-empty, run as root via bash -c instead of clone-based flows
-	PurgePackages []string // when non-empty, remove via apt-get purge instead of glob deletion
-}
-
-var themeCatalogue = []themeEntry{
-	{
-		Name:        "Orchis",
-		DirPattern:  "Orchis*",
-		RepoURL:     "https://github.com/vinceliuice/Orchis-theme.git",
-		InstallArgs: []string{"-t", "all"},
-		FlatpakName: "Orchis",
-	},
-	{
-		Name:        "Nordic",
-		DirPattern:  "Nordic",
-		RepoURL:     "https://github.com/EliverLara/Nordic.git",
-		CloneTarget: "Nordic",
-		FlatpakName: "Nordic",
-	},
-	{
-		Name:        "Colloid",
-		DirPattern:  "Colloid*",
-		RepoURL:     "https://github.com/vinceliuice/Colloid-gtk-theme.git",
-		InstallArgs: []string{"-t", "all"},
-		FlatpakName: "Colloid",
-	},
-	{
-		Name:        "Fluent",
-		DirPattern:  "Fluent*",
-		RepoURL:     "https://github.com/vinceliuice/Fluent-gtk-theme.git",
-		InstallArgs: []string{"-t", "all"},
-		FlatpakName: "Fluent",
-	},
-	{
-		Name:        "Tokyonight",
-		DirPattern:  "Tokyonight*",
-		RepoURL:     "https://github.com/Fausto-Korpsvart/Tokyonight-GTK-Theme.git",
-		InstallDir:  "themes",
-		FlatpakName: "Tokyonight-Dark",
-	},
-	{
-		Name:        "Everforest",
-		DirPattern:  "Everforest*",
-		RepoURL:     "https://github.com/Fausto-Korpsvart/Everforest-GTK-Theme.git",
-		InstallDir:  "themes",
-		FlatpakName: "Everforest-Dark",
-	},
-	{
-		Name:        "Rose Pine",
-		DirPattern:  "rose-pine*",
-		RepoURL:     "https://github.com/rose-pine/gtk.git",
-		CopySubDir:  "gtk3",
-		FlatpakName: "rose-pine-gtk",
-	},
-	{
-		Name:        "Gruvbox",
-		DirPattern:  "Gruvbox*",
-		RepoURL:     "https://github.com/Fausto-Korpsvart/Gruvbox-GTK-Theme.git",
-		InstallDir:  "themes",
-		FlatpakName: "Gruvbox-Dark",
-	},
-	{
-		Name:        "Graphite",
-		DirPattern:  "Graphite*",
-		RepoURL:     "https://github.com/vinceliuice/Graphite-gtk-theme.git",
-		InstallArgs: []string{"-t", "all"},
-		FlatpakName: "Graphite-Dark",
-	},
-	{
-		Name:        "Zorin",
-		DirPattern:  "Zorin*",
-		RepoURL:     "https://github.com/ZorinOS/zorin-desktop-themes.git",
-		CopySubDir:  ".",
-		FlatpakName: "ZorinBlue-Dark",
-	},
-	{
-		Name:       "Yaru (Ubuntu 24.04)",
-		DirPattern: "/usr/share/themes/Yaru*",
-		CustomScript: `DEBIAN_FRONTEND=noninteractive apt-get install -y -o Dpkg::Use-Pty=0 -o Dpkg::Progress-Fancy=0 -o APT::Color=0 fonts-ubuntu yaru-theme-gtk yaru-theme-icon yaru-theme-sound yaru-theme-gnome-shell`,
-		PurgePackages: []string{"fonts-ubuntu", "yaru-theme-gtk", "yaru-theme-icon", "yaru-theme-sound", "yaru-theme-gnome-shell"},
-		FlatpakName:   "Yaru",
-	},
-	{
-		Name:       "Yaru (Ubuntu 26.04)",
-		DirPattern: "/usr/share/themes/Yaru*",
-		CustomScript: `set -e
-TMP=$(mktemp -d)
-trap 'rm -rf -- "$TMP"' EXIT
-cd -- "$TMP"
-POOL="http://archive.ubuntu.com/ubuntu/pool/main/y/yaru-theme"
-for pkg in yaru-theme-gtk yaru-theme-icon yaru-theme-sound; do
-    deb=$(wget -qO- "${POOL}/" | grep -oE "${pkg}_[^\"]+_all\.deb" | sort -rV | head -1)
-    [ -n "$deb" ] || { printf 'Aviso: %s não encontrado no pool, ignorando.\n' "$pkg"; continue; }
-    wget -q "${POOL}/${deb}"
-done
-DEBIAN_FRONTEND=noninteractive apt-get install -y -o Dpkg::Use-Pty=0 -o Dpkg::Progress-Fancy=0 -o APT::Color=0 -- ./*.deb`,
-		PurgePackages: []string{"yaru-theme-gtk", "yaru-theme-icon", "yaru-theme-sound"},
-		FlatpakName:   "Yaru",
-	},
+	Name          string   `yaml:"name"`
+	DirPattern    string   `yaml:"dir_pattern"`
+	RepoURL       string   `yaml:"repo_url"`
+	CloneTarget   string   `yaml:"clone_target,omitempty"`
+	CopySubDir    string   `yaml:"copy_sub_dir,omitempty"`
+	InstallDir    string   `yaml:"install_dir,omitempty"`
+	InstallArgs   []string `yaml:"install_args,omitempty"`
+	AskIcon       bool     `yaml:"ask_icon,omitempty"`
+	FlatpakName   string   `yaml:"flatpak_name,omitempty"`
+	CustomScript  string   `yaml:"custom_script,omitempty"`
+	PurgePackages []string `yaml:"purge_packages,omitempty"`
 }
 
 // whiteSurIconOptions lists valid values for WhiteSur's -i (titlebar icon) flag.
@@ -147,15 +51,20 @@ func isThemeInstalled(t themeEntry, td string) bool {
 	return globExists(filepath.Join(td, t.DirPattern))
 }
 
-// ManageThemes shows a multi-select for GTK themes and applies the diff.
+// ManageThemes shows a multi-select for GNOME GTK themes and applies the diff.
 func ManageThemes(ctx context.Context, exe *executor.Executor, stdin io.Reader, stdout io.Writer) error {
-	ui.PrintHeader(stdout, "Customizar GNOME — Temas GTK")
-
-	if !isGnome() {
-		ui.Err(stdout, ErrNotGnome.Error())
+	catalogue, err := loadThemeCatalogue()
+	if err != nil {
+		ui.Err(stdout, "Erro ao carregar catálogo de temas: "+err.Error())
 		ui.WaitEnter(stdout)
-		return nil
+		return err
 	}
+	return manageThemesFrom(ctx, exe, stdin, stdout, catalogue, "Customizar GNOME — Temas GTK")
+}
+
+// manageThemesFrom is the shared implementation for GNOME and Cinnamon theme management.
+func manageThemesFrom(ctx context.Context, exe *executor.Executor, stdin io.Reader, stdout io.Writer, catalogue []themeEntry, title string) error {
+	ui.PrintHeader(stdout, title)
 
 	td, err := themesDir()
 	if err != nil {
@@ -165,8 +74,8 @@ func ManageThemes(ctx context.Context, exe *executor.Executor, stdin io.Reader, 
 	}
 
 	ui.Info(stdout, "Verificando temas instalados...")
-	items := make([]ui.SelectItem, len(themeCatalogue))
-	for i, t := range themeCatalogue {
+	items := make([]ui.SelectItem, len(catalogue))
+	for i, t := range catalogue {
 		items[i] = ui.SelectItem{Label: t.Name, ID: t.Name, Selected: isThemeInstalled(t, td)}
 	}
 
@@ -179,10 +88,13 @@ func ManageThemes(ctx context.Context, exe *executor.Executor, stdin io.Reader, 
 		ui.WaitEnter(stdout)
 		return nil
 	}
+	if len(finalItems) != len(catalogue) {
+		return fmt.Errorf("inconsistência interna: UI retornou %d itens, catálogo tem %d", len(finalItems), len(catalogue))
+	}
 
 	var toInstall, toRemove []themeEntry
 	for i, item := range finalItems {
-		t := themeCatalogue[i]
+		t := catalogue[i]
 		wasInstalled := items[i].Selected
 		switch {
 		case item.Selected && !wasInstalled:
@@ -214,7 +126,7 @@ func ManageThemes(ctx context.Context, exe *executor.Executor, stdin io.Reader, 
 		}
 	}
 
-	ui.PrintHeader(stdout, "Customizar GNOME — Temas GTK")
+	ui.PrintHeader(stdout, title)
 
 	for _, t := range toRemove {
 		ui.Info(stdout, "Removendo "+t.Name+"...")
@@ -234,7 +146,7 @@ func ManageThemes(ctx context.Context, exe *executor.Executor, stdin io.Reader, 
 		}
 	}
 
-	offerFlatpak(ctx, exe, stdin, stdout, td)
+	offerFlatpak(ctx, exe, stdin, stdout, td, catalogue)
 
 	ui.Success(stdout, "Temas atualizados!")
 	ui.WaitEnter(stdout)
@@ -257,7 +169,7 @@ func installTheme(ctx context.Context, exe *executor.Executor, stdout io.Writer,
 	}
 
 	if t.CloneTarget != "" {
-		// Clone entire repo as the theme directory (e.g. Nordic).
+		// Clone entire repo as the theme directory (e.g. Nordic, Dracula).
 		target := filepath.Join(td, t.CloneTarget)
 		script := `
 set -e
@@ -272,6 +184,7 @@ git clone --depth=1 -- "$1" "$2"
 
 	if t.CopySubDir != "" {
 		// Clone to tempdir and copy each pre-built theme subdir to ~/.themes/ (e.g. Rose Pine).
+		// Hidden directories (.git, .github, etc.) are explicitly skipped.
 		script := `
 set -e
 TMP=$(mktemp -d)
@@ -279,7 +192,9 @@ trap 'rm -rf -- "$TMP"' EXIT
 git clone --depth=1 -- "$1" "$TMP/repo"
 for d in "$TMP/repo/$2"/*/; do
     [ -d "$d" ] || continue
-    rm -rf -- "$3/$(basename -- "$d")"
+    name="$(basename -- "$d")"
+    case "$name" in .*) continue ;; esac
+    rm -rf -- "$3/$name"
     cp -r -- "$d" "$3/"
 done
 `
@@ -347,7 +262,6 @@ done
 }
 
 // applyFlatpakTheme configures Flatpak to use the given GTK theme for all apps.
-// It grants filesystem access to ~/.themes and sets GTK_THEME via flatpak override.
 func applyFlatpakTheme(ctx context.Context, exe *executor.Executor, stdout io.Writer, chosen, homeDir string) error {
 	themesPath := filepath.Join(homeDir, ".themes")
 	if err := exe.Run(ctx,
@@ -365,30 +279,53 @@ func applyFlatpakTheme(ctx context.Context, exe *executor.Executor, stdout io.Wr
 	return nil
 }
 
-// offerFlatpak prompts the user to apply a GTK theme override to all Flatpak apps.
-func offerFlatpak(ctx context.Context, exe *executor.Executor, stdin io.Reader, stdout io.Writer, td string) {
-	var installed []ui.SelectItem
-	for _, t := range themeCatalogue {
+// selectFlatpakTheme scans catalogue for installed themes and runs a single-select.
+// Returns the chosen FlatpakName and ok=true when the user confirms a choice.
+// Returns ("", false, nil) when no themes are installed or the user cancels (ESC).
+// Returns ("", true, nil) when the user explicitly picks "Não aplicar".
+func selectFlatpakTheme(ctx context.Context, stdin io.Reader, stdout io.Writer, td string, catalogue []themeEntry) (string, bool, error) {
+	var items []ui.SelectItem
+	for _, t := range catalogue {
 		if isThemeInstalled(t, td) {
-			installed = append(installed, ui.SelectItem{Label: t.Name, ID: t.FlatpakName})
+			items = append(items, ui.SelectItem{Label: t.Name, ID: t.FlatpakName})
 		}
 	}
-	if len(installed) == 0 {
+	if len(items) == 0 {
+		return "", false, nil
+	}
+	items = append(items, ui.SelectItem{Label: "Não aplicar", ID: ""})
+
+	idx, ok, err := ui.RunSingleSelect(ctx, stdin, stdout, items)
+	if err != nil {
+		return "", false, err
+	}
+	if !ok || idx < 0 {
+		return "", false, nil
+	}
+	return items[idx].ID, true, nil
+}
+
+// offerFlatpak prompts the user to apply a GTK theme override to all Flatpak apps.
+func offerFlatpak(ctx context.Context, exe *executor.Executor, stdin io.Reader, stdout io.Writer, td string, catalogue []themeEntry) {
+	// Pre-check: avoid printing the prompt when no themes are installed.
+	anyInstalled := false
+	for _, t := range catalogue {
+		if isThemeInstalled(t, td) {
+			anyInstalled = true
+			break
+		}
+	}
+	if !anyInstalled {
 		return
 	}
-	installed = append(installed, ui.SelectItem{Label: "Não aplicar", ID: ""})
 
 	fmt.Fprintln(stdout)
 	ui.Info(stdout, "Aplicar tema GTK ao Flatpak?")
 	ui.Info(stdout, "Isso configura todos os apps Flatpak para usar o tema escolhido.")
 	fmt.Fprintln(stdout)
 
-	idx, ok, err := ui.RunSingleSelect(ctx, stdin, stdout, installed)
-	if err != nil || !ok || idx < 0 {
-		return
-	}
-	chosen := installed[idx].ID
-	if chosen == "" {
+	chosen, _, err := selectFlatpakTheme(ctx, stdin, stdout, td, catalogue)
+	if err != nil || chosen == "" {
 		return
 	}
 
@@ -406,16 +343,11 @@ func offerFlatpak(ctx context.Context, exe *executor.Executor, stdin io.Reader, 
 	ui.Success(stdout, "Flatpak configurado com o tema "+chosen+".")
 }
 
-// ApplyFlatpakTheme lets the user pick an installed GTK theme and apply it
-// as a GTK_THEME environment override for all Flatpak apps.
+// ApplyFlatpakTheme lets the user pick an installed GTK theme and apply it as a
+// GTK_THEME override for all Flatpak apps. Works for both GNOME and Cinnamon —
+// shows the appropriate catalogue based on the DE saved in config.
 func ApplyFlatpakTheme(ctx context.Context, exe *executor.Executor, stdin io.Reader, stdout io.Writer) error {
-	ui.PrintHeader(stdout, "Customizar GNOME — Aplicar Tema no Flatpak")
-
-	if !isGnome() {
-		ui.Err(stdout, ErrNotGnome.Error())
-		ui.WaitEnter(stdout)
-		return nil
-	}
+	ui.PrintHeader(stdout, "Customizar — Aplicar Tema no Flatpak")
 
 	td, err := themesDir()
 	if err != nil {
@@ -424,36 +356,52 @@ func ApplyFlatpakTheme(ctx context.Context, exe *executor.Executor, stdin io.Rea
 		return err
 	}
 
-	var installed []ui.SelectItem
-	for _, t := range themeCatalogue {
-		if isThemeInstalled(t, td) {
-			installed = append(installed, ui.SelectItem{Label: t.Name, ID: t.FlatpakName})
+	catalogue, err := loadThemeCatalogue()
+	if err != nil {
+		ui.Err(stdout, "Erro ao carregar catálogo de temas: "+err.Error())
+		ui.WaitEnter(stdout)
+		return err
+	}
+	cfg, cfgErr := config.Load()
+	if cfgErr != nil {
+		ui.Warning(stdout, "Não foi possível carregar configuração: "+cfgErr.Error())
+	} else if cfg.DE == "cinnamon" {
+		cin, cinErr := loadCinnamonThemeCatalogue()
+		if cinErr != nil {
+			ui.Warning(stdout, "Erro ao carregar catálogo Cinnamon: "+cinErr.Error())
+		} else {
+			catalogue = cin
 		}
 	}
 
-	if len(installed) == 0 {
+	// Pre-check: show an explicit warning when no themes are installed yet.
+	hasInstalled := false
+	for _, t := range catalogue {
+		if isThemeInstalled(t, td) {
+			hasInstalled = true
+			break
+		}
+	}
+	if !hasInstalled {
 		ui.Warning(stdout, "Nenhum tema compatível encontrado em ~/.themes/")
 		ui.Info(stdout, "Instale pelo menos um tema GTK antes de usar esta opção.")
 		ui.WaitEnter(stdout)
 		return nil
 	}
 
-	installed = append(installed, ui.SelectItem{Label: "Não aplicar", ID: ""})
-
 	ui.Info(stdout, "Selecione o tema GTK para aplicar em todos os apps Flatpak:")
 	fmt.Fprintln(stdout)
 
-	idx, ok, err := ui.RunSingleSelect(ctx, stdin, stdout, installed)
+	chosen, ok, err := selectFlatpakTheme(ctx, stdin, stdout, td, catalogue)
 	if err != nil {
 		return err
 	}
-	if !ok || idx < 0 {
+	// hasInstalled=true means selectFlatpakTheme had items; !ok here means user cancelled.
+	if !ok {
 		ui.Warning(stdout, "Operação cancelada.")
 		ui.WaitEnter(stdout)
 		return nil
 	}
-
-	chosen := installed[idx].ID
 	if chosen == "" {
 		ui.Info(stdout, "Nenhuma alteração aplicada.")
 		ui.WaitEnter(stdout)

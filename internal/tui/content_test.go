@@ -71,7 +71,7 @@ func TestSectionCounts(t *testing.T) {
 		"Home":                        6,
 		"Gerenciamento Linux":          8,
 		"Aplicativos Linux":            3,
-		"Personalizar Linux":           5,
+		"Personalizar Linux":           8,
 		"Ambiente de Desenvolvimento":  9,
 		"Gerenciar Stack PHP":          6,
 		"Gerenciar banco de Dados":     5,

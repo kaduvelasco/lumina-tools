@@ -20,43 +20,15 @@ func InstallPrereqs(ctx context.Context, exe *executor.Executor, stdout io.Write
 		return nil
 	}
 
-	family := distro.Detect()
-
 	ui.Info(stdout, "Instalando pacotes necessários...")
-	switch family {
-	case distro.Debian:
-		if err := exe.Run(ctx,
-			executor.Options{RequiresSudo: true, Stdout: stdout, Stderr: stdout},
-			"apt-get", "install", "-y", "--",
-			"gnome-tweaks", "gnome-themes-extra", "gtk2-engines-murrine", "sassc", "git",
-		); err != nil {
-			ui.Err(stdout, "Falha ao instalar pacotes: "+err.Error())
-			ui.WaitEnter(stdout)
-			return err
-		}
-	case distro.Fedora:
-		if err := exe.Run(ctx,
-			executor.Options{RequiresSudo: true, Stdout: stdout, Stderr: stdout},
-			"dnf", "install", "-y",
-			"gnome-tweaks", "gnome-themes-extra", "gtk-murrine-engine", "sassc", "git",
-		); err != nil {
-			ui.Err(stdout, "Falha ao instalar pacotes: "+err.Error())
-			ui.WaitEnter(stdout)
-			return err
-		}
-	case distro.Arch:
-		if err := exe.Run(ctx,
-			executor.Options{RequiresSudo: true, Stdout: stdout, Stderr: stdout},
-			"pacman", "-S", "--noconfirm",
-			"gnome-tweaks", "gnome-themes-extra", "gtk-engine-murrine", "sassc", "git",
-		); err != nil {
-			ui.Err(stdout, "Falha ao instalar pacotes: "+err.Error())
-			ui.WaitEnter(stdout)
-			return err
-		}
-	default:
-		ui.Warning(stdout, "Distribuição não identificada para instalação automática de pacotes.")
-		ui.Info(stdout, "Instale manualmente: gnome-tweaks, gnome-themes-extra, murrine-engine, sassc, git")
+	if err := installPackagesByFamily(ctx, exe, stdout, map[string][]string{
+		distro.Debian: {"gnome-tweaks", "gnome-themes-extra", "gtk2-engines-murrine", "sassc", "git"},
+		distro.Fedora: {"gnome-tweaks", "gnome-themes-extra", "gtk-murrine-engine", "sassc", "git"},
+		distro.Arch:   {"gnome-tweaks", "gnome-themes-extra", "gtk-engine-murrine", "sassc", "git"},
+	}, "gnome-tweaks, gnome-themes-extra, murrine-engine, sassc, git"); err != nil {
+		ui.Err(stdout, "Falha ao instalar pacotes: "+err.Error())
+		ui.WaitEnter(stdout)
+		return err
 	}
 
 	flatpakFlag := config.FlatpakFlag()

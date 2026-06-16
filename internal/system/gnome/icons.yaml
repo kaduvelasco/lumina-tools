@@ -1,0 +1,44 @@
+# Icon Pack Catalogue — Lumina Tools
+#
+# Fields:
+#   name:        Display name shown in the menu
+#   dir_pattern: Glob under ~/.local/share/icons/ for detection and removal
+#   repo_url:    Git repository URL
+#   clone_as:    Clone directly as ~/.local/share/icons/<clone_as>
+#   copy_glob:   Clone to tmp, copy matching subdirs into icons dir
+
+icons:
+  - name: "Gruvbox Plus"
+    dir_pattern: "Gruvbox-Plus-*"
+    repo_url: "https://github.com/SylEleuth/gruvbox-plus-icon-pack.git"
+    copy_glob: "Gruvbox-Plus-*"
+
+  - name: "Kora"
+    dir_pattern: "kora"
+    repo_url: "https://github.com/bikass/kora.git"
+    copy_glob: "kora*"
+
+  - name: "Candy Icons"
+    dir_pattern: "candy-icons"
+    repo_url: "https://github.com/EliverLara/candy-icons.git"
+    clone_as: "candy-icons"
+
+  - name: "Flatery"
+    dir_pattern: "Flatery"
+    repo_url: "https://github.com/cbrnix/Flatery.git"
+    copy_glob: "Flatery*"
+
+  - name: "Newaita"
+    dir_pattern: "Newaita*"
+    repo_url: "https://github.com/cbrnix/Newaita-reborn.git"
+    copy_glob: "Newaita*"
+
+  - name: "Dracula Icons"
+    dir_pattern: "Dracula-Icons"
+    repo_url: "https://github.com/m4thewz/dracula-icons.git"
+    clone_as: "Dracula-Icons"
+
+  - name: "Tela Circle"
+    dir_pattern: "Tela-circle*"
+    repo_url: "https://github.com/vinceliuice/Tela-circle-icon-theme.git"
+    copy_glob: "Tela-circle*"

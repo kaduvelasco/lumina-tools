@@ -57,18 +57,20 @@ Cada script é adaptado à distro alvo e realiza as seguintes etapas:
 | Aplicativos Flatpak | Instalar/remover a partir de um catálogo curado de aplicativos |
 | WebApps recomendados | Lista de aplicativos web com URL para abrir no navegador como PWA |
 
-### Personalizar Linux (`lumina gnome`)
+### Personalizar Linux (`lumina theme`)
 
-Requer GNOME como desktop ativo. Todas as operações verificam o ambiente antes de executar.
+Suporta GNOME e Cinnamon. A TUI detecta automaticamente o desktop ativo e exibe apenas os itens compatíveis — itens exclusivos de GNOME ficam ocultos no Cinnamon e vice-versa.
 
-| Funcionalidade | Descrição |
-|---|---|
-| Pré-requisitos | gnome-tweaks, murrine-engine (por distro), sassc, git e extensões Flatpak |
-| Extensões | Lista de extensões recomendadas com links de instalação |
-| Temas GTK | 12 temas: Orchis, Nordic, Colloid, Fluent, Tokyonight, Everforest, Rose Pine, Gruvbox, Graphite, Zorin, Yaru (Ubuntu 24.04), Yaru (Ubuntu 26.04) |
-| Ícones | 5 pacotes: Gruvbox Plus, Kora, Candy Icons, Flatery, Newaita |
-| Cursores | 4 temas: Layan, Sweet, Colloid, Future |
-| Flatpak | Aplicar tema GTK a todos os apps Flatpak via `flatpak override --user` |
+| Funcionalidade | Desktop | Descrição |
+|---|:---:|---|
+| Pré-requisitos GNOME | GNOME | gnome-tweaks, murrine-engine (por distro), sassc, git e extensões Flatpak |
+| Temas GTK GNOME | GNOME | 11 temas: Orchis, Nordic, Colloid, Fluent, Tokyonight, Everforest, Rose Pine, Gruvbox, Graphite, Zorin, Yaru (versão detectada automaticamente) |
+| Extensões GNOME | GNOME | Lista de extensões recomendadas com links de instalação |
+| Pré-requisitos Cinnamon | Cinnamon | murrine-engine (por distro), sassc, git |
+| Temas GTK Cinnamon | Cinnamon | 5 temas: Catppuccin, WhiteSur, Dracula, Graphite, Everforest |
+| Cursores | Ambos | 4 temas: Layan, Sweet, Colloid, Future |
+| Ícones | Ambos | 7 pacotes: Gruvbox Plus, Kora, Candy Icons, Flatery, Newaita, Dracula Icons, Tela Circle |
+| Flatpak | Ambos | Aplicar tema GTK a todos os apps Flatpak via `flatpak override --user` |
 
 ### Ambiente de Desenvolvimento (`lumina dev`)
 
@@ -163,7 +165,7 @@ sudo mv lumina-linux-amd64 /usr/local/bin/lumina
 ```bash
 git clone https://github.com/kaduvelasco/lumina-tools.git
 cd lumina-tools
-go build -ldflags "-X github.com/kaduvelasco/lumina-tools/internal/version.Version=v2.0.1" -o lumina ./cmd/lumina
+go build -ldflags "-X github.com/kaduvelasco/lumina-tools/internal/version.Version=v2.1.0" -o lumina ./cmd/lumina
 sudo mv lumina /usr/local/bin/lumina
 ```
 
@@ -226,12 +228,14 @@ lumina apps web         Lista de WebApps recomendados
 #### Personalizar Linux
 
 ```
-lumina gnome pre        Instalar pré-requisitos GNOME
-lumina gnome ext        Exibir extensões recomendadas
-lumina gnome themes     Gerenciar temas GTK (multi-seleção)
-lumina gnome icons      Gerenciar pacotes de ícones (multi-seleção)
-lumina gnome cursor     Gerenciar temas de cursor (multi-seleção)
-lumina gnome flatpak    Aplicar tema GTK em apps Flatpak
+lumina theme gnome-pre      Instalar pré-requisitos GNOME
+lumina theme gnome          Gerenciar temas GTK GNOME (multi-seleção)
+lumina theme extensions     Exibir extensões GNOME recomendadas
+lumina theme cinnamon-pre   Instalar pré-requisitos Cinnamon
+lumina theme cinnamon       Gerenciar temas GTK Cinnamon (multi-seleção)
+lumina theme cursor         Gerenciar temas de cursor (multi-seleção)
+lumina theme icons          Gerenciar pacotes de ícones (multi-seleção)
+lumina theme flatpak        Aplicar tema GTK em apps Flatpak
 ```
 
 #### Ambiente de Desenvolvimento
@@ -309,6 +313,8 @@ workspace_path: ~/workspace
 docker_compose_dir: ~/workspace/docker
 theme: Lumina
 flatpak_scope: system
+distro: ubuntu
+de: gnome
 stack:
   php_versions: "8.1 8.2"
   db_user: admin
@@ -322,6 +328,8 @@ stack:
 | `docker_compose_dir` | Diretório onde o `docker-compose.yml` está localizado |
 | `theme` | Tema da TUI: `Lumina`, `Claro`, `Dracula`, `Nord`, `Tokyo Night`, `Gruvbox` |
 | `flatpak_scope` | Escopo de instalação Flatpak: `system` (padrão) ou `user` |
+| `distro` | Família da distribuição detectada: `debian`, `fedora`, `arch` (preenchido automaticamente na primeira execução) |
+| `de` | Desktop environment detectado: `gnome`, `cinnamon` (preenchido automaticamente na primeira execução) |
 
 ---
 

@@ -1,0 +1,36 @@
+# Cursor Theme Catalogue — Lumina Tools
+#
+# Fields:
+#   name:           Display name shown in the menu
+#   dir_pattern:    Glob under ~/.local/share/icons/ for detection and removal
+#   repo_url:       Git repository URL
+#   branch:         Clone this branch (empty = default branch)
+#   has_install:    true = run ./install.sh from install_sub_dir (or repo root)
+#   install_sub_dir: Subdir to cd into before running install.sh
+#   build_script:   Run this command in the repo root before copying
+#   copy_from:      Copy matching dirs from this subdir (empty = repo root)
+#   copy_glob:      Glob within copy_from (or repo root) to copy
+
+cursors:
+  - name: "Layan"
+    dir_pattern: "Layan-cursors"
+    repo_url: "https://github.com/vinceliuice/Layan-cursors.git"
+    has_install: true
+
+  - name: "Sweet"
+    dir_pattern: "Sweet-cursors"
+    repo_url: "https://github.com/EliverLara/Sweet.git"
+    branch: "nova"
+    copy_from: "kde/cursors"
+    copy_glob: "Sweet-cursors"
+
+  - name: "Colloid"
+    dir_pattern: "Colloid-cursors*"
+    repo_url: "https://github.com/vinceliuice/Colloid-icon-theme.git"
+    has_install: true
+    install_sub_dir: "cursors"
+
+  - name: "Future"
+    dir_pattern: "Future-cursors*"
+    repo_url: "https://github.com/yeyushengfan258/Future-cursors.git"
+    has_install: true
