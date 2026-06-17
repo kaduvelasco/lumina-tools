@@ -310,11 +310,29 @@ final class InMemoryUserRepository implements UserRepositoryInterface
 
 ## Quality
 
+### Docker commands (Lumina Tools stack)
+
 ```bash
-composer phpcs    # PHP_CodeSniffer — PSR-1/PSR-12 compliance
-composer phpstan  # PHPStan — static analysis
-composer phpunit  # PHPUnit — test suite
+# PHP_CodeSniffer — PSR-12 compliance
+phpcs82 src/ tests/
+
+# Auto-fix coding style violations
+phpcbf82 src/ tests/
+
+# PHPUnit — test suite
+phpunit82
+
+# PHPUnit — specific test class
+phpunit82 --filter UserServiceTest
+
+# PHP syntax check
+php82 -l src/MyClass.php
+
+# Static analysis via composer script
+composer82 phpstan
 ```
+
+### Composer scripts reference
 
 ```json
 "scripts": {
@@ -324,7 +342,9 @@ composer phpunit  # PHPUnit — test suite
 }
 ```
 
-- **phpcs** — enforces PSR-1 and PSR-12 formatting; non-negotiable.
+Run composer scripts via the Docker wrapper: `composer82 phpcs`, `composer82 phpstan`, `composer82 phpunit`.
+
+- **phpcs / phpcbf** — enforces PSR-1 and PSR-12 formatting; non-negotiable.
 - **phpstan** — catches type errors, dead code, and incorrect usage without running the code. Aim for level 8; never go below level 6.
 - **phpunit** — run the full test suite before every commit.
 

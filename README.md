@@ -64,13 +64,13 @@ Suporta GNOME e Cinnamon. A TUI detecta automaticamente o desktop ativo e exibe 
 | Funcionalidade | Desktop | Descrição |
 |---|:---:|---|
 | Pré-requisitos GNOME | GNOME | gnome-tweaks, murrine-engine (por distro), sassc, git e extensões Flatpak |
-| Temas GTK GNOME | GNOME | 11 temas: Orchis, Nordic, Colloid, Fluent, Tokyonight, Everforest, Rose Pine, Gruvbox, Graphite, Zorin, Yaru (versão detectada automaticamente) |
+| Temas GTK GNOME | GNOME | 26 variantes em 14 famílias: Orchis, Nordic, Colloid, Fluent, Tokyonight, Everforest (Hard/Medium/Soft), Rose Pine, Gruvbox, Graphite (Normal+Nord), Zorin, Yaru (detectado automaticamente), Catppuccin (Mocha/Latte/Frappé/Macchiato), Material (Lighter/Oceanic/Palenight/Darker), Nightfox (Nightfox/Duskfox/Nordfox/Terafox/Carbonfox) |
 | Extensões GNOME | GNOME | Lista de extensões recomendadas com links de instalação |
 | Pré-requisitos Cinnamon | Cinnamon | murrine-engine (por distro), sassc, git |
-| Temas GTK Cinnamon | Cinnamon | 5 temas: Catppuccin, WhiteSur, Dracula, Graphite, Everforest |
+| Temas GTK Cinnamon | Cinnamon | 18 variantes: Graphite (Normal+Nord), Catppuccin (Mocha/Latte/Frappé/Macchiato), Dracula, Everforest (Hard/Medium/Soft), Material (Lighter/Oceanic/Palenight/Darker), Nightfox (Nightfox/Duskfox/Nordfox/Terafox/Carbonfox) |
 | Cursores | Ambos | 4 temas: Layan, Sweet, Colloid, Future |
 | Ícones | Ambos | 7 pacotes: Gruvbox Plus, Kora, Candy Icons, Flatery, Newaita, Dracula Icons, Tela Circle |
-| Flatpak | Ambos | Aplicar tema GTK a todos os apps Flatpak via `flatpak override --user` |
+| Flatpak | Ambos | Aplicar tema GTK a todos os apps Flatpak via `flatpak override --user`; seletor lista todas as variantes instaladas em `~/.themes/` |
 
 ### Ambiente de Desenvolvimento (`lumina dev`)
 
@@ -78,7 +78,7 @@ Suporta GNOME e Cinnamon. A TUI detecta automaticamente o desktop ativo e exibe 
 |---|---|
 | Pré-requisitos | Selecionar e instalar: pacotes base, ferramentas dev, GitHub CLI, Docker Engine e Node.js via nvm (multi-seleção) |
 | Workspace | Criar estrutura de diretórios do workspace |
-| Stack PHP | Criar ou atualizar o `docker-compose.yml` da stack PHP |
+| Stack PHP | Criar docker-compose.yml multi-versão PHP + Nginx + MariaDB; instala `phpcs`, `phpcbf`, `phpunit` e `composer` no container; gera wrappers em `~/.local/bin/` (`php`, `phpcs`, `phpcbf`, `phpunit`, `composer` e variantes por versão: `php82`, `phpunit83` etc.) |
 | Go | Instalar ou atualizar Go via tarball oficial (`go.dev/dl`) |
 | LLMs | Instalar/remover Claude Code, Antigravity CLI, Codex CLI, OpenCode CLI |
 | IDEs | Instalar/remover Zed, Windsurf, VS Code, VSCodium, DBeaver CE |
@@ -93,6 +93,7 @@ Ambiente de desenvolvimento PHP com Docker (multi-versão PHP + Nginx + MariaDB)
 | Funcionalidade | Descrição |
 |---|---|
 | Ciclo de vida | Iniciar, parar, reiniciar, visualizar logs e monitorar recursos em tempo real |
+| Ferramentas PHP | `phpcs`, `phpcbf`, `phpunit` (versão adequada ao PHP) e `composer` disponíveis no container e via wrappers em `~/.local/bin/` |
 | Permissões | Corrigir propriedade e permissões do workspace |
 
 ### Gerenciar banco de Dados (`lumina db`)
@@ -165,7 +166,7 @@ sudo mv lumina-linux-amd64 /usr/local/bin/lumina
 ```bash
 git clone https://github.com/kaduvelasco/lumina-tools.git
 cd lumina-tools
-go build -ldflags "-X github.com/kaduvelasco/lumina-tools/internal/version.Version=v2.1.0" -o lumina ./cmd/lumina
+go build -ldflags "-X github.com/kaduvelasco/lumina-tools/internal/version.Version=v2.2.0" -o lumina ./cmd/lumina
 sudo mv lumina /usr/local/bin/lumina
 ```
 

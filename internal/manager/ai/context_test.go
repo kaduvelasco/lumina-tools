@@ -127,7 +127,7 @@ func TestWriteInstruction_CreatesFile(t *testing.T) {
 
 	var buf bytes.Buffer
 	m := models[0] // Go
-	if err := writeInstruction(m, false, strings.NewReader(""), &buf, &strings.Builder{}); err != nil {
+	if err := writeInstruction(m, false, strings.NewReader(""), &buf, &strings.Builder{}, nil); err != nil {
 		t.Fatalf("writeInstruction: %v", err)
 	}
 

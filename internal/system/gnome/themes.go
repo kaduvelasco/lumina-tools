@@ -13,35 +13,43 @@ import (
 )
 
 type themeEntry struct {
-	Name          string   `yaml:"name"`
-	DirPattern    string   `yaml:"dir_pattern"`
-	RepoURL       string   `yaml:"repo_url"`
-	CloneTarget   string   `yaml:"clone_target,omitempty"`
-	CopySubDir    string   `yaml:"copy_sub_dir,omitempty"`
-	InstallDir    string   `yaml:"install_dir,omitempty"`
-	InstallArgs   []string `yaml:"install_args,omitempty"`
-	AskIcon       bool     `yaml:"ask_icon,omitempty"`
-	FlatpakName   string   `yaml:"flatpak_name,omitempty"`
-	CustomScript  string   `yaml:"custom_script,omitempty"`
-	PurgePackages []string `yaml:"purge_packages,omitempty"`
+	Name          string     `yaml:"name"`
+	DirPattern    string     `yaml:"dir_pattern"`
+	RepoURL       string     `yaml:"repo_url,omitempty"`
+	CloneTarget   string     `yaml:"clone_target,omitempty"`
+	CopySubDir    string     `yaml:"copy_sub_dir,omitempty"`
+	InstallDir    string     `yaml:"install_dir,omitempty"`
+	InstallArgs   []string   `yaml:"install_args,omitempty"`
+	TweakVariants [][]string `yaml:"tweak_variants,omitempty"`
+	FixedTweaks   []string   `yaml:"fixed_tweaks,omitempty"`
+	AskBorder     bool       `yaml:"ask_border,omitempty"`
+	BorderTweak   string     `yaml:"border_tweak,omitempty"`
+	AskButtons    bool       `yaml:"ask_buttons,omitempty"`
+	ButtonsTweak  string     `yaml:"buttons_tweak,omitempty"`
+	FlatpakName   string     `yaml:"flatpak_name,omitempty"`
+	CustomScript  string     `yaml:"custom_script,omitempty"`
+	PurgePackages []string   `yaml:"purge_packages,omitempty"`
 }
 
-// whiteSurIconOptions lists valid values for WhiteSur's -i (titlebar icon) flag.
-var whiteSurIconOptions = []ui.SelectItem{
-	{Label: "gnome (neutro)", ID: "gnome"},
-	{Label: "apple", ID: "apple"},
-	{Label: "simple", ID: "simple"},
-	{Label: "ubuntu", ID: "ubuntu"},
-	{Label: "tux (Linux)", ID: "tux"},
-	{Label: "arch", ID: "arch"},
-	{Label: "fedora", ID: "fedora"},
-	{Label: "debian", ID: "debian"},
-	{Label: "zorin", ID: "zorin"},
-	{Label: "opensuse", ID: "opensuse"},
-	{Label: "popos", ID: "popos"},
-	{Label: "mxlinux", ID: "mxlinux"},
-	{Label: "budgie", ID: "budgie"},
-	{Label: "gentoo", ID: "gentoo"},
+// borderOptions returns the SelectItem list for a given border tweak value.
+func borderOptions(tweakVal string) []ui.SelectItem {
+	switch tweakVal {
+	case "rimless":
+		return []ui.SelectItem{
+			{Label: "Com borda (padrão)", ID: ""},
+			{Label: "Rimless (sem borda)", ID: "rimless"},
+		}
+	case "outline":
+		return []ui.SelectItem{
+			{Label: "Sem borda (padrão)", ID: ""},
+			{Label: "Com borda (2px outline)", ID: "outline"},
+		}
+	default:
+		return []ui.SelectItem{
+			{Label: "Sem borda (padrão)", ID: ""},
+			{Label: "Com borda", ID: tweakVal},
+		}
+	}
 }
 
 func isThemeInstalled(t themeEntry, td string) bool {
@@ -110,20 +118,47 @@ func manageThemesFrom(ctx context.Context, exe *executor.Executor, stdin io.Read
 		return nil
 	}
 
-	// Collect WhiteSur icon choice before starting long operations
-	whiteSurIcon := "gnome"
+	// Collect border choices (once per distinct border_tweak value).
+	borderChoices := make(map[string]string)
 	for _, t := range toInstall {
-		if t.AskIcon {
-			ui.Info(stdout, "Escolha o ícone da barra de título para WhiteSur:")
-			idx, ok, ssErr := ui.RunSingleSelect(ctx, stdin, stdout, whiteSurIconOptions)
-			if ssErr != nil {
-				return ssErr
-			}
-			if ok && idx >= 0 {
-				whiteSurIcon = whiteSurIconOptions[idx].ID
-			}
-			break
+		if !t.AskBorder || t.BorderTweak == "" {
+			continue
 		}
+		if _, asked := borderChoices[t.BorderTweak]; asked {
+			continue
+		}
+		ui.Info(stdout, "Estilo de janela ("+t.BorderTweak+"):")
+		opts := borderOptions(t.BorderTweak)
+		idx, ok, ssErr := ui.RunSingleSelect(ctx, stdin, stdout, opts)
+		if ssErr != nil {
+			return ssErr
+		}
+		chosen := ""
+		if ok && idx >= 0 {
+			chosen = opts[idx].ID
+		}
+		borderChoices[t.BorderTweak] = chosen
+	}
+
+	// Collect button style choice (once, shared across all themes that ask).
+	buttonsChoice := ""
+	for _, t := range toInstall {
+		if !t.AskButtons || t.ButtonsTweak == "" {
+			continue
+		}
+		ui.Info(stdout, "Estilo dos botões de janela:")
+		opts := []ui.SelectItem{
+			{Label: "Legacy (padrão)", ID: ""},
+			{Label: "macOS", ID: t.ButtonsTweak},
+		}
+		idx, ok, ssErr := ui.RunSingleSelect(ctx, stdin, stdout, opts)
+		if ssErr != nil {
+			return ssErr
+		}
+		if ok && idx >= 0 {
+			buttonsChoice = opts[idx].ID
+		}
+		break
 	}
 
 	ui.PrintHeader(stdout, title)
@@ -137,11 +172,8 @@ func manageThemesFrom(ctx context.Context, exe *executor.Executor, stdin io.Read
 
 	for _, t := range toInstall {
 		ui.Info(stdout, "Instalando "+t.Name+"...")
-		icon := ""
-		if t.AskIcon {
-			icon = whiteSurIcon
-		}
-		if iErr := installTheme(ctx, exe, stdout, t, td, icon); iErr != nil {
+		border := borderChoices[t.BorderTweak]
+		if iErr := installTheme(ctx, exe, stdout, t, td, border, buttonsChoice); iErr != nil {
 			ui.Warning(stdout, fmt.Sprintf("Falha ao instalar %s: %v", t.Name, iErr))
 		}
 	}
@@ -153,7 +185,7 @@ func manageThemesFrom(ctx context.Context, exe *executor.Executor, stdin io.Read
 	return nil
 }
 
-func installTheme(ctx context.Context, exe *executor.Executor, stdout io.Writer, t themeEntry, td, icon string) error {
+func installTheme(ctx context.Context, exe *executor.Executor, stdout io.Writer, t themeEntry, td, border, buttons string) error {
 	if t.CustomScript != "" {
 		return exe.Run(ctx,
 			executor.Options{RequiresSudo: true, Stdout: stdout, Stderr: stdout},
@@ -169,7 +201,6 @@ func installTheme(ctx context.Context, exe *executor.Executor, stdout io.Writer,
 	}
 
 	if t.CloneTarget != "" {
-		// Clone entire repo as the theme directory (e.g. Nordic, Dracula).
 		target := filepath.Join(td, t.CloneTarget)
 		script := `
 set -e
@@ -183,8 +214,6 @@ git clone --depth=1 -- "$1" "$2"
 	}
 
 	if t.CopySubDir != "" {
-		// Clone to tempdir and copy each pre-built theme subdir to ~/.themes/ (e.g. Rose Pine).
-		// Hidden directories (.git, .github, etc.) are explicitly skipped.
 		script := `
 set -e
 TMP=$(mktemp -d)
@@ -204,16 +233,36 @@ done
 		)
 	}
 
-	// Run install.sh from InstallDir (empty = repo root; e.g. "themes" for Fausto-Korpsvart repos).
-	installCmd := "./install.sh"
-	for _, a := range t.InstallArgs {
-		installCmd += " " + shellQuote(a)
-	}
-	if icon != "" {
-		installCmd += " -i " + shellQuote(icon)
+	// Run install.sh once per TweakVariant (or once with no extra tweaks if empty).
+	runs := t.TweakVariants
+	if len(runs) == 0 {
+		runs = [][]string{{}}
 	}
 
-	script := `
+	for _, varTweaks := range runs {
+		// Combine: fixed + variant + user border + user buttons
+		var tweaks []string
+		tweaks = append(tweaks, t.FixedTweaks...)
+		tweaks = append(tweaks, varTweaks...)
+		if border != "" {
+			tweaks = append(tweaks, border)
+		}
+		if buttons != "" {
+			tweaks = append(tweaks, buttons)
+		}
+
+		installCmd := "./install.sh"
+		for _, a := range t.InstallArgs {
+			installCmd += " " + shellQuote(a)
+		}
+		if len(tweaks) > 0 {
+			installCmd += " --tweaks"
+			for _, tw := range tweaks {
+				installCmd += " " + shellQuote(tw)
+			}
+		}
+
+		script := `
 set -e
 TMP=$(mktemp -d)
 trap 'rm -rf -- "$TMP"' EXIT
@@ -221,10 +270,14 @@ git clone --depth=1 -- "$1" "$TMP/repo"
 cd "$TMP/repo/$2"
 bash ` + installCmd + `
 `
-	return exe.Run(ctx,
-		executor.Options{Stdout: stdout, Stderr: stdout},
-		"bash", "-c", script, "--", t.RepoURL, t.InstallDir,
-	)
+		if err := exe.Run(ctx,
+			executor.Options{Stdout: stdout, Stderr: stdout},
+			"bash", "-c", script, "--", t.RepoURL, t.InstallDir,
+		); err != nil {
+			return err
+		}
+	}
+	return nil
 }
 
 func removeTheme(ctx context.Context, exe *executor.Executor, stdout io.Writer, t themeEntry, td string) error {
@@ -279,15 +332,19 @@ func applyFlatpakTheme(ctx context.Context, exe *executor.Executor, stdout io.Wr
 	return nil
 }
 
-// selectFlatpakTheme scans catalogue for installed themes and runs a single-select.
-// Returns the chosen FlatpakName and ok=true when the user confirms a choice.
-// Returns ("", false, nil) when no themes are installed or the user cancels (ESC).
+// selectFlatpakTheme lists all directories in ~/.themes as flatpak theme options.
+// Returns the chosen theme name and ok=true when the user confirms a choice.
+// Returns ("", false, nil) when ~/.themes is empty or the user cancels (ESC).
 // Returns ("", true, nil) when the user explicitly picks "Não aplicar".
-func selectFlatpakTheme(ctx context.Context, stdin io.Reader, stdout io.Writer, td string, catalogue []themeEntry) (string, bool, error) {
+func selectFlatpakTheme(ctx context.Context, stdin io.Reader, stdout io.Writer, td string, _ []themeEntry) (string, bool, error) {
+	entries, err := os.ReadDir(td)
+	if err != nil || len(entries) == 0 {
+		return "", false, nil
+	}
 	var items []ui.SelectItem
-	for _, t := range catalogue {
-		if isThemeInstalled(t, td) {
-			items = append(items, ui.SelectItem{Label: t.Name, ID: t.FlatpakName})
+	for _, e := range entries {
+		if e.IsDir() {
+			items = append(items, ui.SelectItem{Label: e.Name(), ID: e.Name()})
 		}
 	}
 	if len(items) == 0 {
@@ -307,15 +364,15 @@ func selectFlatpakTheme(ctx context.Context, stdin io.Reader, stdout io.Writer, 
 
 // offerFlatpak prompts the user to apply a GTK theme override to all Flatpak apps.
 func offerFlatpak(ctx context.Context, exe *executor.Executor, stdin io.Reader, stdout io.Writer, td string, catalogue []themeEntry) {
-	// Pre-check: avoid printing the prompt when no themes are installed.
-	anyInstalled := false
-	for _, t := range catalogue {
-		if isThemeInstalled(t, td) {
-			anyInstalled = true
+	entries, _ := os.ReadDir(td)
+	hasDirs := false
+	for _, e := range entries {
+		if e.IsDir() {
+			hasDirs = true
 			break
 		}
 	}
-	if !anyInstalled {
+	if !hasDirs {
 		return
 	}
 
@@ -374,16 +431,16 @@ func ApplyFlatpakTheme(ctx context.Context, exe *executor.Executor, stdin io.Rea
 		}
 	}
 
-	// Pre-check: show an explicit warning when no themes are installed yet.
-	hasInstalled := false
-	for _, t := range catalogue {
-		if isThemeInstalled(t, td) {
-			hasInstalled = true
+	entries, _ := os.ReadDir(td)
+	hasDirs := false
+	for _, e := range entries {
+		if e.IsDir() {
+			hasDirs = true
 			break
 		}
 	}
-	if !hasInstalled {
-		ui.Warning(stdout, "Nenhum tema compatível encontrado em ~/.themes/")
+	if !hasDirs {
+		ui.Warning(stdout, "Nenhum tema encontrado em ~/.themes/")
 		ui.Info(stdout, "Instale pelo menos um tema GTK antes de usar esta opção.")
 		ui.WaitEnter(stdout)
 		return nil
@@ -396,7 +453,6 @@ func ApplyFlatpakTheme(ctx context.Context, exe *executor.Executor, stdin io.Rea
 	if err != nil {
 		return err
 	}
-	// hasInstalled=true means selectFlatpakTheme had items; !ok here means user cancelled.
 	if !ok {
 		ui.Warning(stdout, "Operação cancelada.")
 		ui.WaitEnter(stdout)

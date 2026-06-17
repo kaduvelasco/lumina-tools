@@ -6,6 +6,73 @@ O formato segue o padrão [Keep a Changelog](https://keepachangelog.com/pt-BR/1.
 
 ---
 
+## [2.2.0] — 2026-06-17
+
+### Adicionado
+
+#### Stack PHP — ferramentas de qualidade e wrappers de linha de comando (`lumina dev create-stack-php`)
+- **PHP_CodeSniffer** (`phpcs` + `phpcbf`) instalado no container via PHAR oficial durante o build da imagem Docker — disponível em todas as versões PHP selecionadas
+- **PHPUnit** instalado no container com versão mapeada à versão do PHP: `8.1` → v10, `8.2`/`8.3` → v11, `8.4+` → v12
+- **Wrapper scripts** gerados automaticamente em `~/.local/bin/` ao criar a stack:
+  - Genéricos (apontam para o primeiro container criado): `php`, `phpcs`, `phpcbf`, `phpunit`, `composer`
+  - Por versão: `php81`, `php82`, ..., `phpcs82`, `phpcbf83`, `phpunit84`, `composer81` etc.
+  - Tradução automática de paths: argumentos sob `workspace/www/html/` são convertidos para `/var/www/html/` dentro do container
+  - Detecção de TTY: usa `docker exec -it` quando conectado a terminal, `docker exec -i` em pipe — transparente para o chamador
+- `~/.local/bin/` adicionado automaticamente ao PATH via `localbin.EnsureInPath()` ao final da geração
+
+#### Personalizar Linux — catálogos de temas GTK expandidos (`lumina theme gnome` / `lumina theme cinnamon`)
+- **Catppuccin** expandido de 1 para 4 variantes: Mocha, Latte, Frappé, Macchiato — pergunta borda e botões macOS na instalação
+- **Everforest** expandido de 1 para 3 variantes explícitas: Hard, Medium, Soft — pergunta borda e botões macOS
+- **Material GTK** adicionado ao catálogo (GNOME e Cinnamon) com 4 variantes: Lighter, Oceanic, Palenight, Darker — pergunta borda e botões macOS
+- **Nightfox** adicionado ao catálogo (GNOME e Cinnamon) com 5 variantes: Nightfox, Duskfox, Nordfox, Terafox, Carbonfox — pergunta borda e botões macOS
+- **Graphite** expandido: instala Normal e Nord em uma única operação (`tweak_variants: [[], ["nord"]]`); pergunta borda rimless/com borda na instalação; no Cinnamon, `--tweaks normal` aplicado automaticamente via `fixed_tweaks` (sidebar Nautilus com ícones coloridos)
+- Catálogo GNOME passa de 11 para 26 variantes; catálogo Cinnamon passa de 5 para 18 variantes
+
+#### Personalizar Linux — seleção de tema Flatpak ampliada (`lumina theme flatpak`)
+- Seletor de tema Flatpak passa a listar todos os diretórios presentes em `~/.themes/` (via `os.ReadDir`), cobrindo todas as variantes instaladas; antes usava o campo estático `flatpak_name` por entrada YAML, o que excluía variantes extras (ex.: Graphite-Dark-Nord, Catppuccin-Light)
+
+#### Gerenciar Contextos IA — Docker nos templates PHP e Moodle (`lumina ai context`)
+- **`instructions/MOODLE.md`**: nova seção "Docker Development Environment" com tabela de path mapping (`workspace/www/html` ↔ `/var/www/html`), lista completa dos wrappers disponíveis e exemplos de comandos Moodle via Docker (`php82 admin/cli/purge_caches.php`, `phpunit82`, `php82 vendor/bin/phpcs --standard=moodle local/myplugin/`); seção Quality atualizada com comandos Docker
+- **`instructions/PHP.md`**: seção Quality expandida com subseção "Docker commands" cobrindo `phpcs82`, `phpcbf82`, `phpunit82`, `php82 -l` e composer scripts via `composer82`
+
+### Alterado
+
+#### Stack PHP — Dockerfile da imagem PHP (`lumina dev create-stack-php`)
+- `curl` adicionado ao `apt-get install` (necessário para download dos PHARs no build)
+- **Stacks existentes precisam reconstruir as imagens** para receber phpcs, phpcbf e phpunit: `docker compose build --no-cache && docker compose up -d --force-recreate`
+
+### Corrigido
+
+#### Stack PHP — wrappers gerados em `~/.local/bin/`
+- **TTY check incorreto**: verificação usava apenas `[ -t 1 ]` (stdout) — pipes de stdin (ex.: `echo '<?php ...' | php82`) causavam falha `"input device is not a TTY"` no `docker exec -it`; corrigido para `[ -t 0 ] && [ -t 1 ]` (stdin E stdout)
+- **Colisão de prefixo de path**: substituição de caminho usava `${WS_HOST}*`, fazendo `/workspace/www/html_extra` ser incorretamente reescrito como subpath de `/workspace/www/html`; corrigido para `"${WS_HOST}/"*` (exige separador de diretório) com fallback de match exato `"${WS_HOST}"`
+- **Injeção de aspas simples**: caminhos de workspace contendo `'` (ex.: `/home/d'artagnan/workspace`) quebravam a sintaxe bash das variáveis `CONTAINER` e `WS_HOST` nos scripts gerados; corrigido com `bashSingleQuote()` — converte `'` → `'\''`
+- **Guard de versões vazia**: `writeToolWrappers` acessava `versions[0]` sem verificar slice vazio — adicionado retorno antecipado quando `versions` é nil ou vazio
+
+#### Stack PHP — Dockerfile: PHARs sem verificação de integridade
+- `phpcs.phar`, `phpcbf.phar` e `phpunit-*.phar` eram instalados diretamente sem checagem de integridade; adicionada verificação SHA256 via arquivos `.sha256` oficiais (`sha256sum -c`) antes de mover os PHARs para `/usr/local/bin`; arquivos temporários de hash removidos após verificação
+
+#### Gerenciar Contextos IA — `MOODLE.md`: caminho de workspace fixo
+- Template `MOODLE.md` gerado com `~/workspace/www/html/` hardcoded — incorreto para usuários com workspace personalizado; substituído pelo placeholder `{{WORKSPACE_PATH}}` resolvido em runtime a partir de `~/.lumina/config.yaml` via `config.Load()`
+
+### Refatorado
+
+#### Stack PHP — wrappers: DRY e helpers extraídos
+- `var phpTools []string` extraído como variável de pacote — lista de ferramentas (`php`, `phpcs`, `phpcbf`, `phpunit`, `composer`) antes duplicada em dois pontos do código; `func phpSuffix(version string) string` elimina 7 ocorrências de `strings.ReplaceAll(v, ".", "")` espalhadas por `Compose()`, `buildCompose()` e `writeToolWrappers()`
+- Pré-alocação do slice de wrappers com capacidade calculada: `make([]wrapDef, 0, len(phpTools)+len(versions)*len(phpTools))`
+
+### Testes
+
+#### Stack PHP — `internal/stack/config/compose_test.go`
+- 8 testes unitários para `bashSingleQuote` e `buildWrapperScript`: shebang correto, container/tool presentes em ambos os branches `exec`, TTY check em stdin E stdout, colisão de prefixo de path (trailing slash), match exato de `WS_HOST`, aspas simples no caminho do workspace e guard de versões vazia (nil e slice vazio)
+
+### Removido
+
+#### Personalizar Linux — temas GTK Cinnamon
+- **WhiteSur** removido do catálogo Cinnamon
+
+---
+
 ## [2.1.0] — 2026-06-16
 
 ### Adicionado

@@ -11,12 +11,18 @@ import (
 	"strings"
 
 	"github.com/kaduvelasco/lumina-tools/internal/config"
+	"github.com/kaduvelasco/lumina-tools/internal/dev/localbin"
 	"github.com/kaduvelasco/lumina-tools/internal/executor"
 	"github.com/kaduvelasco/lumina-tools/internal/prompt"
 	"github.com/kaduvelasco/lumina-tools/internal/ui"
 )
 
 var supportedPHP = []string{"8.1", "8.2", "8.3", "8.4"}
+
+// phpTools is the single source of truth for tools wrapped per PHP version.
+var phpTools = []string{"php", "phpcs", "phpcbf", "phpunit", "composer"}
+
+func phpSuffix(version string) string { return strings.ReplaceAll(version, ".", "") }
 
 // Compose generates docker-compose.yml and all supporting config files.
 // Returns an error immediately if Docker is not installed.
@@ -89,7 +95,7 @@ func Compose(ctx context.Context, exe *executor.Executor, stdin io.Reader, stdou
 
 	// Create per-version PHP log directories (mounted by docker-compose).
 	for _, v := range versions {
-		logDir := filepath.Join(workspace, "logs", "php"+strings.ReplaceAll(v, ".", ""))
+		logDir := filepath.Join(workspace, "logs", "php"+phpSuffix(v))
 		if err := os.MkdirAll(logDir, 0o755); err != nil {
 			return fmt.Errorf("criar diretorio de log PHP %s: %w", v, err)
 		}
@@ -110,8 +116,8 @@ func Compose(ctx context.Context, exe *executor.Executor, stdin io.Reader, stdou
 		}
 	}
 
-	defaultPHP := "php" + strings.ReplaceAll(versions[0], ".", "")
-	defaultVer := strings.ReplaceAll(versions[0], ".", "")
+	defaultPHP := "php" + phpSuffix(versions[0])
+	defaultVer := phpSuffix(versions[0])
 
 	// docker-compose.yml
 	compose := buildCompose(versions, workspace, os.Getuid())
@@ -168,15 +174,25 @@ func Compose(ctx context.Context, exe *executor.Executor, stdin io.Reader, stdou
 		ui.Warning(stdout, "Falha ao salvar configurações: "+err.Error())
 	}
 
+	writeToolWrappers(versions, workspace, stdout)
+
+	var versionCmds strings.Builder
+	for _, v := range versions {
+		suffix := phpSuffix(v)
+		versionCmds.WriteString("\n  php" + suffix + " / phpcs" + suffix + " / phpcbf" + suffix + " / phpunit" + suffix + " / composer" + suffix + "  → PHP " + v)
+	}
+
 	ui.Success(stdout, "Stack gerada com sucesso.")
 	ui.Info(stdout, "Versões PHP  : "+strings.Join(versions, " ")+
 		"\nPHP padrão   : "+defaultPHP+
 		"\nUsuário DB   : "+dbUser+
-		"\nCredenciais  : "+envPath+" (chmod 600)")
+		"\nCredenciais  : "+envPath+" (chmod 600)"+
+		"\n\nComandos disponíveis em ~/.local/bin/:"+
+		"\n  php / phpcs / phpcbf / phpunit / composer  → container "+defaultPHP+
+		versionCmds.String())
 	ui.WaitEnter(stdout)
 	return nil
 }
-
 
 func genPassword() string {
 	b := make([]byte, 16)
@@ -197,7 +213,7 @@ func genPassword() string {
 func buildCompose(versions []string, workspace string, uid int) string {
 	var phpServices, nginxDeps strings.Builder
 	for _, v := range versions {
-		name := "php" + strings.ReplaceAll(v, ".", "")
+		name := "php" + phpSuffix(v)
 		phpServices.WriteString(fmt.Sprintf(`
   %s:
     container_name: %s
@@ -247,6 +263,83 @@ func buildCompose(versions []string, workspace string, uid int) string {
 	compose = strings.ReplaceAll(compose, "{{MARIADB_IMAGE}}", "mariadb:11.4")
 	compose = strings.ReplaceAll(compose, "{{WORKSPACE}}", workspace)
 	return compose
+}
+
+// writeToolWrappers generates wrapper scripts in ~/.local/bin/ for php, phpcs,
+// phpcbf, phpunit and composer — one generic (first PHP version) plus one per
+// selected version (e.g. php82, phpunit83). Ensures ~/.local/bin is in PATH.
+func writeToolWrappers(versions []string, workspace string, stdout io.Writer) {
+	if len(versions) == 0 {
+		return
+	}
+	home, err := os.UserHomeDir()
+	if err != nil {
+		ui.Warning(stdout, "Não foi possível determinar diretório home: "+err.Error())
+		return
+	}
+
+	localBin := filepath.Join(home, ".local", "bin")
+	if err := os.MkdirAll(localBin, 0o755); err != nil {
+		ui.Warning(stdout, "Não foi possível criar ~/.local/bin: "+err.Error())
+		return
+	}
+
+	defaultContainer := "php" + phpSuffix(versions[0])
+	wsHTML := filepath.Join(workspace, "www", "html")
+
+	type wrapDef struct {
+		name      string
+		container string
+		tool      string
+	}
+
+	wrappers := make([]wrapDef, 0, len(phpTools)+len(versions)*len(phpTools))
+	for _, tool := range phpTools {
+		wrappers = append(wrappers, wrapDef{tool, defaultContainer, tool})
+	}
+	for _, v := range versions {
+		suffix := phpSuffix(v)
+		ctr := "php" + suffix
+		for _, tool := range phpTools {
+			wrappers = append(wrappers, wrapDef{tool + suffix, ctr, tool})
+		}
+	}
+
+	for _, w := range wrappers {
+		path := filepath.Join(localBin, w.name)
+		if err := os.WriteFile(path, []byte(buildWrapperScript(w.container, w.tool, wsHTML)), 0o755); err != nil {
+			ui.Warning(stdout, "Falha ao criar wrapper "+w.name+": "+err.Error())
+		}
+	}
+
+	localbin.EnsureInPath(stdout)
+}
+
+// bashSingleQuote wraps s in single quotes safe for embedding in a bash script,
+// escaping any single quotes already present in s.
+func bashSingleQuote(s string) string {
+	return "'" + strings.ReplaceAll(s, "'", `'\''`) + "'"
+}
+
+func buildWrapperScript(container, tool, wsHTML string) string {
+	return fmt.Sprintf(`#!/usr/bin/env bash
+CONTAINER=%s
+WS_HOST=%s
+WS_CONT=/var/www/html
+ARGS=()
+for arg in "$@"; do
+    if [[ "$arg" == "${WS_HOST}/"* ]] || [[ "$arg" == "${WS_HOST}" ]]; then
+        ARGS+=("${WS_CONT}${arg#${WS_HOST}}")
+    else
+        ARGS+=("$arg")
+    fi
+done
+if [ -t 0 ] && [ -t 1 ]; then
+    exec docker exec -it "${CONTAINER}" %s "${ARGS[@]}"
+else
+    exec docker exec -i "${CONTAINER}" %s "${ARGS[@]}"
+fi
+`, bashSingleQuote(container), bashSingleQuote(wsHTML), tool, tool)
 }
 
 // ── embedded templates ────────────────────────────────────────────────────────
@@ -370,6 +463,7 @@ FROM php:${PHP_VERSION}-fpm
 ARG UID=1000
 
 RUN apt-get update && apt-get install -y --no-install-recommends \
+    curl \
     libzip-dev libpng-dev libicu-dev libxml2-dev libonig-dev \
     libjpeg-dev libfreetype6-dev libpq-dev libcurl4-openssl-dev libxslt-dev \
  && rm -rf /var/lib/apt/lists/*
@@ -383,6 +477,32 @@ RUN pecl install redis || true && docker-php-ext-enable redis || true
 RUN pecl install xdebug || true && docker-php-ext-enable xdebug || true
 
 COPY --from=composer:latest /usr/bin/composer /usr/bin/composer
+
+RUN set -e; \
+    cd /tmp; \
+    curl -fsSL https://squizlabs.github.io/PHP_CodeSniffer/phpcs.phar     -o phpcs.phar; \
+    curl -fsSL https://squizlabs.github.io/PHP_CodeSniffer/phpcs.phar.sha256 -o phpcs.phar.sha256; \
+    sha256sum -c phpcs.phar.sha256; \
+    curl -fsSL https://squizlabs.github.io/PHP_CodeSniffer/phpcbf.phar    -o phpcbf.phar; \
+    curl -fsSL https://squizlabs.github.io/PHP_CodeSniffer/phpcbf.phar.sha256 -o phpcbf.phar.sha256; \
+    sha256sum -c phpcbf.phar.sha256; \
+    mv phpcs.phar /usr/local/bin/phpcs; \
+    mv phpcbf.phar /usr/local/bin/phpcbf; \
+    chmod +x /usr/local/bin/phpcs /usr/local/bin/phpcbf; \
+    rm -f phpcs.phar.sha256 phpcbf.phar.sha256
+
+RUN set -e; \
+    cd /tmp; \
+    MINOR=$(echo "${PHP_VERSION}" | cut -d. -f2); \
+    if [ "$MINOR" -ge 4 ]; then VER=12; \
+    elif [ "$MINOR" -ge 2 ]; then VER=11; \
+    else VER=10; fi; \
+    curl -fsSL "https://phar.phpunit.de/phpunit-${VER}.phar"        -o "phpunit-${VER}.phar"; \
+    curl -fsSL "https://phar.phpunit.de/phpunit-${VER}.phar.sha256" -o "phpunit-${VER}.phar.sha256"; \
+    sha256sum -c "phpunit-${VER}.phar.sha256"; \
+    mv "phpunit-${VER}.phar" /usr/local/bin/phpunit; \
+    chmod +x /usr/local/bin/phpunit; \
+    rm -f "phpunit-${VER}.phar.sha256"
 
 RUN usermod -u ${UID} www-data
 WORKDIR /var/www/html

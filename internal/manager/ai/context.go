@@ -10,6 +10,7 @@ import (
 	"path/filepath"
 	"strings"
 
+	"github.com/kaduvelasco/lumina-tools/internal/config"
 	"github.com/kaduvelasco/lumina-tools/internal/executor"
 	"github.com/kaduvelasco/lumina-tools/internal/prompt"
 	"github.com/kaduvelasco/lumina-tools/internal/ui"
@@ -102,6 +103,14 @@ func GenerateContext(ctx context.Context, _ *executor.Executor, stdin io.Reader,
 		toWrite = active
 	}
 
+	// Resolve workspace path for template substitution (e.g. {{WORKSPACE_PATH}} in MOODLE.md).
+	workspacePath := filepath.Join(os.Getenv("HOME"), "workspace")
+	if cfg, cfgErr := config.Load(); cfgErr == nil && cfg.WorkspacePath != "" {
+		workspacePath = cfg.WorkspacePath
+	} else if home, homeErr := os.UserHomeDir(); homeErr == nil {
+		workspacePath = filepath.Join(home, "workspace")
+	}
+
 	ui.PrintHeader(stdout, "Criar Contexto AI")
 
 	// Show the info panel before any file operations so it appears above the results box.
@@ -123,7 +132,11 @@ func GenerateContext(ctx context.Context, _ *executor.Executor, stdin io.Reader,
 		removeInstruction(m, stdout, &log)
 	}
 	for _, m := range toWrite {
-		if err := writeInstruction(m, update, stdin, stdout, &log); err != nil {
+		var vars map[string]string
+		if m.Name == "Moodle" {
+			vars = map[string]string{"WORKSPACE_PATH": workspacePath}
+		}
+		if err := writeInstruction(m, update, stdin, stdout, &log, vars); err != nil {
 			ui.Err(stdout, "Falha ao gerar instrução para "+m.Name+": "+err.Error())
 			ui.WaitEnter(stdout)
 			return err
@@ -281,7 +294,7 @@ func writeFile(name, content string, overwrite bool, stdin io.Reader, stdout io.
 	return nil
 }
 
-func writeInstruction(model Model, overwrite bool, stdin io.Reader, stdout io.Writer, log *strings.Builder) error {
+func writeInstruction(model Model, overwrite bool, stdin io.Reader, stdout io.Writer, log *strings.Builder, vars map[string]string) error {
 	dir := ".instructions"
 	if err := os.MkdirAll(dir, 0o755); err != nil {
 		return err
@@ -290,6 +303,9 @@ func writeInstruction(model Model, overwrite bool, stdin io.Reader, stdout io.Wr
 	content, err := readTpl(model.Instruction)
 	if err != nil {
 		return err
+	}
+	for k, v := range vars {
+		content = strings.ReplaceAll(content, "{{"+k+"}}", v)
 	}
 	return writeFile(dest, content, overwrite, stdin, stdout, log)
 }

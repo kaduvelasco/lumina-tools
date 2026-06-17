@@ -22,6 +22,62 @@ Covers file structure, API usage, architecture patterns, and common mistakes.
 
 ---
 
+## Docker Development Environment
+
+The Lumina Tools Docker stack provides PHP tools as host-side wrapper scripts in `~/.local/bin/`. All commands run inside the appropriate container automatically.
+
+### Path mapping
+
+| Host path | Container path |
+|---|---|
+| `{{WORKSPACE_PATH}}/www/html/` | `/var/www/html/` |
+
+Paths under `{{WORKSPACE_PATH}}/www/html/` passed as arguments are translated automatically. All other arguments are passed through unchanged.
+
+### Available commands
+
+| Command | Description |
+|---|---|
+| `php`, `php81`, `php82` … | PHP CLI for the matching version |
+| `phpcs`, `phpcs81`, `phpcs82` … | PHP_CodeSniffer (global, PSR-12 and standards installed in the container) |
+| `phpcbf`, `phpcbf81`, `phpcbf82` … | PHP Code Beautifier and Fixer |
+| `phpunit`, `phpunit81`, `phpunit82` … | PHPUnit matched to each PHP minor version |
+| `composer`, `composer81`, `composer82` … | Composer for the matching PHP version |
+
+The unversioned commands (`php`, `phpcs`, `phpunit`, `composer`) target the first PHP version selected during stack creation. Use versioned commands to target a specific container.
+
+### Common Moodle CLI commands
+
+```bash
+# Run a PHP file inside the container
+php82 admin/cli/purge_caches.php
+
+# Run the upgrade tool after plugin changes
+php82 admin/cli/upgrade.php --non-interactive
+
+# Install Moodle coding standard in the project
+composer82 require --dev moodlehq/moodle-cs
+
+# Run PHPCS with the Moodle standard (uses project's vendor phpcs + moodle-cs)
+php82 vendor/bin/phpcs --standard=moodle local/myplugin/
+
+# Auto-fix coding style violations
+php82 vendor/bin/phpcbf --standard=moodle local/myplugin/
+
+# Run PHPUnit test suite
+phpunit82
+
+# Run a specific test class
+phpunit82 --filter MyPluginTest
+```
+
+> **Note:** Use `php82 vendor/bin/phpcs --standard=moodle` (the project's own phpcs binary) when
+> the Moodle coding standard is required, because the Moodle standard is registered through
+> `moodlehq/moodle-cs` installed in the project's `vendor/`. The global `phpcs82` wrapper uses
+> the system-wide PHPCS installation and does not have access to project-local standards.
+
+---
+
 ## lumina-mdle-dev — Usage Guide
 
 Always load the plugin context before starting work:
@@ -524,7 +580,21 @@ require(['local_example/example'], function(mod) {
 ## Quality
 
 ```bash
-vendor/bin/phpcs --standard=moodle local/example/
+# Install Moodle coding standard (once per project)
+composer82 require --dev moodlehq/moodle-cs
+
+# Check coding style
+php82 vendor/bin/phpcs --standard=moodle local/example/
+
+# Auto-fix coding style violations
+php82 vendor/bin/phpcbf --standard=moodle local/example/
+
+# Run tests
+phpunit82
+
+# Run tests for a specific plugin
+phpunit82 --filter local_example
 ```
 
-- **moodle-cs** — Moodle coding style; install via `composer require --dev moodlehq/moodle-cs`.
+- **moodle-cs** — enforces Moodle coding style on top of PSR-2; install via `composer82 require --dev moodlehq/moodle-cs`.
+- **phpunit** — run the full test suite before every commit; use the versioned wrapper (`phpunit82`) to match the target PHP version.

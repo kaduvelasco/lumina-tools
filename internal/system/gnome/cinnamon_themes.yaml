@@ -1,21 +1,63 @@
 # Cinnamon GTK Theme Catalogue — Lumina Tools
 #
 # Same fields as gnome_themes.yaml.
-# ask_icon: true prompts the user for the WhiteSur -i (titlebar icon) flag.
+# fixed_tweaks: tweaks always applied (e.g. "normal" = Nautilus sidebar with coloured icons).
 
 themes:
-  - name: "Catppuccin"
-    dir_pattern: "Catppuccin*"
+  - name: "Graphite"
+    dir_pattern: "Graphite-Dark"
+    repo_url: "https://github.com/vinceliuice/Graphite-gtk-theme.git"
+    install_args: ["-t", "default"]
+    tweak_variants:
+      - []
+      - ["nord"]
+    fixed_tweaks: ["normal"]
+    ask_border: true
+    border_tweak: "rimless"
+
+  - name: "Catppuccin (Mocha)"
+    dir_pattern: "Catppuccin-Dark"
     repo_url: "https://github.com/Fausto-Korpsvart/Catppuccin-GTK-Theme.git"
     install_dir: "themes"
-    flatpak_name: "Catppuccin-Mocha"
+    install_args: ["-m", "dark"]
+    ask_border: true
+    border_tweak: "border"
+    ask_buttons: true
+    buttons_tweak: "macos"
 
-  - name: "WhiteSur"
-    dir_pattern: "WhiteSur*"
-    repo_url: "https://github.com/vinceliuice/WhiteSur-gtk-theme.git"
-    install_args: ["-t", "all"]
-    ask_icon: true
-    flatpak_name: "WhiteSur-Dark"
+  - name: "Catppuccin (Latte)"
+    dir_pattern: "Catppuccin-Light"
+    repo_url: "https://github.com/Fausto-Korpsvart/Catppuccin-GTK-Theme.git"
+    install_dir: "themes"
+    install_args: ["-m", "light"]
+    ask_border: true
+    border_tweak: "border"
+    ask_buttons: true
+    buttons_tweak: "macos"
+
+  - name: "Catppuccin (Frappé)"
+    dir_pattern: "Catppuccin-Frapp*"
+    repo_url: "https://github.com/Fausto-Korpsvart/Catppuccin-GTK-Theme.git"
+    install_dir: "themes"
+    install_args: ["-m", "dark"]
+    tweak_variants:
+      - ["frappe"]
+    ask_border: true
+    border_tweak: "border"
+    ask_buttons: true
+    buttons_tweak: "macos"
+
+  - name: "Catppuccin (Macchiato)"
+    dir_pattern: "Catppuccin-Macchiato*"
+    repo_url: "https://github.com/Fausto-Korpsvart/Catppuccin-GTK-Theme.git"
+    install_dir: "themes"
+    install_args: ["-m", "dark"]
+    tweak_variants:
+      - ["macchiato"]
+    ask_border: true
+    border_tweak: "border"
+    ask_buttons: true
+    buttons_tweak: "macos"
 
   - name: "Dracula"
     dir_pattern: "Dracula"
@@ -23,14 +65,128 @@ themes:
     clone_target: "Dracula"
     flatpak_name: "Dracula"
 
-  - name: "Graphite"
-    dir_pattern: "Graphite*"
-    repo_url: "https://github.com/vinceliuice/Graphite-gtk-theme.git"
-    install_args: ["-t", "all"]
-    flatpak_name: "Graphite-Dark"
-
-  - name: "Everforest"
-    dir_pattern: "Everforest*"
+  - name: "Everforest (Hard)"
+    dir_pattern: "Everforest-Dark"
     repo_url: "https://github.com/Fausto-Korpsvart/Everforest-GTK-Theme.git"
     install_dir: "themes"
-    flatpak_name: "Everforest-Dark"
+    ask_border: true
+    border_tweak: "outline"
+    ask_buttons: true
+    buttons_tweak: "macos"
+
+  - name: "Everforest (Medium)"
+    dir_pattern: "Everforest-Dark-Medium"
+    repo_url: "https://github.com/Fausto-Korpsvart/Everforest-GTK-Theme.git"
+    install_dir: "themes"
+    tweak_variants:
+      - ["medium"]
+    ask_border: true
+    border_tweak: "outline"
+    ask_buttons: true
+    buttons_tweak: "macos"
+
+  - name: "Everforest (Soft)"
+    dir_pattern: "Everforest-Dark-Soft"
+    repo_url: "https://github.com/Fausto-Korpsvart/Everforest-GTK-Theme.git"
+    install_dir: "themes"
+    tweak_variants:
+      - ["soft"]
+    ask_border: true
+    border_tweak: "outline"
+    ask_buttons: true
+    buttons_tweak: "macos"
+
+  - name: "Material (Lighter)"
+    dir_pattern: "Material-Dark"
+    repo_url: "https://github.com/Fausto-Korpsvart/Material-GTK-Themes.git"
+    install_dir: "themes"
+    ask_border: true
+    border_tweak: "outline"
+    ask_buttons: true
+    buttons_tweak: "macos"
+
+  - name: "Material (Oceanic)"
+    dir_pattern: "Material-Dark-Oceanic"
+    repo_url: "https://github.com/Fausto-Korpsvart/Material-GTK-Themes.git"
+    install_dir: "themes"
+    tweak_variants:
+      - ["oceanic"]
+    ask_border: true
+    border_tweak: "outline"
+    ask_buttons: true
+    buttons_tweak: "macos"
+
+  - name: "Material (Palenight)"
+    dir_pattern: "Material-Dark-Palenight"
+    repo_url: "https://github.com/Fausto-Korpsvart/Material-GTK-Themes.git"
+    install_dir: "themes"
+    tweak_variants:
+      - ["palenight"]
+    ask_border: true
+    border_tweak: "outline"
+    ask_buttons: true
+    buttons_tweak: "macos"
+
+  - name: "Material (Darker)"
+    dir_pattern: "Material-Dark-Darker"
+    repo_url: "https://github.com/Fausto-Korpsvart/Material-GTK-Themes.git"
+    install_dir: "themes"
+    tweak_variants:
+      - ["darker"]
+    ask_border: true
+    border_tweak: "outline"
+    ask_buttons: true
+    buttons_tweak: "macos"
+
+  - name: "Nightfox"
+    dir_pattern: "Nightfox-Dark"
+    repo_url: "https://github.com/Fausto-Korpsvart/Nightfox-GTK-Theme.git"
+    install_dir: "themes"
+    ask_border: true
+    border_tweak: "outline"
+    ask_buttons: true
+    buttons_tweak: "macos"
+
+  - name: "Nightfox (Duskfox)"
+    dir_pattern: "Nightfox-Dark-Duskfox"
+    repo_url: "https://github.com/Fausto-Korpsvart/Nightfox-GTK-Theme.git"
+    install_dir: "themes"
+    tweak_variants:
+      - ["duskfox"]
+    ask_border: true
+    border_tweak: "outline"
+    ask_buttons: true
+    buttons_tweak: "macos"
+
+  - name: "Nightfox (Nordfox)"
+    dir_pattern: "Nightfox-Dark-Nordfox"
+    repo_url: "https://github.com/Fausto-Korpsvart/Nightfox-GTK-Theme.git"
+    install_dir: "themes"
+    tweak_variants:
+      - ["nordfox"]
+    ask_border: true
+    border_tweak: "outline"
+    ask_buttons: true
+    buttons_tweak: "macos"
+
+  - name: "Nightfox (Terafox)"
+    dir_pattern: "Nightfox-Dark-Terafox"
+    repo_url: "https://github.com/Fausto-Korpsvart/Nightfox-GTK-Theme.git"
+    install_dir: "themes"
+    tweak_variants:
+      - ["terafox"]
+    ask_border: true
+    border_tweak: "outline"
+    ask_buttons: true
+    buttons_tweak: "macos"
+
+  - name: "Nightfox (Carbonfox)"
+    dir_pattern: "Nightfox-Dark-Carbonfox"
+    repo_url: "https://github.com/Fausto-Korpsvart/Nightfox-GTK-Theme.git"
+    install_dir: "themes"
+    tweak_variants:
+      - ["carbonfox"]
+    ask_border: true
+    border_tweak: "outline"
+    ask_buttons: true
+    buttons_tweak: "macos"
