@@ -492,15 +492,13 @@ RUN set -e; \
 RUN set -e; \
     cd /tmp; \
     MINOR=$(echo "${PHP_VERSION}" | cut -d. -f2); \
-    if [ "$MINOR" -ge 4 ]; then VER=12; \
-    elif [ "$MINOR" -ge 2 ]; then VER=11; \
-    else VER=10; fi; \
-    curl -fsSL "https://phar.phpunit.de/phpunit-${VER}.phar"        -o "phpunit-${VER}.phar"; \
-    curl -fsSL "https://phar.phpunit.de/phpunit-${VER}.phar.sha256" -o "phpunit-${VER}.phar.sha256"; \
-    sha256sum -c "phpunit-${VER}.phar.sha256"; \
-    mv "phpunit-${VER}.phar" /usr/local/bin/phpunit; \
-    chmod +x /usr/local/bin/phpunit; \
-    rm -f "phpunit-${VER}.phar.sha256"
+    if [ "$MINOR" -ge 4 ]; then VER=12.5.30; HASH=2f6d24d19d1238d6b5332f85a12a1aa021c79cc9e704fbe25fca93181752cfe1; \
+    elif [ "$MINOR" -ge 2 ]; then VER=11.5.39; HASH=63601d96eca81db5ab675657f4a0b4056ff7b4acfe0d5767a1d74f50b626456d; \
+    else VER=10.5.55; HASH=3a29d4dd24dad475b3c761758854bd3d7ecdd85645097ff0589d98b408b7f4ba; fi; \
+    curl -fsSL "https://phar.phpunit.de/phpunit-${VER}.phar" -o phpunit.phar; \
+    echo "${HASH}  phpunit.phar" | sha256sum -c -; \
+    mv phpunit.phar /usr/local/bin/phpunit; \
+    chmod +x /usr/local/bin/phpunit
 
 RUN usermod -u ${UID} www-data
 WORKDIR /var/www/html

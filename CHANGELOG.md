@@ -6,6 +6,18 @@ O formato segue o padrão [Keep a Changelog](https://keepachangelog.com/pt-BR/1.
 
 ---
 
+## [2.2.2] — 2026-06-18
+
+### Corrigido
+
+#### Stack PHP — Dockerfile: download do PHPUnit retornando 404 ao iniciar a stack
+- Mesma causa raiz do fix de PHPCS da v2.2.1: `phar.phpunit.de` parou de publicar os sidecars `phpunit-${VER}.phar.sha256` (apenas os `.phar` continuam disponíveis) — o `curl` do hash retornava 404, interrompendo o build da imagem PHP (`docker compose up` falhava com `exit code: 22` na etapa de instalação do PHPUnit)
+- URLs "rolling" por major version (`phpunit-10.phar`, `phpunit-11.phar`, `phpunit-12.phar`) substituídas por versões de patch fixadas: PHP 8.1 → PHPUnit `10.5.55`, PHP 8.2/8.3 → `11.5.39`, PHP 8.4+ → `12.5.30`. Versões "rolling" foram evitadas porque o conteúdo do arquivo muda silenciosamente a cada patch release, o que invalidaria qualquer hash fixado no futuro
+- Verificação de integridade mantida via hash SHA256 fixado inline (`echo "<hash>  phpunit.phar" | sha256sum -c -`), mesmo padrão adotado para o PHPCS
+- **Stacks existentes precisam reconstruir as imagens** para receber a correção: `docker compose build --no-cache && docker compose up -d --force-recreate`
+
+---
+
 ## [2.2.1] — 2026-06-18
 
 ### Corrigido

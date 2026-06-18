@@ -166,7 +166,7 @@ sudo mv lumina-linux-amd64 /usr/local/bin/lumina
 ```bash
 git clone https://github.com/kaduvelasco/lumina-tools.git
 cd lumina-tools
-go build -ldflags "-X github.com/kaduvelasco/lumina-tools/internal/version.Version=v2.2.1" -o lumina ./cmd/lumina
+go build -ldflags "-X github.com/kaduvelasco/lumina-tools/internal/version.Version=v2.2.2" -o lumina ./cmd/lumina
 sudo mv lumina /usr/local/bin/lumina
 ```
 
