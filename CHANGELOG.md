@@ -6,6 +6,18 @@ O formato segue o padrão [Keep a Changelog](https://keepachangelog.com/pt-BR/1.
 
 ---
 
+## [2.2.1] — 2026-06-18
+
+### Corrigido
+
+#### Stack PHP — Dockerfile: download do PHP_CodeSniffer retornando 404 ao iniciar a stack
+- `squizlabs.github.io/PHP_CodeSniffer` parou de publicar os sidecars `phpcs.phar.sha256`/`phpcbf.phar.sha256` — o `curl` desses arquivos retornava 404, interrompendo o build da imagem PHP (`docker compose up` falhava com `exit code: 22` na etapa de instalação do PHPCS)
+- Origem do download trocada para os GitHub Releases de `PHPCSStandards/PHP_CodeSniffer` (fork ativo da ferramenta), com versão fixada em `3.13.5` (série 3.x, compatível com `moodlehq/moodle-cs` e a maioria dos standards de terceiros — PHPCS 4.x ainda não é amplamente suportado por sniffs externos)
+- Verificação de integridade mantida via hash SHA256 fixado inline (`echo "<hash>  arquivo" | sha256sum -c -`), já que não há mais sidecar `.sha256` oficial disponível para os PHARs do PHPCS
+- **Stacks existentes precisam reconstruir as imagens** para receber a correção: `docker compose build --no-cache && docker compose up -d --force-recreate`
+
+---
+
 ## [2.2.0] — 2026-06-17
 
 ### Adicionado

@@ -480,16 +480,14 @@ COPY --from=composer:latest /usr/bin/composer /usr/bin/composer
 
 RUN set -e; \
     cd /tmp; \
-    curl -fsSL https://squizlabs.github.io/PHP_CodeSniffer/phpcs.phar     -o phpcs.phar; \
-    curl -fsSL https://squizlabs.github.io/PHP_CodeSniffer/phpcs.phar.sha256 -o phpcs.phar.sha256; \
-    sha256sum -c phpcs.phar.sha256; \
-    curl -fsSL https://squizlabs.github.io/PHP_CodeSniffer/phpcbf.phar    -o phpcbf.phar; \
-    curl -fsSL https://squizlabs.github.io/PHP_CodeSniffer/phpcbf.phar.sha256 -o phpcbf.phar.sha256; \
-    sha256sum -c phpcbf.phar.sha256; \
+    PHPCS_VERSION=3.13.5; \
+    curl -fsSL "https://github.com/PHPCSStandards/PHP_CodeSniffer/releases/download/${PHPCS_VERSION}/phpcs.phar" -o phpcs.phar; \
+    echo "9ff3ddf1fcc6c9347a57bed63da10edfc6610e4339c6bee149e92537609c7939  phpcs.phar" | sha256sum -c -; \
+    curl -fsSL "https://github.com/PHPCSStandards/PHP_CodeSniffer/releases/download/${PHPCS_VERSION}/phpcbf.phar" -o phpcbf.phar; \
+    echo "a5b097357e78615a5509d569fda709c8751f30d4c1bf2a073b6e2df9884f349b  phpcbf.phar" | sha256sum -c -; \
     mv phpcs.phar /usr/local/bin/phpcs; \
     mv phpcbf.phar /usr/local/bin/phpcbf; \
-    chmod +x /usr/local/bin/phpcs /usr/local/bin/phpcbf; \
-    rm -f phpcs.phar.sha256 phpcbf.phar.sha256
+    chmod +x /usr/local/bin/phpcs /usr/local/bin/phpcbf
 
 RUN set -e; \
     cd /tmp; \
