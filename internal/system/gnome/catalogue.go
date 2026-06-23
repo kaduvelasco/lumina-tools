@@ -21,9 +21,9 @@ var cursorsYAML []byte
 var iconsYAML []byte
 
 var (
-	themeOnce     sync.Once
-	themeCache    []themeEntry
-	themeErr      error
+	themeOnce  sync.Once
+	themeCache []themeEntry
+	themeErr   error
 
 	cinnamonOnce  sync.Once
 	cinnamonCache []themeEntry

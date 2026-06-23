@@ -7,11 +7,12 @@ import (
 	"io"
 
 	"github.com/kaduvelasco/lumina-tools/internal/config"
+	devflutter "github.com/kaduvelasco/lumina-tools/internal/dev/flutter"
 	devgolang "github.com/kaduvelasco/lumina-tools/internal/dev/golang"
-	"github.com/kaduvelasco/lumina-tools/internal/dev/prereqs"
 	"github.com/kaduvelasco/lumina-tools/internal/dev/ide"
 	"github.com/kaduvelasco/lumina-tools/internal/dev/llm"
 	"github.com/kaduvelasco/lumina-tools/internal/dev/mcp"
+	"github.com/kaduvelasco/lumina-tools/internal/dev/prereqs"
 	devterminal "github.com/kaduvelasco/lumina-tools/internal/dev/terminal"
 	"github.com/kaduvelasco/lumina-tools/internal/dev/upgrade"
 	"github.com/kaduvelasco/lumina-tools/internal/executor"
@@ -240,7 +241,7 @@ func dispatchStack(ctx context.Context, args []string, stdin io.Reader, stdout, 
 
 func dispatchDev(ctx context.Context, args []string, stdin io.Reader, stdout, stderr io.Writer) error {
 	if len(args) == 0 {
-		return fmt.Errorf("uso: lumina dev <pre|go|llm|ide|term|mcp|update|create-workspace|create-stack-php>")
+		return fmt.Errorf("uso: lumina dev <pre|go|flutter|llm|ide|term|mcp|update|create-workspace|create-stack-php>")
 	}
 	exe := executor.New(stdout, stderr)
 	switch args[0] {
@@ -248,6 +249,8 @@ func dispatchDev(ctx context.Context, args []string, stdin io.Reader, stdout, st
 		return prereqs.Select(ctx, exe, stdin, stdout)
 	case "go":
 		return devgolang.Manage(ctx, exe, stdin, stdout)
+	case "flutter":
+		return devflutter.Manage(ctx, exe, stdin, stdout)
 	case "llm":
 		return llm.Select(ctx, exe, stdin, stdout)
 	case "ide":
@@ -263,7 +266,7 @@ func dispatchDev(ctx context.Context, args []string, stdin io.Reader, stdout, st
 	case "create-stack-php":
 		return stackconfig.Compose(ctx, exe, stdin, stdout)
 	default:
-		return fmt.Errorf("subcomando desconhecido: %s\nuso: lumina dev <pre|go|llm|ide|term|mcp|update|create-workspace|create-stack-php>", args[0])
+		return fmt.Errorf("subcomando desconhecido: %s\nuso: lumina dev <pre|go|flutter|llm|ide|term|mcp|update|create-workspace|create-stack-php>", args[0])
 	}
 }
 

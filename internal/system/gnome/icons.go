@@ -17,7 +17,6 @@ type iconEntry struct {
 	CopyGlob   string `yaml:"copy_glob,omitempty"`
 }
 
-
 func isIconInstalled(ic iconEntry, id string) bool {
 	return globExists(filepath.Join(id, ic.DirPattern))
 }

@@ -59,18 +59,18 @@ func shellQuote(s string) string {
 // cursors and icons. T is the catalogue entry type; callers provide accessor
 // functions so the helper stays type-agnostic without requiring an interface.
 func manageCatalogue[T any](
-	ctx         context.Context,
-	exe         *executor.Executor,
-	stdin       io.Reader,
-	stdout      io.Writer,
-	title       string,
-	dir         string,
-	catalogue   []T,
-	nameOf      func(T) string,
+	ctx context.Context,
+	exe *executor.Executor,
+	stdin io.Reader,
+	stdout io.Writer,
+	title string,
+	dir string,
+	catalogue []T,
+	nameOf func(T) string,
 	isInstalled func(T, string) bool,
-	install     func(context.Context, *executor.Executor, io.Writer, T, string) error,
-	remove      func(context.Context, *executor.Executor, io.Writer, T, string) error,
-	successMsg  string,
+	install func(context.Context, *executor.Executor, io.Writer, T, string) error,
+	remove func(context.Context, *executor.Executor, io.Writer, T, string) error,
+	successMsg string,
 ) error {
 	ui.Info(stdout, "Verificando itens instalados...")
 	items := make([]ui.SelectItem, len(catalogue))
@@ -136,11 +136,11 @@ func manageCatalogue[T any](
 // for the running distribution family. packages maps distro family → package list.
 // hint is shown when the family is not covered; the function returns nil in that case.
 func installPackagesByFamily(
-	ctx      context.Context,
-	exe      *executor.Executor,
-	stdout   io.Writer,
+	ctx context.Context,
+	exe *executor.Executor,
+	stdout io.Writer,
 	packages map[string][]string,
-	hint     string,
+	hint string,
 ) error {
 	family := distro.Detect()
 	pkgs, ok := packages[family]

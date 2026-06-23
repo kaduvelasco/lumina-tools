@@ -52,23 +52,23 @@ func writerFD(w io.Writer) int {
 	return int(os.Stdout.Fd())
 }
 
-// ── shared styles ─────────────────────────────────────────────────────────────
-
-var styleDivider = lipgloss.NewStyle().Foreground(lipgloss.Color("#9966FF"))
-
 // ── theme ─────────────────────────────────────────────────────────────────────
 
-type scriptTheme struct {
-	primary lipgloss.Color
-	accent  lipgloss.Color
-	muted   lipgloss.Color
-	success lipgloss.Color
-	err     lipgloss.Color
-	warning lipgloss.Color
+// ScriptTheme is the color palette used by ui.* helpers and by any other
+// package that renders text outside the main TUI render loop (via tea.Exec).
+// Exported so those packages can stay in sync with the user's selected theme
+// instead of hardcoding their own colors.
+type ScriptTheme struct {
+	Primary lipgloss.Color
+	Accent  lipgloss.Color
+	Muted   lipgloss.Color
+	Success lipgloss.Color
+	Err     lipgloss.Color
+	Warning lipgloss.Color
 }
 
 // scriptThemes mirrors the color palette in internal/tui/theme.go.
-var scriptThemes = map[string]scriptTheme{
+var scriptThemes = map[string]ScriptTheme{
 	"Lumina":      {"#9966FF", "#FF99FF", "#666666", "#00FF88", "#FF4466", "#FFAA00"},
 	"Claro":       {"#5500CC", "#7700EE", "#777777", "#006633", "#BB0000", "#AA5500"},
 	"Dracula":     {"#BD93F9", "#FF79C6", "#6272A4", "#50FA7B", "#FF5555", "#FFB86C"},
@@ -77,7 +77,11 @@ var scriptThemes = map[string]scriptTheme{
 	"Gruvbox":     {"#D79921", "#FABD2F", "#928374", "#B8BB26", "#FB4934", "#FE8019"},
 }
 
-func loadScriptTheme() scriptTheme {
+// LoadTheme returns the color palette for the user's currently configured
+// theme (~/.lumina/config.yaml), falling back to "Lumina" when unset or
+// unrecognized. Reads the config fresh on every call, so a theme change saved
+// by the TUI is picked up immediately by the next script that runs.
+func LoadTheme() ScriptTheme {
 	cfg, err := config.Load()
 	if err != nil || cfg.Theme == "" {
 		return scriptThemes["Lumina"]
@@ -96,14 +100,14 @@ func loadScriptTheme() scriptTheme {
 // Colors follow the theme saved in the user's config.
 func PrintHeader(w io.Writer, title string) {
 	fmt.Fprint(w, "\033[2J\033[H")
-	t := loadScriptTheme()
+	t := LoadTheme()
 
-	sAccent  := lipgloss.NewStyle().Foreground(t.accent)
-	sMuted   := lipgloss.NewStyle().Foreground(t.muted)
-	sPrimary := lipgloss.NewStyle().Foreground(t.primary)
-	sBox     := lipgloss.NewStyle().
+	sAccent := lipgloss.NewStyle().Foreground(t.Accent)
+	sMuted := lipgloss.NewStyle().Foreground(t.Muted)
+	sPrimary := lipgloss.NewStyle().Foreground(t.Primary)
+	sBox := lipgloss.NewStyle().
 		Border(lipgloss.RoundedBorder()).
-		BorderForeground(t.primary).
+		BorderForeground(t.Primary).
 		Padding(0, 2)
 
 	width := termWidth(w)
@@ -154,32 +158,32 @@ func printPanel(w io.Writer, style lipgloss.Style, text string) {
 
 // Info prints a primary-colored bordered panel for general messages.
 func Info(w io.Writer, text string) {
-	t := loadScriptTheme()
-	printPanel(w, panel(t.primary), text)
+	t := LoadTheme()
+	printPanel(w, panel(t.Primary), text)
 }
 
 // Err prints an error-colored bordered panel.
 func Err(w io.Writer, text string) {
-	t := loadScriptTheme()
-	printPanel(w, panel(t.err), text)
+	t := LoadTheme()
+	printPanel(w, panel(t.Err), text)
 }
 
 // Warning prints a warning-colored bordered panel.
 func Warning(w io.Writer, text string) {
-	t := loadScriptTheme()
-	printPanel(w, panel(t.warning), text)
+	t := LoadTheme()
+	printPanel(w, panel(t.Warning), text)
 }
 
 // Success prints a success-colored bordered panel.
 func Success(w io.Writer, text string) {
-	t := loadScriptTheme()
-	printPanel(w, panel(t.success), text)
+	t := LoadTheme()
+	printPanel(w, panel(t.Success), text)
 }
 
 // PrintBox renders content inside a primary-color bordered panel at full terminal width.
 func PrintBox(w io.Writer, content string) {
-	t := loadScriptTheme()
-	printPanel(w, panel(t.primary), content)
+	t := LoadTheme()
+	printPanel(w, panel(t.Primary), content)
 }
 
 // ── WaitEnter ────────────────────────────────────────────────────────────────
@@ -187,8 +191,8 @@ func PrintBox(w io.Writer, content string) {
 // WaitEnter prints a themed panel and blocks until the user presses Enter.
 // Reads from os.Stdin directly — safe inside tea.Exec where the real terminal is active.
 func WaitEnter(w io.Writer) {
-	t := loadScriptTheme()
-	printPanel(w, panel(t.muted), "Pressione ENTER para continuar...")
+	t := LoadTheme()
+	printPanel(w, panel(t.Muted), "Pressione ENTER para continuar...")
 	r := bufio.NewReader(os.Stdin)
 	_, _ = r.ReadString('\n')
 }

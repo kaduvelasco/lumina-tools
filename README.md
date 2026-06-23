@@ -96,7 +96,7 @@ Ambiente de desenvolvimento PHP com Docker (multi-versão PHP + Nginx + MariaDB)
 | Ferramentas PHP | `phpcs`, `phpcbf`, `phpunit` (versão adequada ao PHP) e `composer` disponíveis no container e via wrappers em `~/.local/bin/` |
 | Permissões | Corrigir propriedade e permissões do workspace |
 
-### Gerenciar banco de Dados (`lumina db`)
+### Gerenciar Banco de Dados (`lumina db`)
 
 | Funcionalidade | Descrição |
 |---|---|
@@ -129,7 +129,7 @@ Ambiente de desenvolvimento PHP com Docker (multi-versão PHP + Nginx + MariaDB)
 | Funcionalidade | Descrição |
 |---|---|
 | Sobre | Versão instalada e informações do projeto |
-| Configurar | Editar workspace, diretório Docker Compose, tema e escopo Flatpak interativamente |
+| Configurar | Editar workspace, diretório Docker Compose, tema, escopo Flatpak, distribuição e ambiente de desktop interativamente |
 | Atualizar | Verificar e instalar a versão mais recente |
 | Ajuda | Referência completa de comandos com rolagem (Markdown renderizado via Glamour) |
 | Desinstalar | Remover o binário e as configurações do sistema |
@@ -244,6 +244,7 @@ lumina theme flatpak        Aplicar tema GTK em apps Flatpak
 ```
 lumina dev pre                Selecionar e instalar pré-requisitos (multi-seleção)
 lumina dev go                 Instalar ou atualizar Go via tarball oficial
+lumina dev flutter            Instalar ou atualizar Flutter + Dart (via git, branch stable)
 lumina dev llm                Gerenciar CLIs LLM (multi-seleção)
 lumina dev ide                Gerenciar IDEs (multi-seleção)
 lumina dev term               Gerenciar terminais (multi-seleção)
@@ -266,7 +267,7 @@ lumina stack db                                Exibir dados de conexão do banco
 lumina stack fix-perm                          Corrigir permissões do workspace
 ```
 
-#### Gerenciar banco de Dados
+#### Gerenciar Banco de Dados
 
 ```
 lumina db backup    Realizar backup de banco MariaDB

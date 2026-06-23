@@ -44,6 +44,20 @@ func EnsureInPath(stdout io.Writer) {
 	fmt.Fprintf(f, "\n%s\n", exportLine)
 }
 
+// Which reports whether cmd is resolvable after sourcing nvm, when present.
+// A plain `which` only sees the PATH captured when lumina started, so it
+// misses binaries that nvm-based npm installs place under
+// ~/.nvm/versions/node/<version>/bin/ during the same session.
+func Which(ctx context.Context, exe *executor.Executor, cmd string) bool {
+	script := fmt.Sprintf(`
+export NVM_DIR="$HOME/.nvm"
+[ -s "$NVM_DIR/nvm.sh" ] && . "$NVM_DIR/nvm.sh"
+command -v %s
+`, cmd)
+	_, err := exe.Output(ctx, executor.Options{}, "bash", "-c", script)
+	return err == nil
+}
+
 // RunNPMGlobal runs `npm <action> -g <pkg>`, sourcing nvm when available.
 // action must be "install" or "uninstall". Never requires sudo since nvm
 // installs are user-local.

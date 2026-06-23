@@ -44,7 +44,7 @@ Paths under `{{WORKSPACE_PATH}}/www/html/` passed as arguments are translated au
 | `phpunit`, `phpunit81`, `phpunit82` … | PHPUnit matched to each PHP minor version |
 | `composer`, `composer81`, `composer82` … | Composer for the matching PHP version |
 
-The unversioned commands (`php`, `phpcs`, `phpunit`, `composer`) target the first PHP version selected during stack creation. Use versioned commands to target a specific container.
+The unversioned commands (`php`, `phpcs`, `phpunit`, `composer`) target the first PHP version selected during stack creation. Use versioned commands to target a specific container — pick the version matching {{MOODLE_VERSION}} in the PHP Compatibility Matrix under [Target Moodle Version](#target-moodle-version).
 
 ### Common Moodle CLI commands
 
@@ -110,6 +110,22 @@ This project targets **Moodle {{MOODLE_VERSION}}+** (`requires = {{MOODLE_FULLVE
 - Use only APIs compatible with Moodle {{MOODLE_VERSION}} or later.
 - **Strictly avoid** functions deprecated in previous versions.
 
+### PHP Compatibility Matrix
+
+| Moodle Version | PHP Minimum | PHP Used by this stack |
+|---|---|---|
+| 4.1 | 7.4 | 8.1 |
+| 4.2 | 8.0 | 8.2 |
+| 4.3 | 8.0 | 8.2 |
+| 4.4 | 8.1 | 8.3 |
+| 4.5 | 8.1 | 8.3 |
+| 5.0 | 8.2 | 8.3 |
+| 5.1 | 8.2 | 8.3 |
+| 5.2 | 8.3 | 8.3 |
+| 5.3 (not yet released) | 8.3 | 8.3 |
+
+Write PHP code compatible with the **Minimum** column for {{MOODLE_VERSION}}, not just the PHP version running in this stack's container — sites still on that release's lowest supported PHP must keep working. If unsure whether legacy-PHP compatibility matters for this project, ask the user before relying on syntax newer than that minimum (e.g. enums, readonly properties, first-class callable syntax).
+
 ### Hook API vs lib.php Callbacks
 
 The Hook API is available from **Moodle 4.3+**. Before implementing any event hook or plugin callback, ask the user:
@@ -151,6 +167,19 @@ $callbacks = [
     ],
 ];
 ```
+
+---
+
+## Moodle 5.1+ — `/public` Directory & Routing Engine
+
+Starting with Moodle 5.1, the codebase ships a `/public` directory, and the web server document root must point to `{{MOODLE_PATH}}/public` instead of `{{MOODLE_PATH}}`. A new (optional) Routing Engine enables cleaner URLs; it is **not compulsory** — a compatibility layer keeps traditional script-based URLs (e.g. `/mod/forum/view.php?id=1`) working.
+
+**Impact on this Docker stack:** none on the nginx/compose configuration itself. The stack's nginx root is the shared project tree (`{{WORKSPACE_PATH}}/www/html/<project>`), not a dedicated per-project document root, so no change is required in `internal/stack/config/compose.go`. To run a Moodle 5.1+ project here:
+
+- Set `$CFG->wwwroot` (and the browser URL) to include `/public`, e.g. `http://php83.localhost/<project>/public`.
+- Plugin code (`local/`, `mod/`, `blocks/`, etc.) keeps the exact same relative structure — it now lives under `public/<area>/<plugin>` instead of `<area>/<plugin>`. Never hardcode the Moodle root path; use `$CFG->dirroot` / `new moodle_url(...)` as already required elsewhere in this guide.
+- This project does not cover **upgrading** an existing install to 5.1+ (moving plugins from above `/public` into it) — only fresh 5.1+ checkouts, which already ship the `public/` layout.
+- Do not implement custom routes against the new Routing Engine unless explicitly asked — default to standard script-based pages, which keep working through the compatibility layer.
 
 ---
 
@@ -568,12 +597,34 @@ require(['local_example/example'], function(mod) {
 
 ---
 
+## Theme Compatibility
+
+The plugin must work correctly regardless of which theme is active on the site.
+
+- Treat **Boost** (Moodle's default theme) as the reference/baseline theme — every template, renderer and stylesheet must render correctly under Boost first.
+- Never assume markup, CSS classes or layout structure specific to a non-default theme (Boost child themes or third-party themes) — use Moodle's standard renderer/Mustache output and Boost's Bootstrap conventions instead of theme-specific selectors.
+- Do not hardcode theme-specific CSS overrides inside the plugin to "fix" appearance under a particular theme; if a visual issue only reproduces under a non-default theme, treat it as that theme's responsibility, not the plugin's.
+
+---
+
 ## Global Context Guidelines
 
 - Always use the global `$DB` object for all database operations.
 - SQL table names in raw queries must use `{bracket_format}`.
 - Follow **Moodle Coding Style** (based on PSR-12).
 - **Exclude from indexing:** `.git`, `node_modules`, `vendor`, `.grunt`, `moodledata`, `cache`.
+
+### Database Portability (MySQL/MariaDB priority, PostgreSQL support)
+
+This stack's database is **MariaDB** (MySQL-compatible) — the priority target — but Moodle officially also supports **PostgreSQL**, and the plugin must keep working there too.
+
+- Never write vendor-specific raw SQL; the `$DB` DML API already abstracts engine differences — use it exclusively.
+- Use `$DB->sql_concat(...)` instead of `CONCAT()`/`||`.
+- Use `$DB->sql_compare_text(...)` when comparing or searching `TEXT` columns — direct comparison works on MySQL but fails on PostgreSQL.
+- Use `$DB->sql_like(...)` instead of a raw `LIKE`/`ILIKE` for case-(in)sensitive matching.
+- Avoid `LIMIT`/`OFFSET` in raw SQL; pass `$limitfrom`/`$limitnum` to `get_records_sql()` and similar `$DB` methods.
+- Declare schema exclusively via `db/install.xml` (XMLDB) — never `CREATE TABLE` SQL — so column types map correctly to both engines.
+- Avoid backtick-quoted identifiers (MySQL-only); the `{tablename}` placeholder syntax above is translated correctly per engine by `$DB`.
 
 ---
 

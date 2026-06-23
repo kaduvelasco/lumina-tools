@@ -138,15 +138,32 @@ Internal documents for planning, architecture notes, decisions, and technical re
 - Always in **English**, regardless of other language settings.
 - No signature required.
 - No strict structure — use whatever format suits the content.
-- Suitable for: implementation plans, architecture decisions, research notes, changelogs, meeting notes.
+- Suitable for: architecture decisions, research notes, changelogs, meeting notes.
 - Not required to follow GitHub public conventions (no bilingual copies, no README structure).
+- Permanent — kept as long as the project lives, not deleted when a task ends.
 
 **Placement:**
 
 - `docs/` — internal technical documents not meant for GitHub display.
 - Project root — documents relevant to contributors (e.g., `CHANGELOG.md`, ADRs).
 
-**Examples:** `docs/architecture.md`, `docs/decisions.md`, `CHANGELOG.md`, `implementation-plan.md`
+**Examples:** `docs/architecture.md`, `docs/decisions.md`, `CHANGELOG.md`
+
+### Analysis, Code Review & Test/Implementation Plans
+
+Ephemeral working documents produced while doing a task: codebase analysis, code review reports, test plans, and implementation plans.
+
+**Rules:**
+
+- Always in **Brazilian Portuguese (pt-BR)** — this overrides the English-only rule above for this specific category.
+- No signature required (not a GitHub-facing document).
+- No strict structure — use whatever format suits the content.
+- **Disposable:** once the analysis/review/plan is no longer useful (the work is done, outdated, or superseded), delete the file — but **always confirm with the user before deleting**.
+- Not required to follow GitHub public conventions (no bilingual copies, no README structure).
+
+**Placement:** project root or `docs/`, wherever is most convenient for the task at hand.
+
+**Examples:** `analise-*.md`, `code-review-*.md`, `plano-teste-*.md`, `plano-implementacao-*.md`
 
 ---
 

@@ -24,17 +24,17 @@ type Theme struct {
 // TUIStyles holds pre-built lipgloss styles derived from a Theme.
 // The Model stores one instance and rebuilds it whenever the theme changes.
 type TUIStyles struct {
-	ActiveBar    lipgloss.Style
-	ActiveText   lipgloss.Style
-	Inactive     lipgloss.Style
-	Breadcrumb   lipgloss.Style
-	Footer       lipgloss.Style
-	Success      lipgloss.Style
-	Error        lipgloss.Style
-	Warning      lipgloss.Style
-	HeaderBox    lipgloss.Style // rounded-border container for the persistent header
-	KeyBadge  lipgloss.Style // keyboard shortcut badge in the footer
-	FooterBox lipgloss.Style // footer container with rounded border (mirrors HeaderBox)
+	ActiveBar  lipgloss.Style
+	ActiveText lipgloss.Style
+	Inactive   lipgloss.Style
+	Breadcrumb lipgloss.Style
+	Footer     lipgloss.Style
+	Success    lipgloss.Style
+	Error      lipgloss.Style
+	Warning    lipgloss.Style
+	HeaderBox  lipgloss.Style // rounded-border container for the persistent header
+	KeyBadge   lipgloss.Style // keyboard shortcut badge in the footer
+	FooterBox  lipgloss.Style // footer container with rounded border (mirrors HeaderBox)
 }
 
 // availableThemes is the ordered list of themes presented to the user.

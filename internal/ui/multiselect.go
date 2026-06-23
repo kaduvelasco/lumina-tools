@@ -86,7 +86,7 @@ func (m msModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 }
 
 func (m msModel) View() string {
-	t := loadScriptTheme()
+	t := LoadTheme()
 
 	w := m.width
 	if w < 20 {
@@ -107,11 +107,11 @@ func (m msModel) View() string {
 			Render(content)
 	}
 
-	hintStyle    := lipgloss.NewStyle().Foreground(t.muted)
-	checkedStyle := lipgloss.NewStyle().Foreground(t.success)
-	unchecked    := lipgloss.NewStyle().Foreground(t.muted)
-	activeStyle  := lipgloss.NewStyle().Foreground(t.accent).Bold(true)
-	countStyle   := lipgloss.NewStyle().Foreground(t.accent)
+	hintStyle := lipgloss.NewStyle().Foreground(t.Muted)
+	checkedStyle := lipgloss.NewStyle().Foreground(t.Success)
+	unchecked := lipgloss.NewStyle().Foreground(t.Muted)
+	activeStyle := lipgloss.NewStyle().Foreground(t.Accent).Bold(true)
+	countStyle := lipgloss.NewStyle().Foreground(t.Accent)
 
 	// Instructions panel.
 	hint := hintStyle.Render("Setas: navegar  |  Espaço: selecionar  |  Enter: confirmar  |  q: cancelar")
@@ -149,18 +149,18 @@ func (m msModel) View() string {
 	}
 	countText := fmt.Sprintf("%d selecionado(s)", count)
 	if totalPages > 1 {
-		pageStyle := lipgloss.NewStyle().Foreground(t.muted)
+		pageStyle := lipgloss.NewStyle().Foreground(t.Muted)
 		countText = countStyle.Render(countText) + "   " + pageStyle.Render(fmt.Sprintf("Página %d de %d", page+1, totalPages))
 	} else {
 		countText = countStyle.Render(countText)
 	}
 
 	var sb strings.Builder
-	sb.WriteString(themedPanel(t.muted, hint))
+	sb.WriteString(themedPanel(t.Muted, hint))
 	sb.WriteString("\n")
-	sb.WriteString(themedPanel(t.primary, strings.TrimRight(listSb.String(), "\n")))
+	sb.WriteString(themedPanel(t.Primary, strings.TrimRight(listSb.String(), "\n")))
 	sb.WriteString("\n")
-	sb.WriteString(themedPanel(t.primary, countText))
+	sb.WriteString(themedPanel(t.Primary, countText))
 	return sb.String()
 }
 
@@ -211,19 +211,34 @@ func (m ssModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 }
 
 func (m ssModel) View() string {
-	t := loadScriptTheme()
-	hintStyle    := lipgloss.NewStyle().Foreground(t.muted)
-	activeStyle  := lipgloss.NewStyle().Foreground(t.accent).Bold(true)
-	inactiveStyle := lipgloss.NewStyle().Foreground(t.muted)
+	t := LoadTheme()
+	hintStyle := lipgloss.NewStyle().Foreground(t.Muted)
+	activeStyle := lipgloss.NewStyle().Foreground(t.Accent).Bold(true)
+	inactiveStyle := lipgloss.NewStyle().Foreground(t.Muted)
 
 	var sb strings.Builder
 	sb.WriteString(hintStyle.Render("  ↑↓/jk navegar  |  Enter selecionar  |  q/esc cancelar") + "\n\n")
-	for i, item := range m.items {
+
+	// Pagination: show msPageSize items at a time, page derived from cursor.
+	totalPages := (len(m.items) + msPageSize - 1) / msPageSize
+	page := m.cursor / msPageSize
+	start := page * msPageSize
+	end := start + msPageSize
+	if end > len(m.items) {
+		end = len(m.items)
+	}
+
+	for i := start; i < end; i++ {
+		item := m.items[i]
 		if i == m.cursor {
 			sb.WriteString(activeStyle.Render("  › "+item.Label) + "\n")
 		} else {
 			sb.WriteString(inactiveStyle.Render("    "+item.Label) + "\n")
 		}
+	}
+
+	if totalPages > 1 {
+		sb.WriteString("\n" + hintStyle.Render(fmt.Sprintf("  Página %d de %d", page+1, totalPages)) + "\n")
 	}
 	return sb.String()
 }

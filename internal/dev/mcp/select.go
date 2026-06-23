@@ -82,8 +82,13 @@ func Select(ctx context.Context, exe *executor.Executor, stdin io.Reader, stdout
 		ui.Info(stdout, "Instalando "+s.Name+"...")
 		if err := localbin.RunNPMGlobal(ctx, exe, stdout, "install", s.Package); err != nil {
 			ui.Warning(stdout, "Falha ao instalar "+s.Name+": "+err.Error())
-		} else {
-			ui.Success(stdout, s.Name+" instalado.")
+			continue
+		}
+		ui.Success(stdout, s.Name+" instalado.")
+		if s.Package == vaultPackage {
+			if err := configureVaultPath(stdout); err != nil {
+				ui.Warning(stdout, "Falha ao configurar o vault: "+err.Error())
+			}
 		}
 	}
 

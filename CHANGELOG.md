@@ -6,6 +6,83 @@ O formato segue o padrão [Keep a Changelog](https://keepachangelog.com/pt-BR/1.
 
 ---
 
+## [2.2.3] — 2026-06-19
+
+### Adicionado
+
+#### Contexto AI — nova categoria de documentação "Analysis, Code Review & Test/Implementation Plans"
+- `internal/manager/ai/templates/BASIC.md` (e, por consequência, `CLAUDE.md`/`GEMINI.md`/`AGENTS.md`/`.windsurfrules`/`.cursorrules` gerados em projetos de usuário) e o `CLAUDE.md` deste próprio repositório ganharam uma terceira categoria de documentação, distinta de "GitHub Documentation" e "General Documentation": arquivos de análise, code review e planos de teste/implementação
+- Regra de idioma: sempre **português do Brasil (pt-BR)**, sobrescrevendo a regra padrão de inglês da "General Documentation" para essa categoria específica
+- Regra de descarte: arquivos dessa categoria são efêmeros — devem ser apagados quando não forem mais úteis, **sempre com confirmação do usuário antes da exclusão**
+- "General Documentation" ajustada: removido "implementation plans" da lista de exemplos (migrou para a nova categoria) e adicionada a marcação explícita de que é permanente, ao contrário da nova categoria efêmera
+
+#### Contexto AI — MOODLE.md: compatibilidade PHP/Moodle, tema padrão e portabilidade de banco
+- **Matriz de compatibilidade PHP por versão do Moodle** (4.1 a 5.3) em "Target Moodle Version": exige que o código respeite o PHP **mínimo** da versão alvo, não apenas o PHP usado no container da stack
+- **Nova seção "Moodle 5.1+ — `/public` Directory & Routing Engine":** documenta a mudança de document root do Moodle 5.1 (`/public`) e o novo Routing Engine opcional; conclusão registrada de que **nenhum ajuste é necessário** em `internal/stack/config/compose.go` — o nginx da stack usa raiz compartilhada por todo o workspace, não um document root dedicado por projeto, então basta apontar `$CFG->wwwroot`/URL para `.../public`
+- **Nova seção "Theme Compatibility":** fixa o tema **Boost** como referência obrigatória, independente do tema ativo no site
+- **Nova seção "Database Portability"** em "Global Context Guidelines": prioridade MySQL/MariaDB com suporte obrigatório a PostgreSQL — `sql_concat`, `sql_compare_text`, `sql_like`, proibição de `LIMIT`/`OFFSET` cru e de `CREATE TABLE` fora do XMLDB
+
+#### TUI — paginação no seletor único (`RunSingleSelect`)
+- `internal/ui/multiselect.go`: o picker de item único (`ssModel`, usado por `RunSingleSelect`) ganhou paginação igual à do seletor múltiplo — reaproveita o mesmo `msPageSize` (10 itens/página) de `RunMultiSelect`, com indicador "Página X de Y" quando há mais de uma página
+- Corrige a lista de "Aplicar tema no Flatpak" (`selectFlatpakTheme`), que renderizava todos os temas instalados de uma vez sem paginação
+
+#### MCP — configuração do caminho do vault global ao instalar o "Lumina Vault"
+- `internal/dev/mcp/select.go`: ao instalar o servidor "Lumina Vault" via "DevStuff :: Gerenciar Servidores MCP", o lumina passa a configurar `~/.lumina-vault/config.json` automaticamente após o `npm install`
+- `internal/dev/mcp/vaultconfig.go` (novo): lê/escreve a chave `globalVaultPath` desse arquivo como `map[string]any` (preserva chaves geridas pelo próprio servidor lumina-vault), com escrita atômica (arquivo temporário + `chmod 0600` + `rename`); se a chave já existir, informa o valor atual e pergunta se deseja alterá-lo, senão pede o caminho diretamente
+
+#### DevStuff — "Instalar Flutter + Dart"
+- `internal/dev/flutter/flutter.go` (novo pacote): `Manage` segue o mesmo padrão de `internal/dev/golang/golang.go` — detecta instalação existente em `~/development/flutter`, oferece `flutter upgrade` quando já instalado, ou instala pré-requisitos nativos por distro (apt para Debian/Ubuntu/Mint/Zorin, dnf para Fedora) seguido de `git clone --branch stable` e PATH idempotente no `~/.bashrc`; finaliza sempre com `flutter doctor`
+- Conectado em `lumina dev flutter` (`internal/app/app.go`), no menu "Ambiente de Desenvolvimento" da TUI (`internal/tui/content.go`/`model_v2.go`) e documentado no help (`internal/selfupdate/help.go`) e no `README.md`
+- Pré-requisitos expandidos com o toolchain que `flutter doctor` exige para "Linux toolchain - develop for Linux desktop": `clang`, `cmake`, `ninja-build`, `pkg-config` (`pkgconf-pkg-config` no Fedora) e as bibliotecas de desenvolvimento do GTK 3.0 (`libgtk-3-dev` no apt, `gtk3-devel` no dnf) — identificado testando o `flutter doctor` real após a instalação
+- Suporte ao "Android toolchain" do `flutter doctor`: `ensureAndroidCmdlineTools` baixa o Android cmdline-tools (build pinado `commandlinetools-linux-11076708_latest.zip`, mesma política de versão fixa usada nos PHARs da stack PHP) para `~/Android/Sdk/cmdline-tools/latest`, instala Java quando ausente (`default-jdk`/`java-17-openjdk-devel`), aceita as licenças do SDK (`sdkmanager --licenses`), instala `platform-tools` e registra o caminho via `flutter config --android-sdk` — sem isso o `flutter doctor` não localiza o SDK, já que `ANDROID_HOME` só fica disponível em uma nova sessão de shell
+- `installPrereqs` e `ensureAndroidCmdlineTools` agora rodam em toda execução de `lumina dev flutter` (instalação nova ou apenas verificação), não só na primeira instalação — instalações de Flutter anteriores a esta mudança (como a usada para validar a feature) ficavam sem o toolchain e sem o SDK até essa correção
+- Wrapper de Chrome instalado via Flatpak: `ensureChromeWrapper` detecta quando o Chrome só está disponível como Flatpak (`com.google.Chrome`) — caso em que `flutter doctor` não o encontra, pois sua ferramenta web invoca `google-chrome` diretamente e apps Flatpak não expõem um binário assim no PATH — e cria `~/.local/bin/google-chrome` (`exec flatpak run com.google.Chrome "$@"`), além de exportar `CHROME_EXECUTABLE` no `~/.bashrc` apontando para o wrapper. Não faz nada se já houver um Chrome/Chromium nativo no PATH ou se o Chrome não estiver instalado de forma alguma
+
+#### `lumina self-config` — editar Distribuição e Ambiente de desktop
+- `internal/selfupdate/configure.go`: o resumo de configurações e o fluxo interativo de `lumina self-config` ganharam dois novos campos editáveis, "Distribuição" e "Ambiente de desktop" (mesmos seletores e tokens usados em `internal/tui/setup.go`, incluindo a opção "Outro") — corrige a falta de qualquer forma de o usuário corrigir manualmente `cfg.Distro`/`cfg.DE` caso o sentinel `"outro"` tenha sido salvo por engano (sem essa tela, só editando `~/.lumina/config.yaml` à mão)
+
+### Corrigido
+
+#### Ambiente de Desenvolvimento — Codex CLI, OpenCode CLI e servidores MCP "instalavam" mas o comando não aparecia
+- **Causa raiz:** os binários instalados via `npm install -g` (rodando dentro do nvm) ficam em `~/.nvm/versions/node/<versão>/bin/`. O lumina exibia a mensagem de sucesso corretamente (a instalação de fato funciona — confirmado testando em um terminal novo), mas a checagem "instalado" usava `which` puro, que só vê o PATH capturado quando o processo do lumina foi iniciado — por isso o item continuava marcado como "não instalado" ao voltar ao mesmo menu, na mesma sessão
+- `internal/dev/localbin/localbin.go`: novo helper `Which(ctx, exe, cmd)` que carrega `~/.nvm/nvm.sh` (quando presente) antes de checar `command -v <cmd>`, em vez de depender do PATH herdado do processo
+- `internal/dev/llm/catalogue.go` e `internal/dev/mcp/catalogue.go`: `InstalledMap` passa a usar `localbin.Which` em vez de `which` puro
+- `internal/dev/prereqs/catalogue.go`: a checagem do pré-requisito "Node.js" agora exige `node` **e** `npm` disponíveis (antes só checava `node`) — evita que um `node` de sistema sem `npm` faça o pré-requisito ser marcado como "já disponível" e pule silenciosamente a instalação do nvm, deixando Codex CLI, OpenCode CLI e servidores MCP sem `npm` para instalar
+
+#### Ajuda (`lumina help` / tela "Ajuda") não seguia o tema selecionado na TUI
+- **Causa raiz:** `internal/selfupdate/help.go` define sua própria janela Bubble Tea (roda fora do loop de render principal, via `tea.Exec`) e tinha cores fixas em `#9966FF`/`#666666` para borda, divisores, breadcrumb e dicas — ignorando o tema configurado pelo usuário (`config.Theme`), ao contrário de todo o restante do projeto
+- `internal/ui/ui.go`: `scriptTheme`/`loadScriptTheme` (privados) renomeados para `ScriptTheme`/`LoadTheme` (exportados), permitindo que pacotes fora de `internal/ui` reutilizem a mesma paleta de cores do tema ativo em vez de hardcodar ou duplicar o mapa de cores
+- `internal/selfupdate/help.go`: `ShowHelp` agora carrega `ui.LoadTheme()` uma única vez na construção do `helpModel` e usa `theme.Primary`/`theme.Muted` na borda do viewport, nos divisores, no breadcrumb e nas dicas de teclado
+
+#### `lumina help` desatualizado em relação aos comandos reais do CLI
+- **Causa raiz:** a migração de `lumina system gnome *` para `lumina theme *` (e outros comandos adicionados desde então) nunca foi refletida em `internal/selfupdate/help.go`
+- Removida a seção obsoleta `lumina system gnome *`; adicionadas as seções "Aplicativos Linux" e "Personalizar Linux" (`lumina theme *`, incluindo Cinnamon); corrigido `lumina stack config pre` → `lumina stack config docker`; corrigido o comando órfão `lumina gitignore` → `lumina repo gitignore`; corrigido `lumina ai` incompleto → `lumina ai context` / `lumina ai clear`
+- Adicionados ao texto de ajuda os comandos que não apareciam: `lumina system toys`, `lumina system megasync`, `lumina stack restart`, `lumina repo conduct`, `lumina dev create-workspace`, `lumina dev create-stack-php` e `lumina self-config`
+
+#### TUI — confirmação de distribuição/ambiente repetia a cada inicialização
+- **Causa raiz:** `internal/tui/setup.go` (`ensureSystemInfo`) só persiste `cfg.Distro`/`cfg.DE` quando o usuário completa os seletores manuais; cancelar (Esc) qualquer um dos dois — provável para quem usa uma distro fora da lista (Mint/Zorin/Ubuntu/Fedora) ou nega a detecção automática — deixava os campos vazios e, como `omitempty` nunca grava string vazia no YAML, o aviso reaparecia em toda inicialização seguinte
+- Adicionada a opção "Outro" ao seletor de distribuição; ao cancelar qualquer seletor, o valor já detectado/escolhido anteriormente é mantido em vez de descartado, e a distribuição cai para o sentinel `"outro"` quando não há nada detectável — garantindo que `cfg.Distro`/`cfg.DE` sempre fiquem preenchidos e a checagem realmente só ocorra uma vez
+
+#### TUI — rótulo "Gerenciar banco de Dados" com capitalização inconsistente
+- `internal/tui/content.go`, `README.md`: corrigido para "Gerenciar Banco de Dados", consistente com os demais rótulos de seção ("Gerenciar Stack PHP", "Gerenciar Repositórios", "Gerenciar Contextos IA")
+
+### Refatorado
+
+#### Formatação (`gofmt -w`) em todo o repositório
+- 9 arquivos com formatação desatualizada de sessões anteriores corrigidos: ordem alfabética de imports (`internal/app/app.go`, `internal/tui/model_v2.go`), alinhamento de colunas em structs/maps (`internal/system/gnome/catalogue.go`, `internal/system/gnome/common.go`, `internal/tui/theme.go`, `internal/tui/content_test.go`), linhas em branco extras (`internal/system/gnome/cursors.go`, `internal/system/gnome/icons.go`, `internal/system/postinstall/common.go`) e comentário desalinhado (`internal/tui/model_v2_test.go`)
+- `internal/ui/ui.go`: `styleDivider` (variável morta, cor fixa `#9966FF` nunca referenciada) removida
+- `go build ./...`, `go vet ./...` e `go test ./...` confirmados sem erros antes e depois das mudanças — apenas formatação, nenhum comportamento alterado
+
+### Removido
+
+#### `assets/` — diretório morto removido
+- Diretório `assets/` na raiz do repositório (cópia desatualizada dos templates de IA e do catálogo MCP, da época da v1.0.1) não era referenciado por nenhum código — o `//go:embed all:templates` real aponta para `internal/manager/ai/templates`. Removido por completo; `go build ./...` confirmado sem erros após a remoção
+
+#### `internal/dev/mcp/install.go` e `uninstall.go` — código morto
+- Nenhuma das duas funções (`Install`, `Uninstall`) era chamada em lugar algum do repositório — o único fluxo de instalação/remoção de servidores MCP conectado à UI é `mcp.Select` (`internal/dev/mcp/select.go`, usado por "DevStuff :: Gerenciar Servidores MCP"). Removidos por completo; `go build ./...` confirmado sem erros após a remoção
+
+---
+
 ## [2.2.2] — 2026-06-18
 
 ### Corrigido

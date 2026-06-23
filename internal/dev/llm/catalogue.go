@@ -3,6 +3,7 @@ package llm
 import (
 	"context"
 
+	"github.com/kaduvelasco/lumina-tools/internal/dev/localbin"
 	"github.com/kaduvelasco/lumina-tools/internal/executor"
 )
 
@@ -24,7 +25,7 @@ var Catalogue = []LLM{
 func InstalledMap(ctx context.Context, exe *executor.Executor) map[string]bool {
 	result := make(map[string]bool, len(Catalogue))
 	for _, l := range Catalogue {
-		if _, err := exe.Output(ctx, executor.Options{}, "which", l.Cmd); err == nil {
+		if localbin.Which(ctx, exe, l.Cmd) {
 			result[l.Name] = true
 		}
 	}

@@ -21,7 +21,6 @@ type cursorEntry struct {
 	CopyGlob      string `yaml:"copy_glob,omitempty"`
 }
 
-
 func isCursorInstalled(ce cursorEntry, id string) bool {
 	return globExists(filepath.Join(id, ce.DirPattern))
 }

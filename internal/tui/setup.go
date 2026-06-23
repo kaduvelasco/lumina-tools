@@ -17,6 +17,7 @@ var distroNames = map[string]string{
 	"zorin":  "Zorin OS",
 	"ubuntu": "Ubuntu",
 	"fedora": "Fedora",
+	"outro":  "Outro",
 }
 
 // distroDisplayName returns the human-readable label for a distro token.
@@ -70,17 +71,22 @@ func ensureSystemInfo(ctx context.Context, stdin io.Reader, stdout io.Writer, cf
 			{Label: "Zorin OS", ID: "zorin"},
 			{Label: "Ubuntu / Kubuntu", ID: "ubuntu"},
 			{Label: "Fedora", ID: "fedora"},
+			{Label: "Outro", ID: "outro"},
 		}
 		fmt.Fprintln(stdout, "\nSelecione a distribuição:")
 		idx, ok, err := ui.RunSingleSelect(ctx, stdin, stdout, distroItems)
 		if err != nil {
 			return fmt.Errorf("selecionar distribuição: %w", err)
 		}
-		if !ok || idx < 0 {
-			// User cancelled — do not save incorrect values.
-			return nil
+		switch {
+		case ok && idx >= 0:
+			detectedDistro = distroItems[idx].ID
+		case detectedDistro == "":
+			// User cancelled and auto-detection found nothing usable — fall back
+			// to "outro" instead of leaving the field empty, otherwise this
+			// prompt would resurface on every single startup from now on.
+			detectedDistro = "outro"
 		}
-		detectedDistro = distroItems[idx].ID
 
 		deItems := []ui.SelectItem{
 			{Label: "Cinnamon", ID: "cinnamon"},
@@ -92,11 +98,11 @@ func ensureSystemInfo(ctx context.Context, stdin io.Reader, stdout io.Writer, cf
 		if err != nil {
 			return fmt.Errorf("selecionar ambiente: %w", err)
 		}
-		if !ok || idx < 0 {
-			// User cancelled — do not save incorrect values.
-			return nil
+		if ok && idx >= 0 {
+			detectedDE = deItems[idx].ID
 		}
-		detectedDE = deItems[idx].ID
+		// If cancelled, detectedDE keeps the auto-detected value — DetectDE
+		// never returns "", so DE is always saved with something usable.
 	}
 
 	cfg.Distro = detectedDistro

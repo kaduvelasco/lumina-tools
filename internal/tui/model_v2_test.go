@@ -215,7 +215,7 @@ func TestModelV2ViewUpdatesOnSectionSwitch(t *testing.T) {
 
 func TestModelV2ViewShowsItemCmdSecondLine(t *testing.T) {
 	m := newTestModelV2()            // section 0 = Home
-	m = pressSpecial(m, tea.KeyTab) // focusContent, cursor stays 0
+	m = pressSpecial(m, tea.KeyTab)  // focusContent, cursor stays 0
 	m = pressSpecial(m, tea.KeyDown) // cursor → 1 = "Atualizar"
 	view := m.View()
 	// cursor != 0 → renderItemsList shown; "Atualizar" has cmd "lumina self-update".

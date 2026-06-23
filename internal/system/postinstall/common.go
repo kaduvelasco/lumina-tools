@@ -266,4 +266,3 @@ func setupSwapfile(ctx context.Context, exe *executor.Executor, stdout io.Writer
 
 	ui.Success(stdout, "Swapfile de 4 GB criado e ativado.")
 }
-

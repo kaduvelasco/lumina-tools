@@ -54,7 +54,7 @@ func isInstalled(ctx context.Context, exe *executor.Executor, id string) bool {
 	case "docker":
 		return which("docker")
 	case "node":
-		script := `export NVM_DIR="$HOME/.nvm"; [ -s "$NVM_DIR/nvm.sh" ] && . "$NVM_DIR/nvm.sh"; command -v node`
+		script := `export NVM_DIR="$HOME/.nvm"; [ -s "$NVM_DIR/nvm.sh" ] && . "$NVM_DIR/nvm.sh"; command -v node && command -v npm`
 		_, err := exe.Output(ctx, executor.Options{}, "bash", "-c", script)
 		return err == nil
 	}
@@ -224,7 +224,7 @@ func installDocker(ctx context.Context, exe *executor.Executor, stdout io.Writer
 // ── Node.js ───────────────────────────────────────────────────────────────────
 
 func installNode(ctx context.Context, exe *executor.Executor, stdout io.Writer) error {
-	checkScript := `export NVM_DIR="$HOME/.nvm"; [ -s "$NVM_DIR/nvm.sh" ] && . "$NVM_DIR/nvm.sh"; command -v node`
+	checkScript := `export NVM_DIR="$HOME/.nvm"; [ -s "$NVM_DIR/nvm.sh" ] && . "$NVM_DIR/nvm.sh"; command -v node && command -v npm`
 	if _, e := exe.Output(ctx, executor.Options{}, "bash", "-c", checkScript); e == nil {
 		ui.Info(stdout, "Node.js já disponível.")
 		return nil

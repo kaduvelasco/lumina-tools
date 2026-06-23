@@ -11,6 +11,7 @@ import (
 	"github.com/charmbracelet/lipgloss"
 
 	"github.com/kaduvelasco/lumina-tools/internal/config"
+	devflutter "github.com/kaduvelasco/lumina-tools/internal/dev/flutter"
 	devgolang "github.com/kaduvelasco/lumina-tools/internal/dev/golang"
 	"github.com/kaduvelasco/lumina-tools/internal/dev/ide"
 	"github.com/kaduvelasco/lumina-tools/internal/dev/llm"
@@ -24,7 +25,6 @@ import (
 	managergitignore "github.com/kaduvelasco/lumina-tools/internal/manager/gitignore"
 	managerrepo "github.com/kaduvelasco/lumina-tools/internal/manager/repo"
 	"github.com/kaduvelasco/lumina-tools/internal/selfupdate"
-	"github.com/kaduvelasco/lumina-tools/internal/version"
 	"github.com/kaduvelasco/lumina-tools/internal/stack"
 	stackconfig "github.com/kaduvelasco/lumina-tools/internal/stack/config"
 	"github.com/kaduvelasco/lumina-tools/internal/system/apps"
@@ -35,6 +35,7 @@ import (
 	"github.com/kaduvelasco/lumina-tools/internal/system/postinstall"
 	"github.com/kaduvelasco/lumina-tools/internal/system/templates"
 	"github.com/kaduvelasco/lumina-tools/internal/system/update"
+	"github.com/kaduvelasco/lumina-tools/internal/version"
 )
 
 // openQuitConfirmMsg is sent by actQuit to open the quit-confirmation overlay.
@@ -345,6 +346,8 @@ func (m ModelV2) runActionV2(a actionID) tea.Cmd {
 		return execInteractive(prereqs.Select)
 	case actGoManage:
 		return execInteractive(devgolang.Manage)
+	case actFlutterManage:
+		return execInteractive(devflutter.Manage)
 	case actLLMManage:
 		return execInteractive(llm.Select)
 	case actIDEManage:

@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"sync"
 
+	"github.com/kaduvelasco/lumina-tools/internal/dev/localbin"
 	"github.com/kaduvelasco/lumina-tools/internal/executor"
 	"gopkg.in/yaml.v3"
 )
@@ -49,7 +50,7 @@ func Catalogue() ([]Server, error) {
 func InstalledMap(ctx context.Context, exe *executor.Executor, servers []Server) map[string]bool {
 	result := make(map[string]bool, len(servers))
 	for _, s := range servers {
-		if _, err := exe.Output(ctx, executor.Options{}, "which", s.Cmd); err == nil {
+		if localbin.Which(ctx, exe, s.Cmd) {
 			result[s.Name] = true
 		}
 	}

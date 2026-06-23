@@ -30,6 +30,7 @@ const (
 	actStackFixPerms
 	// Dev tools
 	actGoManage
+	actFlutterManage
 	actLLMManage
 	actIDEManage
 	actTermManage
@@ -168,6 +169,7 @@ var sections = []section{
 			{title: "Criar Workspace", cmd: "lumina dev create-workspace", action: actStackWorkspace},
 			{title: "Criar Stack PHP", cmd: "lumina dev create-stack-php", action: actStackCompose},
 			{title: "Gerenciar Go", cmd: "lumina dev go", action: actGoManage},
+			{title: "Instalar Flutter + Dart", cmd: "lumina dev flutter", action: actFlutterManage},
 			{title: "Gerenciar CLIs LLM", cmd: "lumina dev llm", action: actLLMManage},
 			{title: "Gerenciar IDEs", cmd: "lumina dev ide", action: actIDEManage},
 			{title: "Gerenciar Terminais", cmd: "lumina dev term", action: actTermManage},
@@ -187,7 +189,7 @@ var sections = []section{
 		},
 	},
 	{
-		label: "Gerenciar banco de Dados",
+		label: "Gerenciar Banco de Dados",
 		items: []submenuEntry{
 			{title: "Realizar Backup", cmd: "lumina db backup", action: actDBBackup},
 			{title: "Realizar Restore", cmd: "lumina db restore", action: actDBRestore},

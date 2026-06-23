@@ -12,6 +12,23 @@ import (
 	"github.com/kaduvelasco/lumina-tools/internal/ui"
 )
 
+// distroLabels maps a saved cfg.Distro token to its human-readable label,
+// shown in the settings summary and as the picker's default selection.
+var distroLabels = map[string]string{
+	"mint":   "Linux Mint",
+	"zorin":  "Zorin OS",
+	"ubuntu": "Ubuntu / Kubuntu",
+	"fedora": "Fedora",
+	"outro":  "Outro",
+}
+
+// deLabels maps a saved cfg.DE token to its human-readable label.
+var deLabels = map[string]string{
+	"cinnamon": "Cinnamon",
+	"gnome":    "GNOME",
+	"other":    "Outro",
+}
+
 // Configure lets the user view and update Lumina's settings interactively.
 func Configure(ctx context.Context, _ *executor.Executor, stdin io.Reader, stdout io.Writer) error {
 	ui.PrintHeader(stdout, "Configurar Lumina")
@@ -24,11 +41,13 @@ func Configure(ctx context.Context, _ *executor.Executor, stdin io.Reader, stdou
 	}
 
 	ui.PrintBox(stdout, fmt.Sprintf(
-		"Workspace:       %s\nDocker Compose:  %s\nTema:            %s\nEscopo Flatpak:  %s",
+		"Workspace:       %s\nDocker Compose:  %s\nTema:            %s\nEscopo Flatpak:  %s\nDistribuição:    %s\nAmbiente:        %s",
 		display(cfg.WorkspacePath),
 		display(cfg.DockerComposeDir),
 		cfg.Theme,
 		cfg.FlatpakScope,
+		display(distroLabels[cfg.Distro]),
+		display(deLabels[cfg.DE]),
 	))
 
 	// Workspace path
@@ -89,6 +108,46 @@ func Configure(ctx context.Context, _ *executor.Executor, stdin io.Reader, stdou
 		return err
 	} else if ok && idx >= 0 {
 		cfg.FlatpakScope = scopeItems[idx].ID
+	}
+
+	// Distribuição
+	ui.Info(stdout, "Distribuição — selecione ou Esc para manter a atual:")
+	distroItems := []ui.SelectItem{
+		{Label: "Linux Mint", ID: "mint"},
+		{Label: "Zorin OS", ID: "zorin"},
+		{Label: "Ubuntu / Kubuntu", ID: "ubuntu"},
+		{Label: "Fedora", ID: "fedora"},
+		{Label: "Outro", ID: "outro"},
+	}
+	for i := range distroItems {
+		if distroItems[i].ID == cfg.Distro {
+			distroItems[i].Label += " ✓"
+			break
+		}
+	}
+	if idx, ok, err := ui.RunSingleSelect(ctx, stdin, stdout, distroItems); err != nil {
+		return err
+	} else if ok && idx >= 0 {
+		cfg.Distro = distroItems[idx].ID
+	}
+
+	// Ambiente de desktop
+	ui.Info(stdout, "Ambiente de desktop — selecione ou Esc para manter o atual:")
+	deItems := []ui.SelectItem{
+		{Label: "Cinnamon", ID: "cinnamon"},
+		{Label: "GNOME", ID: "gnome"},
+		{Label: "Outro", ID: "other"},
+	}
+	for i := range deItems {
+		if deItems[i].ID == cfg.DE {
+			deItems[i].Label += " ✓"
+			break
+		}
+	}
+	if idx, ok, err := ui.RunSingleSelect(ctx, stdin, stdout, deItems); err != nil {
+		return err
+	} else if ok && idx >= 0 {
+		cfg.DE = deItems[idx].ID
 	}
 
 	if err := config.Save(cfg); err != nil {
