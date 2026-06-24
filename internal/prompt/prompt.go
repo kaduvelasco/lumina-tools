@@ -47,6 +47,23 @@ func ReadPassword(w io.Writer, label string) (string, error) {
 	return p, nil
 }
 
+// Confirm prints question to w as a yes/no prompt and reads the answer from r.
+// defaultYes controls both the suggested hint ("S/n" vs "s/N") and the result
+// when the user presses Enter without typing anything.
+func Confirm(r io.Reader, w io.Writer, question string, defaultYes bool) bool {
+	hint := "s/N"
+	if defaultYes {
+		hint = "S/n"
+	}
+	fmt.Fprintf(w, "%s (%s): ", question, hint)
+	line, _ := ReadLineFrom(r)
+	line = strings.TrimSpace(line)
+	if line == "" {
+		return defaultYes
+	}
+	return line == "s" || line == "S"
+}
+
 // ParseSelection parses a space-separated list of 1-based indexes.
 // Returns 0-based indexes in order entered, deduplicated, clamped to [0, max).
 func ParseSelection(line string, max int) []int {

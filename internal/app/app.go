@@ -117,6 +117,8 @@ func dispatchSystem(ctx context.Context, args []string, stdin io.Reader, stdout,
 		switch args[1] {
 		case "mint":
 			return postinstall.Mint(ctx, exe, stdout)
+		case "mint-xfce":
+			return postinstall.MintXFCE(ctx, exe, stdout)
 		case "zorin":
 			return postinstall.Zorin(ctx, exe, stdout)
 		case "ubuntu":
@@ -124,7 +126,7 @@ func dispatchSystem(ctx context.Context, args []string, stdin io.Reader, stdout,
 		case "fedora":
 			return postinstall.Fedora(ctx, exe, stdout)
 		default:
-			return fmt.Errorf("distro desconhecida: %s\nuso: lumina system pos [mint|zorin|ubuntu|fedora]", args[1])
+			return fmt.Errorf("distro desconhecida: %s\nuso: lumina system pos [mint|mint-xfce|zorin|ubuntu|fedora]", args[1])
 		}
 	case "fonts":
 		return fonts.Select(ctx, exe, stdin, stdout)
@@ -168,7 +170,7 @@ func dispatchSystem(ctx context.Context, args []string, stdin io.Reader, stdout,
 
 func dispatchTheme(ctx context.Context, args []string, stdin io.Reader, stdout, _ io.Writer) error {
 	if len(args) == 0 {
-		return fmt.Errorf("uso: lumina theme <gnome-pre|gnome|extensions|cinnamon-pre|cinnamon|cursor|icons|flatpak>")
+		return fmt.Errorf("uso: lumina theme <gnome-pre|gnome|extensions|cinnamon-pre|cinnamon|xfce-pre|xfce|cursor|icons|flatpak>")
 	}
 	exe := executor.New(stdout, stdout)
 	switch args[0] {
@@ -182,6 +184,10 @@ func dispatchTheme(ctx context.Context, args []string, stdin io.Reader, stdout, 
 		return gnome.InstallCinnamonPrereqs(ctx, exe, stdout)
 	case "cinnamon":
 		return gnome.ManageCinnamonThemes(ctx, exe, stdin, stdout)
+	case "xfce-pre":
+		return gnome.InstallXFCEPrereqs(ctx, exe, stdout)
+	case "xfce":
+		return gnome.ManageXFCEThemes(ctx, exe, stdin, stdout)
 	case "cursor", "cursors":
 		return gnome.ManageCursors(ctx, exe, stdin, stdout)
 	case "icons":
@@ -189,7 +195,7 @@ func dispatchTheme(ctx context.Context, args []string, stdin io.Reader, stdout, 
 	case "flatpak":
 		return gnome.ApplyFlatpakTheme(ctx, exe, stdin, stdout)
 	default:
-		return fmt.Errorf("subcomando desconhecido: %s\nuso: lumina theme <gnome-pre|gnome|extensions|cinnamon-pre|cinnamon|cursor|icons|flatpak>", args[0])
+		return fmt.Errorf("subcomando desconhecido: %s\nuso: lumina theme <gnome-pre|gnome|extensions|cinnamon-pre|cinnamon|xfce-pre|xfce|cursor|icons|flatpak>", args[0])
 	}
 }
 
@@ -408,5 +414,5 @@ func dispatchAI(ctx context.Context, args []string, stdin io.Reader, stdout, _ i
 }
 
 func printHelp(w io.Writer) {
-	fmt.Fprint(w, selfupdate.HelpMarkdown())
+	fmt.Fprint(w, selfupdate.HelpText())
 }

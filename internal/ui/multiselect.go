@@ -92,6 +92,9 @@ func (m msModel) View() string {
 	if w < 20 {
 		w = 80
 	}
+	if w > 120 {
+		w = 120
+	}
 	// Width(w-2) + border(2) = w (same formula as printPanel).
 	contentW := w - 2
 	if contentW < 10 {
@@ -300,4 +303,80 @@ func RunMultiSelect(ctx context.Context, stdin io.Reader, stdout io.Writer, item
 		return items, false, nil
 	}
 	return fm.items, fm.confirmed, nil
+}
+
+// ── gate ──────────────────────────────────────────────────────────────────────
+
+// gateModel is a minimal single-keypress confirmation: Enter confirms,
+// q/Esc/Ctrl+C cancels. Shares msKeys and the same capped-width panel
+// treatment as msModel/ssModel.
+type gateModel struct {
+	message   string
+	width     int
+	confirmed bool
+}
+
+func (m gateModel) Init() tea.Cmd { return nil }
+
+func (m gateModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
+	switch msg := msg.(type) {
+	case tea.WindowSizeMsg:
+		m.width = msg.Width
+		return m, nil
+	case tea.KeyMsg:
+		switch {
+		case key.Matches(msg, msKeys.Done):
+			m.confirmed = true
+			return m, tea.Quit
+		case key.Matches(msg, msKeys.Quit):
+			return m, tea.Quit
+		}
+	}
+	return m, nil
+}
+
+func (m gateModel) View() string {
+	t := LoadTheme()
+
+	w := m.width
+	if w < 20 {
+		w = 80
+	}
+	if w > 120 {
+		w = 120
+	}
+	contentW := w - 2
+	if contentW < 10 {
+		contentW = 10
+	}
+
+	return lipgloss.NewStyle().
+		Border(lipgloss.RoundedBorder()).
+		BorderForeground(t.Muted).
+		Padding(0, 1).
+		Width(contentW).
+		Render(m.message)
+}
+
+// RunGate shows a single-keypress confirmation panel with the given message.
+// Returns true when the user presses Enter, false when cancelled with q/Esc.
+func RunGate(ctx context.Context, stdin io.Reader, stdout io.Writer, message string) (bool, error) {
+	m := gateModel{message: message, width: 80}
+	opts := []tea.ProgramOption{
+		tea.WithOutput(stdout),
+		tea.WithContext(ctx),
+	}
+	if stdin != nil {
+		opts = append(opts, tea.WithInput(stdin))
+	}
+	p := tea.NewProgram(m, opts...)
+	final, err := p.Run()
+	if err != nil {
+		return false, err
+	}
+	fm, ok := final.(gateModel)
+	if !ok {
+		return false, fmt.Errorf("modelo inesperado retornado pelo programa")
+	}
+	return fm.confirmed, nil
 }

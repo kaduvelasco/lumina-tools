@@ -3,10 +3,12 @@ package gnome
 import (
 	"context"
 	"io"
+	"os"
 
 	"github.com/kaduvelasco/lumina-tools/internal/config"
 	"github.com/kaduvelasco/lumina-tools/internal/distro"
 	"github.com/kaduvelasco/lumina-tools/internal/executor"
+	"github.com/kaduvelasco/lumina-tools/internal/prompt"
 	"github.com/kaduvelasco/lumina-tools/internal/ui"
 )
 
@@ -16,6 +18,12 @@ func InstallPrereqs(ctx context.Context, exe *executor.Executor, stdout io.Write
 
 	if !isGnome() {
 		ui.Err(stdout, ErrNotGnome.Error())
+		ui.WaitEnter(stdout)
+		return nil
+	}
+
+	if !prompt.Confirm(os.Stdin, stdout, "Deseja continuar com a instalação dos pré-requisitos de customização?", true) {
+		ui.Info(stdout, "Operação cancelada.")
 		ui.WaitEnter(stdout)
 		return nil
 	}

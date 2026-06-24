@@ -29,6 +29,7 @@ func distroDisplayName(d string) string {
 var deNames = map[string]string{
 	"cinnamon": "Cinnamon",
 	"gnome":    "GNOME",
+	"xfce":     "XFCE",
 	"other":    "Outro",
 }
 
@@ -91,6 +92,7 @@ func ensureSystemInfo(ctx context.Context, stdin io.Reader, stdout io.Writer, cf
 		deItems := []ui.SelectItem{
 			{Label: "Cinnamon", ID: "cinnamon"},
 			{Label: "GNOME", ID: "gnome"},
+			{Label: "XFCE", ID: "xfce"},
 			{Label: "Outro", ID: "other"},
 		}
 		fmt.Fprintln(stdout, "\nSelecione o ambiente de desktop:")

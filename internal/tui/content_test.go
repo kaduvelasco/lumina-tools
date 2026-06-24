@@ -69,9 +69,9 @@ func TestActNoneItemsAreInfoOnly(t *testing.T) {
 func TestSectionCounts(t *testing.T) {
 	want := map[string]int{
 		"Home":                        6,
-		"Gerenciamento Linux":         8,
+		"Gerenciamento Linux":         9,
 		"Aplicativos Linux":           3,
-		"Personalizar Linux":          8,
+		"Personalizar Linux":          10,
 		"Ambiente de Desenvolvimento": 10,
 		"Gerenciar Stack PHP":         6,
 		"Gerenciar Banco de Dados":    5,

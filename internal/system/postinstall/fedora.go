@@ -4,8 +4,10 @@ import (
 	"context"
 	"fmt"
 	"io"
+	"os"
 
 	"github.com/kaduvelasco/lumina-tools/internal/executor"
+	"github.com/kaduvelasco/lumina-tools/internal/prompt"
 	"github.com/kaduvelasco/lumina-tools/internal/ui"
 )
 
@@ -31,6 +33,12 @@ var fedoraPackages = []string{
 // Fedora runs the post-install routine for Fedora 44.
 func Fedora(ctx context.Context, exe *executor.Executor, stdout io.Writer) error {
 	ui.PrintHeader(stdout, "Pós Instalação — Fedora 44")
+
+	if !prompt.Confirm(os.Stdin, stdout, "Deseja continuar com a pós instalação?", true) {
+		ui.Info(stdout, "Operação cancelada.")
+		ui.WaitEnter(stdout)
+		return nil
+	}
 
 	if err := step(ctx, exe, stdout, "Atualizando sistema base...", "dnf", "upgrade", "--refresh", "-y"); err != nil {
 		return failWith(stdout, err)

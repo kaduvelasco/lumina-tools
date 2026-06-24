@@ -12,7 +12,6 @@ import (
 	"time"
 
 	"github.com/kaduvelasco/lumina-tools/internal/executor"
-	"github.com/kaduvelasco/lumina-tools/internal/prompt"
 	"github.com/kaduvelasco/lumina-tools/internal/ui"
 )
 
@@ -28,23 +27,32 @@ type goRelease struct {
 	Stable  bool   `json:"stable"`
 }
 
-// Manage checks whether Go is installed and offers to install or update it.
+// Manage checks whether Go is installed and shows a menu to install, update or remove it.
 func Manage(ctx context.Context, exe *executor.Executor, stdin io.Reader, stdout io.Writer) error {
 	ui.PrintHeader(stdout, "DevStuff :: Gerenciar Go")
 
 	installed, current := installedVersion(ctx, exe)
 
+	var items []ui.SelectItem
 	if installed {
 		ui.Info(stdout, "Go instalado: "+current)
-		fmt.Fprint(stdout, "\nDeseja atualizar? (s/N): ")
-		line, _ := prompt.ReadLineFrom(stdin)
-		if c := strings.TrimSpace(line); c != "s" && c != "S" {
-			ui.Info(stdout, "Operação cancelada.")
-			ui.WaitEnter(stdout)
-			return nil
-		}
+		items = []ui.SelectItem{{Label: "Atualizar", ID: "update"}, {Label: "Desinstalar", ID: "uninstall"}, {Label: "Sair", ID: "exit"}}
 	} else {
 		ui.Info(stdout, "Go não encontrado no sistema.")
+		items = []ui.SelectItem{{Label: "Instalar", ID: "install"}, {Label: "Sair", ID: "exit"}}
+	}
+
+	idx, ok, err := ui.RunSingleSelect(ctx, stdin, stdout, items)
+	if err != nil {
+		return err
+	}
+	if !ok || idx < 0 || items[idx].ID == "exit" {
+		ui.Info(stdout, "Operação cancelada.")
+		ui.WaitEnter(stdout)
+		return nil
+	}
+	if items[idx].ID == "uninstall" {
+		return uninstall(ctx, exe, stdout)
 	}
 
 	ui.Info(stdout, "Verificando versão mais recente...")
@@ -172,6 +180,55 @@ func installGo(ctx context.Context, exe *executor.Executor, stdout io.Writer, ve
 	}
 
 	return nil
+}
+
+// uninstall removes the Go installation and its PATH entry in ~/.bashrc.
+func uninstall(ctx context.Context, exe *executor.Executor, stdout io.Writer) error {
+	ui.Info(stdout, "Removendo Go...")
+	if err := exe.Run(ctx,
+		executor.Options{RequiresSudo: true, Stdout: stdout, Stderr: stdout},
+		"rm", "-rf", "--", goInstallDir,
+	); err != nil {
+		ui.Err(stdout, "Falha ao remover Go: "+err.Error())
+		ui.WaitEnter(stdout)
+		return err
+	}
+
+	removePathFromBashrc(stdout)
+
+	ui.Success(stdout, "Go removido com sucesso.")
+	ui.WaitEnter(stdout)
+	return nil
+}
+
+// removePathFromBashrc undoes ensurePathInBashrc, removing the "# Go" comment
+// and PATH export line added when Go was installed.
+func removePathFromBashrc(stdout io.Writer) {
+	home, err := os.UserHomeDir()
+	if err != nil {
+		return
+	}
+	bashrc := filepath.Join(home, ".bashrc")
+
+	data, err := os.ReadFile(bashrc)
+	if err != nil {
+		return
+	}
+
+	lines := strings.Split(string(data), "\n")
+	out := make([]string, 0, len(lines))
+	for _, l := range lines {
+		if l == "# Go" || l == pathEntry {
+			continue
+		}
+		out = append(out, l)
+	}
+
+	if err := os.WriteFile(bashrc, []byte(strings.Join(out, "\n")), 0o644); err != nil {
+		ui.Warning(stdout, "Não foi possível atualizar ~/.bashrc: "+err.Error())
+		return
+	}
+	ui.Info(stdout, "PATH removido de ~/.bashrc")
 }
 
 // ensurePathInBashrc adds /usr/local/go/bin to PATH in ~/.bashrc if not already present.

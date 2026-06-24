@@ -28,7 +28,13 @@ type themeEntry struct {
 	ButtonsTweak  string     `yaml:"buttons_tweak,omitempty"`
 	FlatpakName   string     `yaml:"flatpak_name,omitempty"`
 	CustomScript  string     `yaml:"custom_script,omitempty"`
+	UserScript    string     `yaml:"user_script,omitempty"`
 	PurgePackages []string   `yaml:"purge_packages,omitempty"`
+
+	// ExtraDirPatterns lists additional glob patterns (besides DirPattern) to
+	// remove on uninstall — for entries that install several unrelated-looking
+	// folders at once (e.g. a multi-theme collection) that a single glob can't cover.
+	ExtraDirPatterns []string `yaml:"extra_dir_patterns,omitempty"`
 }
 
 // borderOptions returns the SelectItem list for a given border tweak value.
@@ -68,6 +74,17 @@ func ManageThemes(ctx context.Context, exe *executor.Executor, stdin io.Reader, 
 		return err
 	}
 	return manageThemesFrom(ctx, exe, stdin, stdout, catalogue, "Customizar GNOME — Temas GTK")
+}
+
+// ManageXFCEThemes shows a multi-select for XFCE GTK/XFWM4 themes and applies the diff.
+func ManageXFCEThemes(ctx context.Context, exe *executor.Executor, stdin io.Reader, stdout io.Writer) error {
+	catalogue, err := loadXFCEThemeCatalogue()
+	if err != nil {
+		ui.Err(stdout, "Erro ao carregar catálogo de temas: "+err.Error())
+		ui.WaitEnter(stdout)
+		return err
+	}
+	return manageThemesFrom(ctx, exe, stdin, stdout, catalogue, "Customizar XFCE — Temas")
 }
 
 // manageThemesFrom is the shared implementation for GNOME and Cinnamon theme management.
@@ -193,6 +210,23 @@ func installTheme(ctx context.Context, exe *executor.Executor, stdout io.Writer,
 		)
 	}
 
+	// UserScript runs as the current user (unlike CustomScript) — for themes
+	// that write to the user's own ~/.themes via a multi-step process (e.g.
+	// downloading a release tarball and merging in a companion repo) that a
+	// plain clone/install.sh flow can't express.
+	if t.UserScript != "" {
+		if err := exe.Run(ctx,
+			executor.Options{Stdout: stdout, Stderr: stdout},
+			"bash", "-c", "mkdir -p -- \"$1\"", "--", td,
+		); err != nil {
+			return err
+		}
+		return exe.Run(ctx,
+			executor.Options{Stdout: stdout, Stderr: stdout},
+			"bash", "-c", t.UserScript, "--", td,
+		)
+	}
+
 	if err := exe.Run(ctx,
 		executor.Options{Stdout: stdout, Stderr: stdout},
 		"bash", "-c", "mkdir -p -- \"$1\"", "--", td,
@@ -300,7 +334,8 @@ func removeTheme(ctx context.Context, exe *executor.Executor, stdout io.Writer, 
 		)
 	}
 
-	// $1 = themes dir, $2 = glob pattern; nullglob prevents a no-match from being a literal arg
+	// $1 = themes dir, $2 = glob pattern; nullglob prevents a no-match from being a literal arg.
+	// Run once per pattern so each glob stays a single, properly quoted argument.
 	script := `
 set -e
 shopt -s nullglob
@@ -308,10 +343,15 @@ for d in "$1"/$2; do
     rm -rf -- "$d"
 done
 `
-	return exe.Run(ctx,
-		executor.Options{Stdout: stdout, Stderr: stdout},
-		"bash", "-c", script, "--", td, t.DirPattern,
-	)
+	for _, pattern := range append([]string{t.DirPattern}, t.ExtraDirPatterns...) {
+		if err := exe.Run(ctx,
+			executor.Options{Stdout: stdout, Stderr: stdout},
+			"bash", "-c", script, "--", td, pattern,
+		); err != nil {
+			return err
+		}
+	}
+	return nil
 }
 
 // applyFlatpakTheme configures Flatpak to use the given GTK theme for all apps.

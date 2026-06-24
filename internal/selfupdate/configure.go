@@ -26,6 +26,7 @@ var distroLabels = map[string]string{
 var deLabels = map[string]string{
 	"cinnamon": "Cinnamon",
 	"gnome":    "GNOME",
+	"xfce":     "XFCE",
 	"other":    "Outro",
 }
 
@@ -49,6 +50,17 @@ func Configure(ctx context.Context, _ *executor.Executor, stdin io.Reader, stdou
 		display(distroLabels[cfg.Distro]),
 		display(deLabels[cfg.DE]),
 	))
+
+	confirmed, err := ui.RunGate(ctx, stdin, stdout,
+		"Enter: confirmar ou manter a configuração atual\nEsc: cancelar")
+	if err != nil {
+		return err
+	}
+	if !confirmed {
+		ui.Info(stdout, "Operação cancelada.")
+		ui.WaitEnter(stdout)
+		return nil
+	}
 
 	// Workspace path
 	fmt.Fprintf(stdout, "\n  Workspace [%s]: ", display(cfg.WorkspacePath))
@@ -136,6 +148,7 @@ func Configure(ctx context.Context, _ *executor.Executor, stdin io.Reader, stdou
 	deItems := []ui.SelectItem{
 		{Label: "Cinnamon", ID: "cinnamon"},
 		{Label: "GNOME", ID: "gnome"},
+		{Label: "XFCE", ID: "xfce"},
 		{Label: "Outro", ID: "other"},
 	}
 	for i := range deItems {

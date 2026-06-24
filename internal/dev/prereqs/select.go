@@ -11,7 +11,7 @@ import (
 // Select shows a multiselect of all prerequisite groups.
 // Items already installed start selected. Deselecting uninstalls; selecting installs.
 func Select(ctx context.Context, exe *executor.Executor, stdin io.Reader, stdout io.Writer) error {
-	ui.PrintHeader(stdout, "DevStuff :: Instalar Pré-Requisitos")
+	ui.PrintHeader(stdout, "Instalar pré-requisitos de desenvolvimento")
 	ui.Info(stdout, "Verificando pré-requisitos instalados...")
 
 	installed := InstalledMap(ctx, exe)
@@ -22,7 +22,7 @@ func Select(ctx context.Context, exe *executor.Executor, stdin io.Reader, stdout
 	}
 
 	return ui.RunManagedSelect(ctx, stdin, stdout,
-		"DevStuff :: Instalar Pré-Requisitos",
+		"Instalar pré-requisitos de desenvolvimento",
 		items,
 		installed,
 		func(i int) error { return installOne(ctx, exe, stdout, Catalogue[i]) },

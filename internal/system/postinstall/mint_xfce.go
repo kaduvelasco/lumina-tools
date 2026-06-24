@@ -4,51 +4,23 @@ import (
 	"context"
 	"fmt"
 	"io"
+	"os"
 
 	"github.com/kaduvelasco/lumina-tools/internal/executor"
 	"github.com/kaduvelasco/lumina-tools/internal/prompt"
 	"github.com/kaduvelasco/lumina-tools/internal/ui"
 )
 
-var ubuntuPackages = []string{
-	"ubuntu-restricted-extras",
-	"ffmpeg",
-	"gnome-tweaks",
-	"build-essential",
-	"gparted",
-	"gdebi",
-	"libfuse2t64",
-	"unrar",
-	"unzip",
-	"ntfs-3g",
-	"p7zip-full",
-	"curl",
-	"wget",
-	"git",
-	"htop",
-	"make",
-	"tree",
-	"jq",
-	"plocate",
-	"net-tools",
-	"python3-pip",
-	"software-properties-common",
-	"ubuntu-drivers-common",
-	"timeshift",
-	"gnome-software-plugin-flatpak",
-}
+// MintXFCE runs the post-install routine for Linux Mint 22.3 XFCE.
+// Shares mintPackages with Mint (Cinnamon) — the package list is desktop-neutral.
+func MintXFCE(ctx context.Context, exe *executor.Executor, stdout io.Writer) error {
+	ui.PrintHeader(stdout, "Pós Instalação — Linux Mint 22.3 XFCE")
 
-// Ubuntu runs the post-install routine for Ubuntu 26.04.
-func Ubuntu(ctx context.Context, exe *executor.Executor, stdin io.Reader, stdout io.Writer) error {
-	ui.PrintHeader(stdout, "Pós Instalação — Ubuntu 26.04")
-
-	if !prompt.Confirm(stdin, stdout, "Deseja continuar com a pós instalação?", true) {
+	if !prompt.Confirm(os.Stdin, stdout, "Deseja continuar com a pós instalação?", true) {
 		ui.Info(stdout, "Operação cancelada.")
 		ui.WaitEnter(stdout)
 		return nil
 	}
-
-	removeSnaps(ctx, exe, stdin, stdout)
 
 	ui.Info(stdout, "Habilitando repositórios universe e multiverse...")
 	for _, repo := range []string{"universe", "multiverse"} {
@@ -71,11 +43,24 @@ func Ubuntu(ctx context.Context, exe *executor.Executor, stdin io.Reader, stdout
 	}
 
 	ui.Info(stdout, "Instalando pacotes essenciais...")
+	if err := aptInstall(ctx, exe, stdout, mintPackages...); err != nil {
+		return failWith(stdout, fmt.Errorf("instalar pacotes: %w", err))
+	}
+
+	ui.Info(stdout, "Instalando fontes Microsoft...")
 	if err := acceptMsttFontsEula(ctx, exe, stdout); err != nil {
 		return failWith(stdout, err)
 	}
-	if err := aptInstall(ctx, exe, stdout, ubuntuPackages...); err != nil {
-		return failWith(stdout, fmt.Errorf("instalar pacotes: %w", err))
+	if err := aptInstall(ctx, exe, stdout, "ttf-mscorefonts-installer"); err != nil {
+		return failWith(stdout, err)
+	}
+
+	if err := ensureFlatpakReady(ctx, exe, stdout); err != nil {
+		return failWith(stdout, err)
+	}
+	ui.Info(stdout, "Instalando Flatpaks essenciais...")
+	if err := flatpakInstall(ctx, exe, stdout, "org.videolan.VLC", "net.codelogistics.webapps"); err != nil {
+		ui.Warning(stdout, "Falha ao instalar Flatpaks: "+err.Error())
 	}
 
 	if err := configureSysctl(ctx, exe, stdout); err != nil {
@@ -95,17 +80,9 @@ func Ubuntu(ctx context.Context, exe *executor.Executor, stdin io.Reader, stdout
 		aptInstall,
 	)
 
-	if err := ensureFlatpakReady(ctx, exe, stdout); err != nil {
-		return failWith(stdout, err)
-	}
-	ui.Info(stdout, "Instalando Flatpaks essenciais...")
-	if err := flatpakInstall(ctx, exe, stdout, "org.videolan.VLC", "net.codelogistics.webapps"); err != nil {
-		ui.Warning(stdout, "Falha ao instalar Flatpaks: "+err.Error())
-	}
-
 	_ = step(ctx, exe, stdout, "Detectando drivers adicionais...", "ubuntu-drivers", "autoinstall")
 
-	ui.Success(stdout, "Pós-instalação do Ubuntu concluída.")
+	ui.Success(stdout, "Pós-instalação do Linux Mint XFCE concluída.")
 	ui.Warning(stdout, "Reinicie o sistema para aplicar todas as mudanças.")
 	ui.WaitEnter(stdout)
 	return nil

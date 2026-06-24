@@ -1,11 +1,16 @@
 # Icon Pack Catalogue — Lumina Tools
 #
 # Fields:
-#   name:        Display name shown in the menu
-#   dir_pattern: Glob under ~/.local/share/icons/ for detection and removal
-#   repo_url:    Git repository URL
-#   clone_as:    Clone directly as ~/.local/share/icons/<clone_as>
-#   copy_glob:   Clone to tmp, copy matching subdirs into icons dir
+#   name:               Display name shown in the menu
+#   dir_pattern:        Glob under ~/.local/share/icons/ for detection and removal
+#   repo_url:           Git repository URL
+#   clone_as:           Clone directly as ~/.local/share/icons/<clone_as>
+#   copy_glob:          Clone to tmp, copy matching subdirs into icons dir
+#   user_script:        Clone to tmp, then run this (cwd = clone) instead of
+#                        copying — for packs whose folders are built by their
+#                        own install.sh rather than checked into the repo
+#   extra_dir_patterns: Additional exact names/globs removed on uninstall,
+#                        for packs that install several folders at once
 
 icons:
   - name: "Gruvbox Plus"
@@ -42,3 +47,14 @@ icons:
     dir_pattern: "Tela-circle*"
     repo_url: "https://github.com/vinceliuice/Tela-circle-icon-theme.git"
     copy_glob: "Tela-circle*"
+
+  - name: "Elementary XFCE"
+    dir_pattern: "elementary-xfce"
+    repo_url: "https://github.com/shimmerproject/elementary-xfce.git"
+    copy_glob: "elementary-xfce*"
+
+  - name: "Tela Icons"
+    dir_pattern: "Tela"
+    extra_dir_patterns: ["Tela-light", "Tela-dark"]
+    repo_url: "https://github.com/vinceliuice/Tela-icon-theme.git"
+    user_script: 'bash ./install.sh -d "$2"'

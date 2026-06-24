@@ -300,6 +300,8 @@ func (m ModelV2) runActionV2(a actionID) tea.Cmd {
 
 	case actSystemPostMint:
 		return exec(postinstall.Mint)
+	case actSystemPostMintXFCE:
+		return exec(postinstall.MintXFCE)
 	case actSystemPostZorin:
 		return exec(postinstall.Zorin)
 	case actSystemPostUbuntu:
@@ -335,6 +337,10 @@ func (m ModelV2) runActionV2(a actionID) tea.Cmd {
 		return exec(gnome.InstallCinnamonPrereqs)
 	case actCinnamonThemes:
 		return execInteractive(gnome.ManageCinnamonThemes)
+	case actXFCEPrereqs:
+		return exec(gnome.InstallXFCEPrereqs)
+	case actXFCEThemes:
+		return execInteractive(gnome.ManageXFCEThemes)
 	case actGnomeIcons:
 		return execInteractive(gnome.ManageIcons)
 	case actGnomeCursors:
@@ -444,6 +450,7 @@ func (m ModelV2) runActionV2(a actionID) tea.Cmd {
 // visibleItems returns the items for the given section, applying filters:
 //   - gnomeOnly items are hidden when cfg.DE != "gnome"
 //   - cinnamonOnly items are hidden when cfg.DE != "cinnamon"
+//   - xfceOnly items are hidden when cfg.DE != "xfce"
 //   - distro-tagged items are hidden when cfg.Distro is set and does not match
 func (m ModelV2) visibleItems(sec int) []submenuEntry {
 	items := sections[sec].items
@@ -453,6 +460,9 @@ func (m ModelV2) visibleItems(sec int) []submenuEntry {
 			continue
 		}
 		if item.cinnamonOnly && m.cfg.DE != "cinnamon" {
+			continue
+		}
+		if item.xfceOnly && m.cfg.DE != "xfce" {
 			continue
 		}
 		if item.distro != "" && m.cfg.Distro != "" && item.distro != m.cfg.Distro {

@@ -9,6 +9,7 @@ const (
 	actPrereqs
 	// System
 	actSystemPostMint
+	actSystemPostMintXFCE
 	actSystemPostZorin
 	actSystemPostUbuntu
 	actSystemPostFedora
@@ -62,6 +63,8 @@ const (
 	actGnomeFlatpak
 	actCinnamonPrereqs
 	actCinnamonThemes
+	actXFCEPrereqs
+	actXFCEThemes
 	// New in reorganization
 	actLuminaConfig
 	actStackRestart
@@ -97,6 +100,7 @@ const (
 // pending marks items that are not yet implemented — shown as disabled.
 // gnomeOnly hides the item when the configured DE is not GNOME.
 // cinnamonOnly hides the item when the configured DE is not Cinnamon.
+// xfceOnly hides the item when the configured DE is not XFCE.
 // distro, when non-empty, hides the item when it does not match cfg.Distro.
 type submenuEntry struct {
 	title        string
@@ -106,6 +110,7 @@ type submenuEntry struct {
 	pending      bool
 	gnomeOnly    bool
 	cinnamonOnly bool
+	xfceOnly     bool
 	distro       string
 }
 
@@ -131,7 +136,8 @@ var sections = []section{
 	{
 		label: "Gerenciamento Linux",
 		items: []submenuEntry{
-			{title: "Pós instalação · Mint 22.3", cmd: "lumina system pos mint", action: actSystemPostMint, distro: "mint"},
+			{title: "Pós instalação · Mint Cinnamon 22.3", cmd: "lumina system pos mint", action: actSystemPostMint, distro: "mint"},
+			{title: "Pós instalação · Mint XFCE 22.3", cmd: "lumina system pos mint-xfce", action: actSystemPostMintXFCE, distro: "mint"},
 			{title: "Pós instalação · ZorinOS 18.1", cmd: "lumina system pos zorin", action: actSystemPostZorin, distro: "zorin"},
 			{title: "Pós instalação · Ubuntu 26.04", cmd: "lumina system pos ubuntu", action: actSystemPostUbuntu, distro: "ubuntu"},
 			{title: "Pós instalação · Fedora Gnome 44", cmd: "lumina system pos fedora", action: actSystemPostFedora, distro: "fedora"},
@@ -157,6 +163,8 @@ var sections = []section{
 			{title: "Extensões GNOME", cmd: "lumina theme extensions", action: actGnomeExtensions, gnomeOnly: true},
 			{title: "Pré-requisitos Cinnamon", cmd: "lumina theme cinnamon-pre", action: actCinnamonPrereqs, cinnamonOnly: true},
 			{title: "Temas Cinnamon", cmd: "lumina theme cinnamon", action: actCinnamonThemes, cinnamonOnly: true},
+			{title: "Pré-requisitos XFCE", cmd: "lumina theme xfce-pre", action: actXFCEPrereqs, xfceOnly: true},
+			{title: "Temas XFCE", cmd: "lumina theme xfce", action: actXFCEThemes, xfceOnly: true},
 			{title: "Cursor", cmd: "lumina theme cursor", action: actGnomeCursors},
 			{title: "Ícones", cmd: "lumina theme icons", action: actGnomeIcons},
 			{title: "Aplicar tema Flatpak", cmd: "lumina theme flatpak", action: actGnomeFlatpak},
@@ -169,7 +177,7 @@ var sections = []section{
 			{title: "Criar Workspace", cmd: "lumina dev create-workspace", action: actStackWorkspace},
 			{title: "Criar Stack PHP", cmd: "lumina dev create-stack-php", action: actStackCompose},
 			{title: "Gerenciar Go", cmd: "lumina dev go", action: actGoManage},
-			{title: "Instalar Flutter + Dart", cmd: "lumina dev flutter", action: actFlutterManage},
+			{title: "Gerenciar Flutter + Dart", cmd: "lumina dev flutter", action: actFlutterManage},
 			{title: "Gerenciar CLIs LLM", cmd: "lumina dev llm", action: actLLMManage},
 			{title: "Gerenciar IDEs", cmd: "lumina dev ide", action: actIDEManage},
 			{title: "Gerenciar Terminais", cmd: "lumina dev term", action: actTermManage},

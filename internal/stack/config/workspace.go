@@ -18,6 +18,33 @@ import (
 func Workspace(ctx context.Context, exe *executor.Executor, stdout io.Writer) error {
 	ui.PrintHeader(stdout, "Criar Workspace")
 
+	cfg, err := config.Load()
+	if err != nil {
+		ui.Err(stdout, "Falha ao carregar config: "+err.Error())
+		ui.WaitEnter(stdout)
+		return err
+	}
+
+	existing := cfg.WorkspacePath != ""
+	if existing {
+		if _, statErr := os.Stat(cfg.WorkspacePath); statErr != nil {
+			existing = false
+		}
+	}
+
+	if existing {
+		question := "Já existe um workspace criado em " + cfg.WorkspacePath + ". Deseja criar o workspace em outro local?"
+		if !prompt.Confirm(os.Stdin, stdout, question, false) {
+			ui.Info(stdout, "Operação cancelada.")
+			ui.WaitEnter(stdout)
+			return nil
+		}
+	} else if !prompt.Confirm(os.Stdin, stdout, "Deseja criar o workspace?", true) {
+		ui.Info(stdout, "Operação cancelada.")
+		ui.WaitEnter(stdout)
+		return nil
+	}
+
 	fmt.Fprint(stdout, "Local do workspace [/srv/workspace]: ")
 	path := strings.TrimSpace(prompt.ReadLine())
 	if path == "" {
@@ -94,12 +121,6 @@ func Workspace(ctx context.Context, exe *executor.Executor, stdout io.Writer) er
 		return fmt.Errorf("escrever info.php: %w", err)
 	}
 
-	cfg, err := config.Load()
-	if err != nil {
-		ui.Err(stdout, "Falha ao carregar config: "+err.Error())
-		ui.WaitEnter(stdout)
-		return fmt.Errorf("carregar config: %w", err)
-	}
 	cfg.WorkspacePath = path
 	cfg.DockerComposeDir = filepath.Join(path, "docker")
 	if err := config.Save(cfg); err != nil {

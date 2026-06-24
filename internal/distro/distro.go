@@ -131,8 +131,8 @@ func NormalizedDistro() string {
 }
 
 // DetectDE returns the normalized desktop environment token
-// (cinnamon | gnome | other). Reads XDG_CURRENT_DESKTOP with DESKTOP_SESSION
-// as fallback.
+// (cinnamon | gnome | xfce | other). Reads XDG_CURRENT_DESKTOP with
+// DESKTOP_SESSION as fallback.
 func DetectDE() string {
 	desktop := strings.ToLower(os.Getenv("XDG_CURRENT_DESKTOP"))
 	if desktop == "" {
@@ -143,6 +143,8 @@ func DetectDE() string {
 		return "cinnamon"
 	case strings.Contains(desktop, "gnome"):
 		return "gnome"
+	case strings.Contains(desktop, "xfce"):
+		return "xfce"
 	}
 	return "other"
 }

@@ -11,7 +11,6 @@ import (
 	"github.com/kaduvelasco/lumina-tools/internal/dev/localbin"
 	"github.com/kaduvelasco/lumina-tools/internal/distro"
 	"github.com/kaduvelasco/lumina-tools/internal/executor"
-	"github.com/kaduvelasco/lumina-tools/internal/prompt"
 	"github.com/kaduvelasco/lumina-tools/internal/ui"
 )
 
@@ -30,9 +29,9 @@ export ANDROID_SDK_ROOT="$HOME/Android/Sdk"
 export PATH="$PATH:$ANDROID_HOME/cmdline-tools/latest/bin:$ANDROID_HOME/platform-tools"`
 )
 
-// Manage checks whether Flutter is installed and offers to install or update it.
+// Manage checks whether Flutter is installed and shows a menu to install, update or remove it.
 func Manage(ctx context.Context, exe *executor.Executor, stdin io.Reader, stdout io.Writer) error {
-	ui.PrintHeader(stdout, "DevStuff :: Instalar Flutter + Dart")
+	ui.PrintHeader(stdout, "DevStuff :: Gerenciar Flutter + Dart")
 
 	home, err := os.UserHomeDir()
 	if err != nil {
@@ -43,19 +42,36 @@ func Manage(ctx context.Context, exe *executor.Executor, stdin io.Reader, stdout
 	flutterDir := filepath.Join(home, "development", "flutter")
 	flutterBin := filepath.Join(flutterDir, "bin", "flutter")
 
+	var items []ui.SelectItem
 	if isInstalled(flutterBin) {
 		ui.Info(stdout, "Flutter já instalado em: "+flutterDir)
-		fmt.Fprint(stdout, "\nDeseja atualizar? (s/N): ")
-		line, _ := prompt.ReadLineFrom(stdin)
-		if c := strings.TrimSpace(line); c == "s" || c == "S" {
-			ui.Info(stdout, "Atualizando Flutter...")
-			if err := exe.Run(ctx, executor.Options{Stdout: stdout, Stderr: stdout}, flutterBin, "upgrade"); err != nil {
-				ui.Err(stdout, "Falha ao atualizar: "+err.Error())
-				ui.WaitEnter(stdout)
-				return err
-			}
-			ui.Success(stdout, "Flutter atualizado com sucesso!")
+		items = []ui.SelectItem{{Label: "Atualizar", ID: "update"}, {Label: "Desinstalar", ID: "uninstall"}, {Label: "Sair", ID: "exit"}}
+	} else {
+		ui.Info(stdout, "Flutter não encontrado em: "+flutterDir)
+		items = []ui.SelectItem{{Label: "Instalar", ID: "install"}, {Label: "Sair", ID: "exit"}}
+	}
+
+	idx, ok, err := ui.RunSingleSelect(ctx, stdin, stdout, items)
+	if err != nil {
+		return err
+	}
+	if !ok || idx < 0 || items[idx].ID == "exit" {
+		ui.Info(stdout, "Operação cancelada.")
+		ui.WaitEnter(stdout)
+		return nil
+	}
+	if items[idx].ID == "uninstall" {
+		return uninstall(stdout, home, flutterDir)
+	}
+
+	if items[idx].ID == "update" {
+		ui.Info(stdout, "Atualizando Flutter...")
+		if err := exe.Run(ctx, executor.Options{Stdout: stdout, Stderr: stdout}, flutterBin, "upgrade"); err != nil {
+			ui.Err(stdout, "Falha ao atualizar: "+err.Error())
+			ui.WaitEnter(stdout)
+			return err
 		}
+		ui.Success(stdout, "Flutter atualizado com sucesso!")
 	} else {
 		if err := cloneFlutter(ctx, exe, stdout, home, flutterDir); err != nil {
 			ui.Err(stdout, "Falha ao clonar o Flutter: "+err.Error())
@@ -92,6 +108,48 @@ func Manage(ctx context.Context, exe *executor.Executor, stdin io.Reader, stdout
 func isInstalled(flutterBin string) bool {
 	info, err := os.Stat(flutterBin)
 	return err == nil && !info.IsDir()
+}
+
+// uninstall removes the Flutter checkout and its PATH entry in ~/.bashrc.
+// Leaves the Android SDK and the Chrome wrapper in place — they're shared
+// toolchain pieces, not specific to this Flutter installation.
+func uninstall(stdout io.Writer, home, flutterDir string) error {
+	ui.Info(stdout, "Removendo Flutter...")
+	if err := os.RemoveAll(flutterDir); err != nil {
+		ui.Err(stdout, "Falha ao remover Flutter: "+err.Error())
+		ui.WaitEnter(stdout)
+		return err
+	}
+	removePathFromBashrc(stdout, home, pathEntry, "# Flutter")
+	ui.Success(stdout, "Flutter removido com sucesso.")
+	ui.WaitEnter(stdout)
+	return nil
+}
+
+// removePathFromBashrc undoes an ensurePathInBashrc-style append, removing
+// the comment and export lines previously added for entry.
+func removePathFromBashrc(stdout io.Writer, home, entry, comment string) {
+	bashrc := filepath.Join(home, ".bashrc")
+
+	data, err := os.ReadFile(bashrc)
+	if err != nil {
+		return
+	}
+
+	lines := strings.Split(string(data), "\n")
+	out := make([]string, 0, len(lines))
+	for _, l := range lines {
+		if l == comment || l == entry {
+			continue
+		}
+		out = append(out, l)
+	}
+
+	if err := os.WriteFile(bashrc, []byte(strings.Join(out, "\n")), 0o644); err != nil {
+		ui.Warning(stdout, "Não foi possível atualizar ~/.bashrc: "+err.Error())
+		return
+	}
+	ui.Info(stdout, "PATH removido de ~/.bashrc")
 }
 
 // installPrereqs installs the native libraries Flutter needs to run on Linux,

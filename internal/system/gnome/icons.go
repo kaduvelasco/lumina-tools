@@ -15,6 +15,14 @@ type iconEntry struct {
 	RepoURL    string `yaml:"repo_url"`
 	CloneAs    string `yaml:"clone_as,omitempty"`
 	CopyGlob   string `yaml:"copy_glob,omitempty"`
+	// UserScript runs after cloning the repo to a temp dir (cwd = the clone),
+	// for icon packs whose theme folders must be built by their own install.sh
+	// rather than copied straight from the repo (e.g. Tela). $1 = repo URL,
+	// $2 = icons dir — same positional params as the rest of this script.
+	UserScript string `yaml:"user_script,omitempty"`
+	// ExtraDirPatterns lists additional exact names/globs (besides DirPattern)
+	// removed on uninstall, for packs that install several folders at once.
+	ExtraDirPatterns []string `yaml:"extra_dir_patterns,omitempty"`
 }
 
 func isIconInstalled(ic iconEntry, id string) bool {
@@ -71,6 +79,21 @@ gtk-update-icon-cache -f -t "$2" 2>/dev/null || true
 		)
 	}
 
+	if ic.UserScript != "" {
+		script := `
+set -e
+TMP=$(mktemp -d)
+trap 'rm -rf -- "$TMP"' EXIT
+git clone --depth=1 "$1" "$TMP/pack"
+cd "$TMP/pack"
+` + ic.UserScript + `
+`
+		return exe.Run(ctx,
+			executor.Options{Stdout: stdout, Stderr: stdout},
+			"bash", "-c", script, "--", ic.RepoURL, id,
+		)
+	}
+
 	// Clone to temp, copy matching icon theme subdirs into the icons directory.
 	// $1 = repo URL, $2 = glob pattern for subdirs, $3 = icons dir
 	script := `
@@ -92,7 +115,8 @@ done
 }
 
 func removeIcon(ctx context.Context, exe *executor.Executor, stdout io.Writer, ic iconEntry, id string) error {
-	// $1 = icons dir, $2 = glob pattern; nullglob prevents a no-match literal arg
+	// $1 = icons dir, $2 = glob pattern; nullglob prevents a no-match literal arg.
+	// Run once per pattern so each glob stays a single, properly quoted argument.
 	script := `
 set -e
 shopt -s nullglob
@@ -100,8 +124,13 @@ for d in "$1"/$2; do
     rm -rf -- "$d"
 done
 `
-	return exe.Run(ctx,
-		executor.Options{Stdout: stdout, Stderr: stdout},
-		"bash", "-c", script, "--", id, ic.DirPattern,
-	)
+	for _, pattern := range append([]string{ic.DirPattern}, ic.ExtraDirPatterns...) {
+		if err := exe.Run(ctx,
+			executor.Options{Stdout: stdout, Stderr: stdout},
+			"bash", "-c", script, "--", id, pattern,
+		); err != nil {
+			return err
+		}
+	}
+	return nil
 }

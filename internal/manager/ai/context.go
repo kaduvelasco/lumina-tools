@@ -31,6 +31,7 @@ var models = []Model{
 	{Name: "MCP Server", Instruction: "templates/instructions/MCP.md"},
 	{Name: "PHP", Instruction: "templates/instructions/PHP.md"},
 	{Name: "Moodle", Instruction: "templates/instructions/MOODLE.md"},
+	{Name: "Flutter + Dart", Instruction: "templates/instructions/FLUTTER.md"},
 }
 
 // GenerateContext shows a multiselect of all project models.

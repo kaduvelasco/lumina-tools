@@ -4,8 +4,10 @@ import (
 	"context"
 	"fmt"
 	"io"
+	"os"
 
 	"github.com/kaduvelasco/lumina-tools/internal/executor"
+	"github.com/kaduvelasco/lumina-tools/internal/prompt"
 	"github.com/kaduvelasco/lumina-tools/internal/ui"
 )
 
@@ -36,9 +38,17 @@ var mintPackages = []string{
 	"timeshift",
 }
 
-// Mint runs the post-install routine for Linux Mint 22.3.
+// Mint runs the post-install routine for Linux Mint 22.3 Cinnamon.
+// The package list has no Cinnamon-specific entries — see MintXFCE, which
+// shares the same list under an XFCE-labeled header.
 func Mint(ctx context.Context, exe *executor.Executor, stdout io.Writer) error {
-	ui.PrintHeader(stdout, "Pós Instalação — Linux Mint 22.3")
+	ui.PrintHeader(stdout, "Pós Instalação — Linux Mint 22.3 Cinnamon")
+
+	if !prompt.Confirm(os.Stdin, stdout, "Deseja continuar com a pós instalação?", true) {
+		ui.Info(stdout, "Operação cancelada.")
+		ui.WaitEnter(stdout)
+		return nil
+	}
 
 	ui.Info(stdout, "Habilitando repositórios universe e multiverse...")
 	for _, repo := range []string{"universe", "multiverse"} {

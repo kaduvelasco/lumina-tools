@@ -10,6 +10,7 @@ import (
 
 	"github.com/kaduvelasco/lumina-tools/internal/distro"
 	"github.com/kaduvelasco/lumina-tools/internal/executor"
+	"github.com/kaduvelasco/lumina-tools/internal/prompt"
 	"github.com/kaduvelasco/lumina-tools/internal/ui"
 )
 
@@ -30,7 +31,13 @@ func Install(ctx context.Context, exe *executor.Executor, stdout io.Writer) erro
 	}
 
 	if _, err := exe.Output(ctx, executor.Options{}, "which", "megasync"); err == nil {
-		ui.Info(stdout, "MegaSync já instalado, pulando.")
+		ui.Info(stdout, "MegaSync já instalado, nenhuma ação necessária.")
+		ui.WaitEnter(stdout)
+		return nil
+	}
+
+	if !prompt.Confirm(os.Stdin, stdout, "Deseja continuar com a instalação do MegaSync?", true) {
+		ui.Info(stdout, "Operação cancelada.")
 		ui.WaitEnter(stdout)
 		return nil
 	}

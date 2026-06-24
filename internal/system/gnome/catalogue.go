@@ -14,6 +14,9 @@ var gnomeThemesYAML []byte
 //go:embed cinnamon_themes.yaml
 var cinnamonThemesYAML []byte
 
+//go:embed xfce_themes.yaml
+var xfceThemesYAML []byte
+
 //go:embed cursors.yaml
 var cursorsYAML []byte
 
@@ -28,6 +31,10 @@ var (
 	cinnamonOnce  sync.Once
 	cinnamonCache []themeEntry
 	cinnamonErr   error
+
+	xfceOnce  sync.Once
+	xfceCache []themeEntry
+	xfceErr   error
 
 	cursorOnce  sync.Once
 	cursorCache []cursorEntry
@@ -64,6 +71,20 @@ func loadCinnamonThemeCatalogue() ([]themeEntry, error) {
 		cinnamonCache = w.Themes
 	})
 	return cinnamonCache, cinnamonErr
+}
+
+func loadXFCEThemeCatalogue() ([]themeEntry, error) {
+	xfceOnce.Do(func() {
+		var w struct {
+			Themes []themeEntry `yaml:"themes"`
+		}
+		if err := yaml.Unmarshal(xfceThemesYAML, &w); err != nil {
+			xfceErr = fmt.Errorf("parse xfce themes catalogue: %w", err)
+			return
+		}
+		xfceCache = w.Themes
+	})
+	return xfceCache, xfceErr
 }
 
 func loadCursorCatalogue() ([]cursorEntry, error) {

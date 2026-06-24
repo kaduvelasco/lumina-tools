@@ -6,6 +6,54 @@ O formato segue o padrão [Keep a Changelog](https://keepachangelog.com/pt-BR/1.
 
 ---
 
+## [2.2.4] — 2026-06-24
+
+### Adicionado
+
+#### Suporte a Linux Mint 22.3 XFCE e Personalização XFCE
+- `internal/system/postinstall/mint_xfce.go` (novo): pós-instalação para Linux Mint 22.3 XFCE, reaproveitando a mesma lista de pacotes do Mint Cinnamon (`mintPackages`) — o conjunto de pacotes já era neutro em relação ao desktop. `lumina system pos mint-xfce` / menu "Pós instalação · Mint XFCE 22.3". O item existente foi renomeado para "Pós instalação · Mint Cinnamon 22.3" para diferenciar as duas edições
+- `internal/system/gnome/xfce_prereqs.go` (novo): `InstallXFCEPrereqs` — murrine engine, sassc e git/curl por família de distro (mesmo padrão de `InstallCinnamonPrereqs`, com a confirmação "Deseja continuar?" antes de instalar). `lumina theme xfce-pre`
+- `internal/system/gnome/xfce_themes.yaml` + `ManageXFCEThemes` (novo): catálogo com 11 itens, pesquisados individualmente na estrutura real de cada repositório antes de serem adicionados — XFWM4 Theme Collection (31 temas via clone + cópia de todas as subpastas), Lavanda (Light/Dark, install.sh com `-c`), Graphite (mesmo mecanismo já usado em GNOME/Cinnamon), POP (clone + cópia de subpastas), Orchis (Light/Dark), Layan (Light/Dark), WhiteSur (todas as variantes, clone + cópia de subpastas), e ADW-GTK3 (combinação de duas fontes: tarball do release mais recente de `lassekongo83/adw-gtk3` para os arquivos GTK + clone de `FabianOvrWrt/adw-xfwm4` mesclando a subpasta `xfwm4/` nas mesmas pastas — o repo principal do adw-gtk3 não tem pastas prontas, só código-fonte para build via meson). `lumina theme xfce`
+- `internal/system/gnome/themes.go`: novos campos `UserScript` (roda como o usuário atual, sem sudo — para fluxos que um clone/install.sh simples não cobre) e `ExtraDirPatterns` (padrões extras de remoção, para entradas que instalam várias pastas de uma vez que um único glob não cobre)
+- `internal/system/gnome/icons.go` / `icons.yaml`: dois novos pacotes de ícones (compartilhados entre GNOME/Cinnamon/XFCE, catálogo já era único para todos os desktops) — **Elementary XFCE** (cópia direta das pastas do repositório) e **Tela Icons** (precisa rodar o `install.sh` próprio, pois as pastas do tema não estão prontas no repositório — diferente do "Tela Circle" já existente). Mesmos campos `UserScript`/`ExtraDirPatterns` replicados em `iconEntry` para o caso do Tela
+- Suporte a XFCE como ambiente de desktop: `internal/distro/distro.go` (`DetectDE` reconhece XFCE), `internal/tui/setup.go` e `internal/selfupdate/configure.go` (opção "XFCE" nos seletores de ambiente), `internal/tui/content.go`/`model_v2.go` (novo filtro `xfceOnly`, dois itens novos em "Personalizar Linux": "Pré-requisitos XFCE" e "Temas XFCE"), `internal/app/app.go` (`lumina theme xfce-pre`/`xfce`)
+
+#### Contexto AI — nova opção "Flutter + Dart"
+- `internal/manager/ai/templates/instructions/FLUTTER.md` (novo): regras estritas para agentes de IA em projetos Flutter/Dart (arquitetura MVVM/Clean Code, gerenciamento de estado nativo, padrões de código, Material 3 e testes)
+- `internal/manager/ai/context.go`: novo item "Flutter + Dart" na lista de modelos de "Criar Contexto AI" — segue o mesmo fluxo genérico de seleção/geração/remoção já usado por Go, Linux Bash, MCP Server, PHP e Moodle, sem necessidade de lógica especial
+
+#### TUI — confirmação de Enter/Esc em "Configurar Lumina"
+- `internal/ui/multiselect.go`: novo `RunGate` — painel de confirmação de tecla única (Enter confirma, q/Esc cancela), reaproveitando `msKeys` e o mesmo tratamento de largura limitada dos demais seletores
+- `internal/selfupdate/configure.go`: após o painel com o resumo das configurações atuais, exibe o novo gate ("Enter: confirmar ou manter a configuração atual" / "Esc: cancelar") antes de iniciar a edição campo a campo — Esc cancela a tela inteira e retorna sem alterar nada
+
+#### Confirmações "Deseja continuar?" antes de ações destrutivas/demoradas
+- `internal/prompt/prompt.go`: novo helper `Confirm(r, w, question, defaultYes)`, consolidando o padrão `fmt.Fprint("... (s/N): ")` + `ReadLine` já usado em vários pontos do código
+- Pós-instalação (`internal/system/postinstall/{mint,ubuntu,zorin,fedora}.go`): pergunta "Deseja continuar com a pós instalação? (S/n)" antes de iniciar; respondendo não, cancela e retorna ao menu/TUI sem executar nada
+- Linux Toys (`internal/system/linuxtoys/install.go`): detecta instalação existente via `which linuxtoys` — se já instalado, pergunta se deseja atualizar (reexecuta o instalador oficial, que é idempotente); se não, pergunta se deseja continuar com a instalação antes de baixar/executar o script
+- MegaSync (`internal/system/megasync/install.go`): pergunta "Deseja continuar com a instalação do MegaSync? (S/n)" antes do download; mensagem do caso já instalado ajustada de "MegaSync já instalado, pulando." para "MegaSync já instalado, nenhuma ação necessária."
+- Pré-requisitos de customização GNOME/Cinnamon (`internal/system/gnome/{prereqs,cinnamon_prereqs}.go`): pergunta "Deseja continuar com a instalação dos pré-requisitos de customização? (S/n)" antes de instalar pacotes
+
+#### DevStuff — Go e Flutter + Dart com menu Instalar/Atualizar/Desinstalar
+- `internal/dev/golang/golang.go`: `Manage` passa a exibir um menu navegável (`ui.RunSingleSelect`) com "Instalar" (só quando ausente) ou "Atualizar"/"Desinstalar" (quando já instalado), além de "Sair". "Desinstalar" remove `/usr/local/go` e a entrada de PATH em `~/.bashrc`
+- `internal/dev/flutter/flutter.go`: mesmo padrão de menu; cabeçalho e item de menu renomeados de "Instalar Flutter + Dart" para "Gerenciar Flutter + Dart" (`internal/tui/content.go`). "Desinstalar" remove `~/development/flutter` e a entrada de PATH em `~/.bashrc`, sem tocar no Android SDK ou no wrapper do Chrome (compartilhados com outras ferramentas). Os passos de pré-requisitos/Android SDK/Chrome/`flutter doctor` continuam rodando apenas após instalar ou atualizar
+
+### Corrigido
+
+#### TUI — painéis de seleção múltipla ocupando 100% da largura do terminal
+- `internal/ui/multiselect.go`: `msModel.View()` (usado por `RunMultiSelect` e, por consequência, por `RunManagedSelect`) não limitava a largura a 120 colunas como o cabeçalho e os painéis `Info`/`PrintBox` já faziam — corrigido para aplicar o mesmo limite. Resolve o problema em todas as telas baseadas nesse componente: Fontes, Templates de Arquivos, Instalar/Desinstalar Aplicativos, temas/cursores/ícones GNOME e Cinnamon, seleção de versões PHP da stack, e os gerenciadores de pré-requisitos/LLMs/IDEs/Terminais/MCP
+
+#### Criar Workspace — ciente de workspace já configurado
+- `internal/stack/config/workspace.go`: antes de perguntar o local do workspace, verifica se já existe um caminho configurado em `~/.lumina/config.yaml` e se a pasta correspondente existe. Se sim, pergunta "Já existe um workspace criado em `<local>`. Deseja criar o workspace em outro local? (s/N)"; se não houver configuração ou pasta, pergunta "Deseja criar o workspace? (S/N)" antes de prosseguir
+
+### Alterado
+
+#### Ajuda — padrão de painéis em vez de visualizador full-screen
+- `internal/selfupdate/help.go`: `ShowHelp` (item "Ajuda" da TUI) deixou de usar o visualizador full-screen com Glamour/viewport e passou a usar a mesma sequência de `ui.PrintHeader`/`Info`/`PrintBox` do restante do app. O conteúdo (antes em `HelpMarkdown`) foi reestruturado em `helpSections`, reaproveitado também por `HelpText()` — usada por `lumina help` (modo texto, sem códigos de terminal) — para evitar duplicar o conteúdo
+- Removida a entrada "Atualizar ferramentas"/`lumina dev update` do texto de ajuda e do `README.md` (a funcionalidade continua disponível no menu da TUI e em `internal/dev/upgrade`)
+- `internal/dev/prereqs/select.go`: cabeçalho alterado de "DevStuff :: Instalar Pré-Requisitos" para "Instalar pré-requisitos de desenvolvimento"
+
+---
+
 ## [2.2.3] — 2026-06-19
 
 ### Adicionado

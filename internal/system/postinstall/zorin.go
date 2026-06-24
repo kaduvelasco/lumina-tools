@@ -4,8 +4,10 @@ import (
 	"context"
 	"fmt"
 	"io"
+	"os"
 
 	"github.com/kaduvelasco/lumina-tools/internal/executor"
+	"github.com/kaduvelasco/lumina-tools/internal/prompt"
 	"github.com/kaduvelasco/lumina-tools/internal/ui"
 )
 
@@ -36,6 +38,12 @@ var zorinPackages = []string{
 // Zorin runs the post-install routine for ZorinOS 18.1.
 func Zorin(ctx context.Context, exe *executor.Executor, stdout io.Writer) error {
 	ui.PrintHeader(stdout, "Pós Instalação — ZorinOS 18.1")
+
+	if !prompt.Confirm(os.Stdin, stdout, "Deseja continuar com a pós instalação?", true) {
+		ui.Info(stdout, "Operação cancelada.")
+		ui.WaitEnter(stdout)
+		return nil
+	}
 
 	ui.Info(stdout, "Habilitando repositórios universe e multiverse...")
 	for _, repo := range []string{"universe", "multiverse"} {
