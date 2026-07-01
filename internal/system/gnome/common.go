@@ -11,6 +11,7 @@ import (
 
 	"github.com/kaduvelasco/lumina-tools/internal/distro"
 	"github.com/kaduvelasco/lumina-tools/internal/executor"
+	"github.com/kaduvelasco/lumina-tools/internal/prompt"
 	"github.com/kaduvelasco/lumina-tools/internal/ui"
 )
 
@@ -132,6 +133,37 @@ func manageCatalogue[T any](
 	return nil
 }
 
+// installPrereqsCommon runs the shared confirm→install→success flow used by
+// Cinnamon prereq functions. GNOME has additional post-install steps
+// (Flatpak extensions) and uses its own flow in prereqs.go.
+// os.Stdin is used directly because prereq functions are dispatched as funcCmd
+// (not interactiveFuncCmd), so stdin is not injected by the TUI — this is the
+// established convention for funcCmd-type domain functions in this project.
+func installPrereqsCommon(
+	ctx context.Context,
+	exe *executor.Executor,
+	stdout io.Writer,
+	title string,
+	packages map[string][]string,
+	hint string,
+) error {
+	ui.PrintHeader(stdout, title)
+	if !prompt.Confirm(os.Stdin, stdout, "Deseja continuar com a instalação dos pré-requisitos de customização?", true) {
+		ui.Info(stdout, "Operação cancelada.")
+		ui.WaitEnter(stdout)
+		return nil
+	}
+	ui.Info(stdout, "Instalando pacotes necessários...")
+	if err := installPackagesByFamily(ctx, exe, stdout, packages, hint); err != nil {
+		ui.Err(stdout, "Falha ao instalar pacotes: "+err.Error())
+		ui.WaitEnter(stdout)
+		return err
+	}
+	ui.Success(stdout, "Pré-requisitos instalados!")
+	ui.WaitEnter(stdout)
+	return nil
+}
+
 // installPackagesByFamily installs packages using the appropriate package manager
 // for the running distribution family. packages maps distro family → package list.
 // hint is shown when the family is not covered; the function returns nil in that case.
@@ -174,6 +206,7 @@ func installPackagesByFamily(
 			executor.Options{RequiresSudo: true, Stdout: stdout, Stderr: stdout},
 			"pacman", append([]string{"-S", "--noconfirm"}, pkgs...)...,
 		)
+	default:
+		return fmt.Errorf("família de distribuição %q sem suporte para instalação automática", family)
 	}
-	return nil
 }

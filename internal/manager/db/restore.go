@@ -22,11 +22,9 @@ func Restore(ctx context.Context, exe *executor.Executor, stdout io.Writer) erro
 
 	cfg, err := config.Load()
 	if err != nil {
-		ui.Err(stdout, "Falha ao carregar config: "+err.Error())
-		ui.WaitEnter(stdout)
-		return fmt.Errorf("carregar config: %w", err)
+		return failWith(stdout, "Falha ao carregar config", err)
 	}
-	container := "mariadb"
+	container := defaultContainer
 	backupDir := filepath.Join(cfg.WorkspacePath, "backups")
 
 	if err := requireContainer(ctx, exe, container); err != nil {
@@ -37,9 +35,7 @@ func Restore(ctx context.Context, exe *executor.Executor, stdout io.Writer) erro
 
 	files, err := listSQLFiles(backupDir)
 	if err != nil {
-		ui.Err(stdout, "Erro ao listar backups em "+backupDir+": "+err.Error())
-		ui.WaitEnter(stdout)
-		return fmt.Errorf("listar backups: %w", err)
+		return failWith(stdout, "Erro ao listar backups em "+backupDir, err)
 	}
 	if len(files) == 0 {
 		ui.Warning(stdout, "Nenhum backup encontrado em: "+backupDir)
@@ -83,27 +79,24 @@ func Restore(ctx context.Context, exe *executor.Executor, stdout io.Writer) erro
 
 	ui.Info(stdout, "Restaurando... Isso pode levar alguns minutos.")
 
-	// Write password to a temp file readable only by the current user to avoid
-	// exposing it in /proc/<pid>/environ of the bash process.
-	pwdPath, cleanupPwd, err := writeTempSecret(dbPass, "lumina-db-*.cred")
+	envPath, cleanupEnv, err := writeTempSecret("MYSQL_PWD="+dbPass+"\n", "lumina-db-*.env")
 	if err != nil {
-		ui.Err(stdout, "Falha ao criar credencial temporária: "+err.Error())
-		ui.WaitEnter(stdout)
-		return fmt.Errorf("credencial: %w", err)
+		return failWith(stdout, "Falha ao criar credencial temporária", err)
 	}
-	defer cleanupPwd()
+	defer cleanupEnv()
 
-	script := fmt.Sprintf(
-		`MYSQL_PWD=$(cat %s) docker exec -i -e MYSQL_PWD %s mariadb -u %s < %s`,
-		shellQuote(pwdPath), shellQuote(container), shellQuote(dbUser), shellQuote(file),
-	)
+	f, err := os.Open(file)
+	if err != nil {
+		return failWith(stdout, "Falha ao abrir arquivo de backup", err)
+	}
+	defer f.Close()
+
 	if err := exe.Run(ctx,
-		executor.Options{Stdout: stdout, Stderr: stdout},
-		"bash", "-c", script,
+		executor.Options{Stdin: f, Stdout: stdout, Stderr: stdout},
+		"docker", "exec", "-i", "--env-file", envPath, container,
+		"mariadb", "-u", dbUser,
 	); err != nil {
-		ui.Err(stdout, "Falha no restore: "+err.Error())
-		ui.WaitEnter(stdout)
-		return fmt.Errorf("restore: %w", err)
+		return failWith(stdout, "Falha no restore", err)
 	}
 
 	ui.Success(stdout, "Restore concluído com sucesso.")

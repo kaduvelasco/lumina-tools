@@ -44,7 +44,6 @@ var Catalogue = []App{
 	{Name: "Ente Auth - Segurança", FlatID: "io.ente.auth"},
 	{Name: "Font Downloader", FlatID: "org.gustavoperedo.FontDownloader"},
 	{Name: "FreeTube - YouTube", FlatID: "io.freetubeapp.FreeTube"},
-	{Name: "Android Studio", FlatID: "com.google.AndroidStudio"},
-	{Name: "Tomatillo - Pomodoro", FlatID: "io.github.diegopvlk.Tomatillo"},
+{Name: "Tomatillo - Pomodoro", FlatID: "io.github.diegopvlk.Tomatillo"},
 	{Name: "Extension Manager (GNOME)", FlatID: "com.mattjakeman.ExtensionManager"},
 }

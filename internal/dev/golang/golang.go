@@ -8,6 +8,7 @@ import (
 	"net/http"
 	"os"
 	"path/filepath"
+	"runtime"
 	"strings"
 	"time"
 
@@ -118,7 +119,7 @@ func latestVersion(ctx context.Context) (string, error) {
 	defer resp.Body.Close()
 
 	var releases []goRelease
-	if err := json.NewDecoder(resp.Body).Decode(&releases); err != nil {
+	if err := json.NewDecoder(io.LimitReader(resp.Body, 1<<20)).Decode(&releases); err != nil {
 		return "", fmt.Errorf("decodificar resposta: %w", err)
 	}
 
@@ -134,7 +135,7 @@ func latestVersion(ctx context.Context) (string, error) {
 // Extraction happens to a staging directory first so that a failed extraction
 // never leaves the system without a working Go installation.
 func installGo(ctx context.Context, exe *executor.Executor, stdout io.Writer, version string) error {
-	tarball := version + ".linux-amd64.tar.gz"
+	tarball := fmt.Sprintf("%s.%s-%s.tar.gz", version, runtime.GOOS, runtime.GOARCH)
 	url := downloadBase + "/" + tarball
 
 	tmp, err := os.MkdirTemp("", "lumina-go-*")
@@ -202,36 +203,87 @@ func uninstall(ctx context.Context, exe *executor.Executor, stdout io.Writer) er
 }
 
 // removePathFromBashrc undoes ensurePathInBashrc, removing the "# Go" comment
-// and PATH export line added when Go was installed.
+// and PATH export line. Checks both ~/.bashrc (for installs predating multi-shell
+// support) and the current shell's RC file to handle all cases.
 func removePathFromBashrc(stdout io.Writer) {
 	home, err := os.UserHomeDir()
 	if err != nil {
 		return
 	}
-	bashrc := filepath.Join(home, ".bashrc")
-
-	data, err := os.ReadFile(bashrc)
-	if err != nil {
-		return
-	}
-
-	lines := strings.Split(string(data), "\n")
-	out := make([]string, 0, len(lines))
-	for _, l := range lines {
-		if l == "# Go" || l == pathEntry {
+	candidates := dedupStrings([]string{filepath.Join(home, ".bashrc"), shellRCFile(home)})
+	for _, rc := range candidates {
+		data, err := os.ReadFile(rc)
+		if err != nil {
 			continue
 		}
-		out = append(out, l)
+		lines := strings.Split(string(data), "\n")
+		out := make([]string, 0, len(lines))
+		changed := false
+		for _, l := range lines {
+			if l == "# Go" || l == pathEntry {
+				changed = true
+				continue
+			}
+			out = append(out, l)
+		}
+		if !changed {
+			continue
+		}
+		if err := rewriteFile(rc, out); err != nil {
+			ui.Warning(stdout, "Não foi possível atualizar "+rc+": "+err.Error())
+			continue
+		}
+		ui.Info(stdout, "PATH removido de "+rc)
 	}
-
-	if err := os.WriteFile(bashrc, []byte(strings.Join(out, "\n")), 0o644); err != nil {
-		ui.Warning(stdout, "Não foi possível atualizar ~/.bashrc: "+err.Error())
-		return
-	}
-	ui.Info(stdout, "PATH removido de ~/.bashrc")
 }
 
-// ensurePathInBashrc adds /usr/local/go/bin to PATH in ~/.bashrc if not already present.
+func dedupStrings(ss []string) []string {
+	seen := make(map[string]bool, len(ss))
+	out := ss[:0]
+	for _, s := range ss {
+		if !seen[s] {
+			seen[s] = true
+			out = append(out, s)
+		}
+	}
+	return out
+}
+
+// shellRCFile returns the primary shell RC file for the current user's shell.
+// Falls back to ~/.bashrc when the shell cannot be determined.
+func shellRCFile(home string) string {
+	switch filepath.Base(os.Getenv("SHELL")) {
+	case "zsh":
+		return filepath.Join(home, ".zshrc")
+	case "fish":
+		return filepath.Join(home, ".config", "fish", "config.fish")
+	default:
+		return filepath.Join(home, ".bashrc")
+	}
+}
+
+// rewriteFile atomically replaces path with the content of lines joined by newlines.
+// It writes to a temp file in the same directory and uses os.Rename to avoid
+// leaving the file in a truncated state on power loss or SIGKILL.
+func rewriteFile(path string, lines []string) error {
+	tmp, err := os.CreateTemp(filepath.Dir(path), ".lumina-*.tmp")
+	if err != nil {
+		return err
+	}
+	tmpPath := tmp.Name()
+	if _, err := fmt.Fprint(tmp, strings.Join(lines, "\n")); err != nil {
+		tmp.Close()
+		os.Remove(tmpPath)
+		return err
+	}
+	if err := tmp.Close(); err != nil {
+		os.Remove(tmpPath)
+		return err
+	}
+	return os.Rename(tmpPath, path)
+}
+
+// ensurePathInBashrc adds /usr/local/go/bin to PATH in the current shell's RC file.
 func ensurePathInBashrc(stdout io.Writer) {
 	home, err := os.UserHomeDir()
 	if err != nil {
@@ -239,20 +291,20 @@ func ensurePathInBashrc(stdout io.Writer) {
 		return
 	}
 
-	bashrc := filepath.Join(home, ".bashrc")
+	rc := shellRCFile(home)
 
-	data, _ := os.ReadFile(bashrc)
+	data, _ := os.ReadFile(rc)
 	if strings.Contains(string(data), pathEntry) {
 		return
 	}
 
-	f, err := os.OpenFile(bashrc, os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0644)
+	f, err := os.OpenFile(rc, os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0o644)
 	if err != nil {
-		ui.Warning(stdout, "Não foi possível atualizar ~/.bashrc: "+err.Error())
+		ui.Warning(stdout, "Não foi possível atualizar "+rc+": "+err.Error())
 		return
 	}
 	defer f.Close()
 
 	fmt.Fprintf(f, "\n# Go\n%s\n", pathEntry)
-	ui.Info(stdout, "PATH atualizado em ~/.bashrc")
+	ui.Info(stdout, "PATH atualizado em "+rc)
 }

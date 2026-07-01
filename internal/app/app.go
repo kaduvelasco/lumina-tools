@@ -7,6 +7,8 @@ import (
 	"io"
 
 	"github.com/kaduvelasco/lumina-tools/internal/config"
+	devandroid "github.com/kaduvelasco/lumina-tools/internal/dev/androidstudio"
+	devanti "github.com/kaduvelasco/lumina-tools/internal/dev/antigravity"
 	devflutter "github.com/kaduvelasco/lumina-tools/internal/dev/flutter"
 	devgolang "github.com/kaduvelasco/lumina-tools/internal/dev/golang"
 	"github.com/kaduvelasco/lumina-tools/internal/dev/ide"
@@ -148,7 +150,7 @@ func dispatchSystem(ctx context.Context, args []string, stdin io.Reader, stdout,
 			}
 			return apps.SelectUninstall(ctx, exe, stdin, stdout)
 		case "webapps":
-			return apps.ShowWebApps(ctx, exe, stdout)
+			return dispatchApps(ctx, []string{"web"}, stdin, stdout, stderr)
 		default:
 			return fmt.Errorf("subcomando desconhecido: %s\nuso: lumina system apps <install|uninstall|webapps> [flatpak|ulauncher]", args[1])
 		}
@@ -168,11 +170,11 @@ func dispatchSystem(ctx context.Context, args []string, stdin io.Reader, stdout,
 	}
 }
 
-func dispatchTheme(ctx context.Context, args []string, stdin io.Reader, stdout, _ io.Writer) error {
+func dispatchTheme(ctx context.Context, args []string, stdin io.Reader, stdout, stderr io.Writer) error {
 	if len(args) == 0 {
-		return fmt.Errorf("uso: lumina theme <gnome-pre|gnome|extensions|cinnamon-pre|cinnamon|xfce-pre|xfce|cursor|icons|flatpak>")
+		return fmt.Errorf("uso: lumina theme <gnome-pre|gnome|extensions|cinnamon-pre|cinnamon|cursor|icons|flatpak>")
 	}
-	exe := executor.New(stdout, stdout)
+	exe := executor.New(stdout, stderr)
 	switch args[0] {
 	case "gnome-pre":
 		return gnome.InstallPrereqs(ctx, exe, stdout)
@@ -184,10 +186,6 @@ func dispatchTheme(ctx context.Context, args []string, stdin io.Reader, stdout, 
 		return gnome.InstallCinnamonPrereqs(ctx, exe, stdout)
 	case "cinnamon":
 		return gnome.ManageCinnamonThemes(ctx, exe, stdin, stdout)
-	case "xfce-pre":
-		return gnome.InstallXFCEPrereqs(ctx, exe, stdout)
-	case "xfce":
-		return gnome.ManageXFCEThemes(ctx, exe, stdin, stdout)
 	case "cursor", "cursors":
 		return gnome.ManageCursors(ctx, exe, stdin, stdout)
 	case "icons":
@@ -195,7 +193,7 @@ func dispatchTheme(ctx context.Context, args []string, stdin io.Reader, stdout, 
 	case "flatpak":
 		return gnome.ApplyFlatpakTheme(ctx, exe, stdin, stdout)
 	default:
-		return fmt.Errorf("subcomando desconhecido: %s\nuso: lumina theme <gnome-pre|gnome|extensions|cinnamon-pre|cinnamon|xfce-pre|xfce|cursor|icons|flatpak>", args[0])
+		return fmt.Errorf("subcomando desconhecido: %s\nuso: lumina theme <gnome-pre|gnome|extensions|cinnamon-pre|cinnamon|cursor|icons|flatpak>", args[0])
 	}
 }
 
@@ -247,7 +245,7 @@ func dispatchStack(ctx context.Context, args []string, stdin io.Reader, stdout, 
 
 func dispatchDev(ctx context.Context, args []string, stdin io.Reader, stdout, stderr io.Writer) error {
 	if len(args) == 0 {
-		return fmt.Errorf("uso: lumina dev <pre|go|flutter|llm|ide|term|mcp|update|create-workspace|create-stack-php>")
+		return fmt.Errorf("uso: lumina dev <pre|go|flutter|android-studio|antigravity|llm|ide|term|mcp|update|create-workspace|create-stack-php>")
 	}
 	exe := executor.New(stdout, stderr)
 	switch args[0] {
@@ -257,6 +255,10 @@ func dispatchDev(ctx context.Context, args []string, stdin io.Reader, stdout, st
 		return devgolang.Manage(ctx, exe, stdin, stdout)
 	case "flutter":
 		return devflutter.Manage(ctx, exe, stdin, stdout)
+	case "android-studio":
+		return devandroid.Manage(ctx, exe, stdin, stdout)
+	case "antigravity":
+		return devanti.Manage(ctx, exe, stdin, stdout)
 	case "llm":
 		return llm.Select(ctx, exe, stdin, stdout)
 	case "ide":
@@ -272,7 +274,7 @@ func dispatchDev(ctx context.Context, args []string, stdin io.Reader, stdout, st
 	case "create-stack-php":
 		return stackconfig.Compose(ctx, exe, stdin, stdout)
 	default:
-		return fmt.Errorf("subcomando desconhecido: %s\nuso: lumina dev <pre|go|flutter|llm|ide|term|mcp|update|create-workspace|create-stack-php>", args[0])
+		return fmt.Errorf("subcomando desconhecido: %s\nuso: lumina dev <pre|go|flutter|android-studio|antigravity|llm|ide|term|mcp|update|create-workspace|create-stack-php>", args[0])
 	}
 }
 
@@ -393,21 +395,22 @@ func dispatchApps(ctx context.Context, args []string, stdin io.Reader, stdout, s
 	case "uninstall":
 		return apps.SelectUninstall(ctx, executor.New(stdout, stderr), stdin, stdout)
 	case "web":
-		return apps.ShowWebApps(ctx, nil, stdout)
+		return apps.ShowWebApps(ctx, executor.New(stdout, stderr), stdout)
 	default:
 		return fmt.Errorf("subcomando desconhecido: %s\nuso: lumina apps <install|uninstall|web>", args[0])
 	}
 }
 
-func dispatchAI(ctx context.Context, args []string, stdin io.Reader, stdout, _ io.Writer) error {
+func dispatchAI(ctx context.Context, args []string, stdin io.Reader, stdout, stderr io.Writer) error {
 	if len(args) == 0 {
 		return fmt.Errorf("uso: lumina ai <context|clear>")
 	}
+	exe := executor.New(stdout, stderr)
 	switch args[0] {
 	case "context":
-		return managerai.GenerateContext(ctx, nil, stdin, stdout)
+		return managerai.GenerateContext(ctx, exe, stdin, stdout)
 	case "clear":
-		return managerai.ClearContext(ctx, nil, stdin, stdout)
+		return managerai.ClearContext(ctx, exe, stdin, stdout)
 	default:
 		return fmt.Errorf("subcomando desconhecido: %s\nuso: lumina ai <context|clear>", args[0])
 	}

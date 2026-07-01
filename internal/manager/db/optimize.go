@@ -18,7 +18,7 @@ import (
 func Optimize(ctx context.Context, exe *executor.Executor, stdout io.Writer) error {
 	ui.PrintHeader(stdout, "Banco de Dados :: Verificar / Otimizar")
 
-	container := "mariadb"
+	container := defaultContainer
 	if err := requireContainer(ctx, exe, container); err != nil {
 		ui.Err(stdout, err.Error())
 		ui.WaitEnter(stdout)
@@ -39,13 +39,9 @@ func Optimize(ctx context.Context, exe *executor.Executor, stdout io.Writer) err
 
 	ui.Info(stdout, "Verificando e otimizando todas as tabelas...")
 
-	// Write credentials to a temp env-file (chmod 600) to avoid exposing
-	// the password in /proc/<pid>/environ of the docker process.
 	envPath, cleanupEnv, err := writeTempSecret("MYSQL_PWD="+dbPass+"\n", "lumina-db-*.env")
 	if err != nil {
-		ui.Err(stdout, "Falha ao criar credencial temporária: "+err.Error())
-		ui.WaitEnter(stdout)
-		return fmt.Errorf("credencial: %w", err)
+		return failWith(stdout, "Falha ao criar credencial temporária", err)
 	}
 	defer cleanupEnv()
 
@@ -54,9 +50,7 @@ func Optimize(ctx context.Context, exe *executor.Executor, stdout io.Writer) err
 		"docker", "exec", "-i", "--env-file", envPath, container,
 		"mariadb-check", "-u", dbUser, "--all-databases", "--optimize",
 	); err != nil {
-		ui.Err(stdout, "Falha na otimização: "+err.Error())
-		ui.WaitEnter(stdout)
-		return err
+		return failWith(stdout, "Falha na otimização", err)
 	}
 
 	ui.Success(stdout, "Otimização concluída com sucesso.")
@@ -68,7 +62,7 @@ func Optimize(ctx context.Context, exe *executor.Executor, stdout io.Writer) err
 func OptimizeMoodle(ctx context.Context, exe *executor.Executor, stdout io.Writer) error {
 	ui.PrintHeader(stdout, "Banco de Dados :: Otimizar para Moodle")
 
-	container := "mariadb"
+	container := defaultContainer
 	if err := requireContainer(ctx, exe, container); err != nil {
 		ui.Err(stdout, err.Error())
 		ui.WaitEnter(stdout)
@@ -145,9 +139,7 @@ collation-server = utf8mb4_unicode_ci
 	if err := exe.Run(ctx, executor.Options{Stdout: stdout, Stderr: stdout},
 		"bash", "-c", mkdirScript,
 	); err != nil {
-		ui.Err(stdout, "Falha ao escrever config: "+err.Error())
-		ui.WaitEnter(stdout)
-		return fmt.Errorf("escrever config: %w", err)
+		return failWith(stdout, "Falha ao escrever config", err)
 	}
 
 	ui.Info(stdout, "Reiniciando container MariaDB...")
@@ -155,9 +147,7 @@ collation-server = utf8mb4_unicode_ci
 		executor.Options{Stdout: stdout, Stderr: stdout},
 		"docker", "restart", container,
 	); err != nil {
-		ui.Err(stdout, "Falha ao reiniciar container: "+err.Error())
-		ui.WaitEnter(stdout)
-		return err
+		return failWith(stdout, "Falha ao reiniciar container", err)
 	}
 
 	ui.Success(stdout, "MariaDB otimizado para Moodle com sucesso.")

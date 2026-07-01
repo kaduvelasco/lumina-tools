@@ -6,6 +6,7 @@ import (
 	"io"
 	"os"
 	"path/filepath"
+	"runtime"
 	"strings"
 
 	"github.com/kaduvelasco/lumina-tools/internal/dev/localbin"
@@ -24,6 +25,8 @@ type Prereq struct {
 // Catalogue lists all prerequisite groups managed by lumina.
 var Catalogue = []Prereq{
 	{Name: "Pacotes base", ID: "base", Description: "curl, git, openssl, lsof"},
+	{Name: "Ferramentas de build", ID: "build", Description: "cmake, ninja, clang, libgtk-3-dev — dependências para builds nativos e Flutter"},
+	{Name: "Flatpak + AppImage", ID: "flatpak", Description: "flatpak, flatpak-builder, appstream, libfuse2, appimagetool"},
 	{Name: "Ferramentas DevStuff", ID: "devtools", Description: "libsecret, gnome-keyring"},
 	{Name: "GitHub CLI", ID: "gh", Description: "gh — interface de linha de comando para o GitHub"},
 	{Name: "Docker Engine", ID: "docker", Description: "Docker Engine + buildx, serviço habilitado"},
@@ -47,6 +50,10 @@ func isInstalled(ctx context.Context, exe *executor.Executor, id string) bool {
 	switch id {
 	case "base":
 		return which("curl")
+	case "build":
+		return which("cmake")
+	case "flatpak":
+		return which("flatpak") && which("appimagetool")
 	case "devtools":
 		return which("secret-tool")
 	case "gh":
@@ -67,6 +74,10 @@ func installOne(ctx context.Context, exe *executor.Executor, stdout io.Writer, p
 	switch p.ID {
 	case "base":
 		return distro.InstallPkgs(ctx, exe, stdout, family, "curl", "git", "openssl", "lsof")
+	case "build":
+		return installBuild(ctx, exe, stdout, family)
+	case "flatpak":
+		return installFlatpak(ctx, exe, stdout, family, opts)
 	case "devtools":
 		return installDevTools(ctx, exe, stdout, family)
 	case "gh":
@@ -85,6 +96,10 @@ func uninstallOne(ctx context.Context, exe *executor.Executor, stdout io.Writer,
 	switch p.ID {
 	case "base":
 		return removePkgs(ctx, exe, opts, family, "curl", "git", "openssl", "lsof")
+	case "build":
+		return removePkgs(ctx, exe, opts, family, buildPkgs(family)...)
+	case "flatpak":
+		return uninstallFlatpak(ctx, exe, opts, family)
 	case "devtools":
 		return uninstallDevTools(ctx, exe, opts, family)
 	case "gh":
@@ -103,6 +118,8 @@ func removePkgs(ctx context.Context, exe *executor.Executor, opts executor.Optio
 	switch family {
 	case distro.Fedora:
 		return exe.Run(ctx, opts, "dnf", append([]string{"remove", "-y", "--"}, pkgs...)...)
+	case distro.Arch:
+		return exe.Run(ctx, opts, "pacman", append([]string{"-R", "--noconfirm", "--"}, pkgs...)...)
 	default:
 		return exe.Run(ctx, opts, "apt-get", append([]string{"purge", "-y", "--"}, pkgs...)...)
 	}
@@ -112,6 +129,8 @@ func dockerPkgs(family string) []string {
 	switch family {
 	case distro.Fedora:
 		return []string{"docker", "docker-compose", "docker-buildx-plugin"}
+	case distro.Arch:
+		return []string{"docker", "docker-compose"}
 	default:
 		return []string{"docker.io", "docker-compose-v2", "docker-buildx"}
 	}
@@ -269,5 +288,64 @@ func uninstallNode(stdout io.Writer) error {
 		return fmt.Errorf("remover ~/.nvm: %w", err)
 	}
 	ui.Warning(stdout, "Node.js removido. Remova manualmente as linhas NVM_DIR do ~/.bashrc.")
+	return nil
+}
+
+// ── build tools ───────────────────────────────────────────────────────────────
+
+func buildPkgs(family string) []string {
+	switch family {
+	case distro.Fedora:
+		return []string{"gcc", "gcc-c++", "clang", "cmake", "ninja-build", "pkgconf-pkg-config", "gtk3-devel", "xz-devel"}
+	case distro.Arch:
+		return []string{"base-devel", "clang", "cmake", "ninja", "pkgconf", "gtk3", "xz"}
+	default:
+		return []string{"build-essential", "clang", "cmake", "ninja-build", "pkg-config", "libgtk-3-dev", "liblzma-dev"}
+	}
+}
+
+func installBuild(ctx context.Context, exe *executor.Executor, stdout io.Writer, family string) error {
+	return distro.InstallPkgs(ctx, exe, stdout, family, buildPkgs(family)...)
+}
+
+// ── Flatpak + AppImage ────────────────────────────────────────────────────────
+
+const appImageToolDest = "/usr/local/bin/appimagetool"
+
+func appImageToolArch() string {
+	if runtime.GOARCH == "arm64" {
+		return "aarch64"
+	}
+	return "x86_64"
+}
+
+func flatpakPkgs(family string) []string {
+	switch family {
+	case distro.Fedora:
+		return []string{"flatpak", "flatpak-builder", "appstream"}
+	case distro.Arch:
+		return []string{"flatpak", "flatpak-builder", "appstream", "fuse2"}
+	default:
+		return []string{"flatpak", "flatpak-builder", "appstream", "libfuse2"}
+	}
+}
+
+func installFlatpak(ctx context.Context, exe *executor.Executor, stdout io.Writer, family string, opts executor.Options) error {
+	if err := distro.InstallPkgs(ctx, exe, stdout, family, flatpakPkgs(family)...); err != nil {
+		return err
+	}
+	toolURL := "https://github.com/AppImage/AppImageKit/releases/download/continuous/appimagetool-" + appImageToolArch() + ".AppImage"
+	ui.Info(stdout, "Baixando appimagetool...")
+	if err := exe.Run(ctx, opts, "curl", "-fsSL", "-o", appImageToolDest, "--", toolURL); err != nil {
+		return fmt.Errorf("baixar appimagetool: %w", err)
+	}
+	return exe.Run(ctx, opts, "chmod", "+x", "--", appImageToolDest)
+}
+
+func uninstallFlatpak(ctx context.Context, exe *executor.Executor, opts executor.Options, family string) error {
+	if err := removePkgs(ctx, exe, opts, family, flatpakPkgs(family)...); err != nil {
+		return err
+	}
+	_ = exe.Run(ctx, opts, "rm", "-f", "--", appImageToolDest)
 	return nil
 }

@@ -35,27 +35,6 @@ func TestLoadCinnamonThemeCatalogue(t *testing.T) {
 	}
 }
 
-func TestLoadXFCEThemeCatalogue(t *testing.T) {
-	entries, err := loadXFCEThemeCatalogue()
-	if err != nil {
-		t.Fatalf("loadXFCEThemeCatalogue() error: %v", err)
-	}
-	if len(entries) == 0 {
-		t.Fatal("loadXFCEThemeCatalogue() returned empty catalogue")
-	}
-	for _, e := range entries {
-		if e.Name == "" {
-			t.Error("xfce theme entry with empty name")
-		}
-		if e.DirPattern == "" {
-			t.Errorf("xfce theme %q: empty dir_pattern", e.Name)
-		}
-		if e.RepoURL == "" && e.UserScript == "" {
-			t.Errorf("xfce theme %q: needs either repo_url or user_script", e.Name)
-		}
-	}
-}
-
 func TestLoadCursorCatalogue(t *testing.T) {
 	entries, err := loadCursorCatalogue()
 	if err != nil {

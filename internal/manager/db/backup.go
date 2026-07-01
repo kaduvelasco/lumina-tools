@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"os"
 	"path/filepath"
 	"time"
 
@@ -19,17 +20,13 @@ func Backup(ctx context.Context, exe *executor.Executor, stdout io.Writer) error
 
 	cfg, err := config.Load()
 	if err != nil {
-		ui.Err(stdout, "Falha ao carregar config: "+err.Error())
-		ui.WaitEnter(stdout)
-		return fmt.Errorf("carregar config: %w", err)
+		return failWith(stdout, "Falha ao carregar config", err)
 	}
-	container := "mariadb"
+	container := defaultContainer
 	backupDir := filepath.Join(cfg.WorkspacePath, "backups")
 
 	if err := ensureDirExists(backupDir); err != nil {
-		ui.Err(stdout, "Falha ao criar diretório de backup: "+err.Error())
-		ui.WaitEnter(stdout)
-		return fmt.Errorf("criar diretorio de backup: %w", err)
+		return failWith(stdout, "Falha ao criar diretório de backup", err)
 	}
 
 	if err := requireContainer(ctx, exe, container); err != nil {
@@ -55,27 +52,29 @@ func Backup(ctx context.Context, exe *executor.Executor, stdout io.Writer) error
 
 	ui.Info(stdout, "Executando dump para: "+dest)
 
-	// Write password to a temp file readable only by the current user to avoid
-	// exposing it in /proc/<pid>/environ of the bash process.
-	pwdPath, cleanupPwd, err := writeTempSecret(dbPass, "lumina-db-*.cred")
+	envPath, cleanupEnv, err := writeTempSecret("MYSQL_PWD="+dbPass+"\n", "lumina-db-*.env")
 	if err != nil {
-		ui.Err(stdout, "Falha ao criar credencial temporária: "+err.Error())
-		ui.WaitEnter(stdout)
-		return fmt.Errorf("credencial: %w", err)
+		return failWith(stdout, "Falha ao criar credencial temporária", err)
 	}
-	defer cleanupPwd()
+	defer cleanupEnv()
 
-	script := fmt.Sprintf(
-		`MYSQL_PWD=$(cat %s) docker exec -e MYSQL_PWD %s mariadb-dump -u %s --all-databases > %s`,
-		shellQuote(pwdPath), shellQuote(container), shellQuote(dbUser), shellQuote(dest),
-	)
+	f, err := os.OpenFile(dest, os.O_WRONLY|os.O_CREATE|os.O_TRUNC, 0o600)
+	if err != nil {
+		return failWith(stdout, "Falha ao criar arquivo de backup", err)
+	}
+
 	if err := exe.Run(ctx,
-		executor.Options{Stdout: stdout, Stderr: stdout},
-		"bash", "-c", script,
+		executor.Options{Stdout: f, Stderr: stdout},
+		"docker", "exec", "--env-file", envPath, container,
+		"mariadb-dump", "-u", dbUser, "--all-databases",
 	); err != nil {
-		ui.Err(stdout, "Falha no dump: "+err.Error())
-		ui.WaitEnter(stdout)
-		return fmt.Errorf("dump: %w", err)
+		f.Close()
+		os.Remove(dest)
+		return failWith(stdout, "Falha no dump", err)
+	}
+	if err := f.Close(); err != nil {
+		os.Remove(dest)
+		return failWith(stdout, "Falha ao fechar arquivo de backup", err)
 	}
 
 	ui.Success(stdout, "Backup concluído: "+dest)

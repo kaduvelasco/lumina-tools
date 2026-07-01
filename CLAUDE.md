@@ -200,11 +200,11 @@ or offload bulk mechanical tasks.
 |---|---|---|
 | Bulk mechanical, no judgment | Claude Haiku 4.5 | `claude-haiku-4-5-20251001` |
 | Scoped research, code tasks, in-scope synthesis | Claude Sonnet 4.6 | `claude-sonnet-4-6` |
-| Planning, tradeoffs, complex reasoning | Claude Opus 4.7 | `claude-opus-4-7` (use no orquestrador, não em subagents) |
+| Planning, tradeoffs, complex reasoning | Claude Opus 4.8 | `claude-opus-4-8` (use in the orchestrator, not in subagents) |
 
-**Escalation:** Se um subagent perceber que a tarefa excede sua capacidade,
-deve retornar `{ "escalate": true, "reason": "..." }` ao pai — não tentar
-compensar com raciocínio além do seu modelo.
+**Escalation:** If a subagent determines that the task exceeds its capacity,
+it must return `{ "escalate": true, "reason": "..." }` to the parent — do not attempt
+to compensate with reasoning beyond its model tier.
 
 ## Language-Specific Standards
 

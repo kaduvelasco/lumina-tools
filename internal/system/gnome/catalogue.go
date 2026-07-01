@@ -14,9 +14,6 @@ var gnomeThemesYAML []byte
 //go:embed cinnamon_themes.yaml
 var cinnamonThemesYAML []byte
 
-//go:embed xfce_themes.yaml
-var xfceThemesYAML []byte
-
 //go:embed cursors.yaml
 var cursorsYAML []byte
 
@@ -32,10 +29,6 @@ var (
 	cinnamonCache []themeEntry
 	cinnamonErr   error
 
-	xfceOnce  sync.Once
-	xfceCache []themeEntry
-	xfceErr   error
-
 	cursorOnce  sync.Once
 	cursorCache []cursorEntry
 	cursorErr   error
@@ -45,46 +38,29 @@ var (
 	iconErr   error
 )
 
-func loadThemeCatalogue() ([]themeEntry, error) {
-	themeOnce.Do(func() {
+// parseThemeCatalogue is the shared loader for the theme catalogues (GNOME,
+// Cinnamon). Both use the same YAML shape and themeEntry type; only the
+// sync.Once guard, raw bytes, display name, and cache pointers differ.
+func parseThemeCatalogue(once *sync.Once, raw []byte, name string, cache *[]themeEntry, cerr *error) ([]themeEntry, error) {
+	once.Do(func() {
 		var w struct {
 			Themes []themeEntry `yaml:"themes"`
 		}
-		if err := yaml.Unmarshal(gnomeThemesYAML, &w); err != nil {
-			themeErr = fmt.Errorf("parse gnome themes catalogue: %w", err)
+		if err := yaml.Unmarshal(raw, &w); err != nil {
+			*cerr = fmt.Errorf("parse %s catalogue: %w", name, err)
 			return
 		}
-		themeCache = w.Themes
+		*cache = w.Themes
 	})
-	return themeCache, themeErr
+	return *cache, *cerr
+}
+
+func loadThemeCatalogue() ([]themeEntry, error) {
+	return parseThemeCatalogue(&themeOnce, gnomeThemesYAML, "gnome themes", &themeCache, &themeErr)
 }
 
 func loadCinnamonThemeCatalogue() ([]themeEntry, error) {
-	cinnamonOnce.Do(func() {
-		var w struct {
-			Themes []themeEntry `yaml:"themes"`
-		}
-		if err := yaml.Unmarshal(cinnamonThemesYAML, &w); err != nil {
-			cinnamonErr = fmt.Errorf("parse cinnamon themes catalogue: %w", err)
-			return
-		}
-		cinnamonCache = w.Themes
-	})
-	return cinnamonCache, cinnamonErr
-}
-
-func loadXFCEThemeCatalogue() ([]themeEntry, error) {
-	xfceOnce.Do(func() {
-		var w struct {
-			Themes []themeEntry `yaml:"themes"`
-		}
-		if err := yaml.Unmarshal(xfceThemesYAML, &w); err != nil {
-			xfceErr = fmt.Errorf("parse xfce themes catalogue: %w", err)
-			return
-		}
-		xfceCache = w.Themes
-	})
-	return xfceCache, xfceErr
+	return parseThemeCatalogue(&cinnamonOnce, cinnamonThemesYAML, "cinnamon themes", &cinnamonCache, &cinnamonErr)
 }
 
 func loadCursorCatalogue() ([]cursorEntry, error) {

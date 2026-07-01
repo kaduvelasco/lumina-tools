@@ -127,29 +127,35 @@ func uninstall(stdout io.Writer, home, flutterDir string) error {
 }
 
 // removePathFromBashrc undoes an ensurePathInBashrc-style append, removing
-// the comment and export lines previously added for entry.
+// the comment and export lines previously added for entry. Checks both
+// ~/.bashrc (for installs predating multi-shell support) and the current
+// shell's RC file to handle all cases.
 func removePathFromBashrc(stdout io.Writer, home, entry, comment string) {
-	bashrc := filepath.Join(home, ".bashrc")
-
-	data, err := os.ReadFile(bashrc)
-	if err != nil {
-		return
-	}
-
-	lines := strings.Split(string(data), "\n")
-	out := make([]string, 0, len(lines))
-	for _, l := range lines {
-		if l == comment || l == entry {
+	candidates := dedupStrings([]string{filepath.Join(home, ".bashrc"), shellRCFile(home)})
+	for _, rc := range candidates {
+		data, err := os.ReadFile(rc)
+		if err != nil {
 			continue
 		}
-		out = append(out, l)
+		lines := strings.Split(string(data), "\n")
+		out := make([]string, 0, len(lines))
+		changed := false
+		for _, l := range lines {
+			if l == comment || l == entry {
+				changed = true
+				continue
+			}
+			out = append(out, l)
+		}
+		if !changed {
+			continue
+		}
+		if err := rewriteFile(rc, out); err != nil {
+			ui.Warning(stdout, "Não foi possível atualizar "+rc+": "+err.Error())
+			continue
+		}
+		ui.Info(stdout, "PATH removido de "+rc)
 	}
-
-	if err := os.WriteFile(bashrc, []byte(strings.Join(out, "\n")), 0o644); err != nil {
-		ui.Warning(stdout, "Não foi possível atualizar ~/.bashrc: "+err.Error())
-		return
-	}
-	ui.Info(stdout, "PATH removido de ~/.bashrc")
 }
 
 // installPrereqs installs the native libraries Flutter needs to run on Linux,
@@ -279,24 +285,24 @@ func ensureJava(ctx context.Context, exe *executor.Executor, stdout io.Writer) e
 }
 
 // ensureAndroidEnvInBashrc adds ANDROID_HOME/ANDROID_SDK_ROOT and the SDK's
-// PATH entries to ~/.bashrc if not already present.
+// PATH entries to the current shell's RC file if not already present.
 func ensureAndroidEnvInBashrc(stdout io.Writer, home string) {
-	bashrc := filepath.Join(home, ".bashrc")
+	rc := shellRCFile(home)
 
-	data, _ := os.ReadFile(bashrc)
+	data, _ := os.ReadFile(rc)
 	if strings.Contains(string(data), "ANDROID_HOME") {
 		return
 	}
 
-	f, err := os.OpenFile(bashrc, os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0o644)
+	f, err := os.OpenFile(rc, os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0o644)
 	if err != nil {
-		ui.Warning(stdout, "Não foi possível atualizar ~/.bashrc: "+err.Error())
+		ui.Warning(stdout, "Não foi possível atualizar "+rc+": "+err.Error())
 		return
 	}
 	defer f.Close()
 
 	fmt.Fprintf(f, "\n# Android SDK\n%s\n", androidEnvBlock)
-	ui.Info(stdout, "Variáveis do Android SDK adicionadas ao ~/.bashrc")
+	ui.Info(stdout, "Variáveis do Android SDK adicionadas a "+rc)
 }
 
 // ensureChromeWrapper makes "flutter doctor" find Chrome when it's only
@@ -341,22 +347,66 @@ func ensureChromeWrapper(ctx context.Context, exe *executor.Executor, stdout io.
 // ensureChromeEnvInBashrc points CHROME_EXECUTABLE at wrapperPath, exactly
 // the variable "flutter doctor" suggests setting when it can't find Chrome.
 func ensureChromeEnvInBashrc(stdout io.Writer, home, wrapperPath string) {
-	bashrc := filepath.Join(home, ".bashrc")
+	rc := shellRCFile(home)
 
-	data, _ := os.ReadFile(bashrc)
+	data, _ := os.ReadFile(rc)
 	if strings.Contains(string(data), "CHROME_EXECUTABLE") {
 		return
 	}
 
-	f, err := os.OpenFile(bashrc, os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0o644)
+	f, err := os.OpenFile(rc, os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0o644)
 	if err != nil {
-		ui.Warning(stdout, "Não foi possível atualizar ~/.bashrc: "+err.Error())
+		ui.Warning(stdout, "Não foi possível atualizar "+rc+": "+err.Error())
 		return
 	}
 	defer f.Close()
 
 	fmt.Fprintf(f, "\n# Chrome (Flatpak)\nexport CHROME_EXECUTABLE=%q\n", wrapperPath)
-	ui.Info(stdout, "CHROME_EXECUTABLE adicionado ao ~/.bashrc")
+	ui.Info(stdout, "CHROME_EXECUTABLE adicionado a "+rc)
+}
+
+// shellRCFile returns the primary shell RC file for the current user's shell.
+// Falls back to ~/.bashrc when the shell cannot be determined.
+func shellRCFile(home string) string {
+	switch filepath.Base(os.Getenv("SHELL")) {
+	case "zsh":
+		return filepath.Join(home, ".zshrc")
+	case "fish":
+		return filepath.Join(home, ".config", "fish", "config.fish")
+	default:
+		return filepath.Join(home, ".bashrc")
+	}
+}
+
+func dedupStrings(ss []string) []string {
+	seen := make(map[string]bool, len(ss))
+	out := ss[:0]
+	for _, s := range ss {
+		if !seen[s] {
+			seen[s] = true
+			out = append(out, s)
+		}
+	}
+	return out
+}
+
+// rewriteFile atomically replaces path with the content of lines joined by newlines.
+func rewriteFile(path string, lines []string) error {
+	tmp, err := os.CreateTemp(filepath.Dir(path), ".lumina-*.tmp")
+	if err != nil {
+		return err
+	}
+	tmpPath := tmp.Name()
+	if _, err := fmt.Fprint(tmp, strings.Join(lines, "\n")); err != nil {
+		tmp.Close()
+		os.Remove(tmpPath)
+		return err
+	}
+	if err := tmp.Close(); err != nil {
+		os.Remove(tmpPath)
+		return err
+	}
+	return os.Rename(tmpPath, path)
 }
 
 // cloneFlutter clones the stable channel into flutterDir, creating the parent
@@ -376,22 +426,22 @@ func cloneFlutter(ctx context.Context, exe *executor.Executor, stdout io.Writer,
 	return nil
 }
 
-// ensurePathInBashrc adds flutter/bin to PATH in ~/.bashrc if not already present.
+// ensurePathInBashrc adds flutter/bin to PATH in the current shell's RC file.
 func ensurePathInBashrc(stdout io.Writer, home string) {
-	bashrc := filepath.Join(home, ".bashrc")
+	rc := shellRCFile(home)
 
-	data, _ := os.ReadFile(bashrc)
+	data, _ := os.ReadFile(rc)
 	if strings.Contains(string(data), pathEntry) {
 		return
 	}
 
-	f, err := os.OpenFile(bashrc, os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0o644)
+	f, err := os.OpenFile(rc, os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0o644)
 	if err != nil {
-		ui.Warning(stdout, "Não foi possível atualizar ~/.bashrc: "+err.Error())
+		ui.Warning(stdout, "Não foi possível atualizar "+rc+": "+err.Error())
 		return
 	}
 	defer f.Close()
 
 	fmt.Fprintf(f, "\n# Flutter\n%s\n", pathEntry)
-	ui.Info(stdout, "PATH atualizado em ~/.bashrc")
+	ui.Info(stdout, "PATH atualizado em "+rc)
 }

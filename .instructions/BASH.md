@@ -263,6 +263,21 @@ main() {
 
 ---
 
+## Anti-Patterns
+
+| Anti-pattern | Why |
+|---|---|
+| `echo` for colorized output | Escape sequences are not portable; use `printf '%b\n'` |
+| Unquoted `$var` in commands or conditions | Word splitting and glob expansion cause silent bugs |
+| Parsing `ls` output | Breaks on filenames with spaces or newlines; use `find -print0` |
+| `cd dir; do_something` without a guard | `cd` failure goes undetected; use `cd dir && do_something` or `\|\| die` |
+| `eval` with user-supplied input | Arbitrary code execution risk |
+| `which cmd` to detect commands | Not POSIX; use `command -v cmd` |
+| Missing `local` in functions | Leaks variables into the global scope |
+| Declaring and assigning in one step with command substitution | Loses the exit code; separate declaration from assignment |
+
+---
+
 ## Quality
 
 - **ShellCheck:** `--severity=warning --shell=bash --exclude=SC1091`

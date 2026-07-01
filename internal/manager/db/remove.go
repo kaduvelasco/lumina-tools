@@ -17,7 +17,7 @@ func Remove(ctx context.Context, exe *executor.Executor, stdout io.Writer) error
 	ui.PrintHeader(stdout, "Banco de Dados :: Remover")
 	ui.Warning(stdout, "Atenção: esta operação é irreversível!")
 
-	container := "mariadb"
+	container := defaultContainer
 	if err := requireContainer(ctx, exe, container); err != nil {
 		ui.Err(stdout, err.Error())
 		ui.WaitEnter(stdout)
@@ -38,9 +38,7 @@ func Remove(ctx context.Context, exe *executor.Executor, stdout io.Writer) error
 
 	envPath, cleanupEnv, err := writeTempSecret("MYSQL_PWD="+dbPass+"\n", "lumina-db-*.env")
 	if err != nil {
-		ui.Err(stdout, "Falha ao criar credencial temporária: "+err.Error())
-		ui.WaitEnter(stdout)
-		return fmt.Errorf("credencial: %w", err)
+		return failWith(stdout, "Falha ao criar credencial temporária", err)
 	}
 	defer cleanupEnv()
 
@@ -48,9 +46,7 @@ func Remove(ctx context.Context, exe *executor.Executor, stdout io.Writer) error
 		"docker", "exec", "-i", "--env-file", envPath, container,
 		"mariadb", "-u", dbUser, "-e", "SHOW DATABASES;")
 	if err != nil {
-		ui.Err(stdout, "Falha ao listar bancos: "+err.Error())
-		ui.WaitEnter(stdout)
-		return fmt.Errorf("listar bancos: %w", err)
+		return failWith(stdout, "Falha ao listar bancos", err)
 	}
 
 	var userDBs []string

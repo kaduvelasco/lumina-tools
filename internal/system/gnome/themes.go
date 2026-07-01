@@ -7,7 +7,6 @@ import (
 	"os"
 	"path/filepath"
 
-	"github.com/kaduvelasco/lumina-tools/internal/config"
 	"github.com/kaduvelasco/lumina-tools/internal/executor"
 	"github.com/kaduvelasco/lumina-tools/internal/ui"
 )
@@ -74,17 +73,6 @@ func ManageThemes(ctx context.Context, exe *executor.Executor, stdin io.Reader, 
 		return err
 	}
 	return manageThemesFrom(ctx, exe, stdin, stdout, catalogue, "Customizar GNOME — Temas GTK")
-}
-
-// ManageXFCEThemes shows a multi-select for XFCE GTK/XFWM4 themes and applies the diff.
-func ManageXFCEThemes(ctx context.Context, exe *executor.Executor, stdin io.Reader, stdout io.Writer) error {
-	catalogue, err := loadXFCEThemeCatalogue()
-	if err != nil {
-		ui.Err(stdout, "Erro ao carregar catálogo de temas: "+err.Error())
-		ui.WaitEnter(stdout)
-		return err
-	}
-	return manageThemesFrom(ctx, exe, stdin, stdout, catalogue, "Customizar XFCE — Temas")
 }
 
 // manageThemesFrom is the shared implementation for GNOME and Cinnamon theme management.
@@ -372,15 +360,13 @@ func applyFlatpakTheme(ctx context.Context, exe *executor.Executor, stdout io.Wr
 	return nil
 }
 
-// selectFlatpakTheme lists all directories in ~/.themes as flatpak theme options.
+// selectFlatpakTheme builds a selection menu from pre-read directory entries.
+// Callers are responsible for reading the directory once and passing entries here,
+// avoiding a redundant os.ReadDir syscall.
 // Returns the chosen theme name and ok=true when the user confirms a choice.
-// Returns ("", false, nil) when ~/.themes is empty or the user cancels (ESC).
+// Returns ("", false, nil) when there are no theme dirs or the user cancels (ESC).
 // Returns ("", true, nil) when the user explicitly picks "Não aplicar".
-func selectFlatpakTheme(ctx context.Context, stdin io.Reader, stdout io.Writer, td string, _ []themeEntry) (string, bool, error) {
-	entries, err := os.ReadDir(td)
-	if err != nil || len(entries) == 0 {
-		return "", false, nil
-	}
+func selectFlatpakTheme(ctx context.Context, stdin io.Reader, stdout io.Writer, entries []os.DirEntry) (string, bool, error) {
 	var items []ui.SelectItem
 	for _, e := range entries {
 		if e.IsDir() {
@@ -421,7 +407,7 @@ func offerFlatpak(ctx context.Context, exe *executor.Executor, stdin io.Reader, 
 	ui.Info(stdout, "Isso configura todos os apps Flatpak para usar o tema escolhido.")
 	fmt.Fprintln(stdout)
 
-	chosen, _, err := selectFlatpakTheme(ctx, stdin, stdout, td, catalogue)
+	chosen, _, err := selectFlatpakTheme(ctx, stdin, stdout, entries)
 	if err != nil || chosen == "" {
 		return
 	}
@@ -453,24 +439,6 @@ func ApplyFlatpakTheme(ctx context.Context, exe *executor.Executor, stdin io.Rea
 		return err
 	}
 
-	catalogue, err := loadThemeCatalogue()
-	if err != nil {
-		ui.Err(stdout, "Erro ao carregar catálogo de temas: "+err.Error())
-		ui.WaitEnter(stdout)
-		return err
-	}
-	cfg, cfgErr := config.Load()
-	if cfgErr != nil {
-		ui.Warning(stdout, "Não foi possível carregar configuração: "+cfgErr.Error())
-	} else if cfg.DE == "cinnamon" {
-		cin, cinErr := loadCinnamonThemeCatalogue()
-		if cinErr != nil {
-			ui.Warning(stdout, "Erro ao carregar catálogo Cinnamon: "+cinErr.Error())
-		} else {
-			catalogue = cin
-		}
-	}
-
 	entries, _ := os.ReadDir(td)
 	hasDirs := false
 	for _, e := range entries {
@@ -489,7 +457,7 @@ func ApplyFlatpakTheme(ctx context.Context, exe *executor.Executor, stdin io.Rea
 	ui.Info(stdout, "Selecione o tema GTK para aplicar em todos os apps Flatpak:")
 	fmt.Fprintln(stdout)
 
-	chosen, ok, err := selectFlatpakTheme(ctx, stdin, stdout, td, catalogue)
+	chosen, ok, err := selectFlatpakTheme(ctx, stdin, stdout, entries)
 	if err != nil {
 		return err
 	}

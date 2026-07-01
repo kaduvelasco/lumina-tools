@@ -11,6 +11,8 @@ import (
 	"github.com/charmbracelet/lipgloss"
 
 	"github.com/kaduvelasco/lumina-tools/internal/config"
+	devandroid "github.com/kaduvelasco/lumina-tools/internal/dev/androidstudio"
+	devanti "github.com/kaduvelasco/lumina-tools/internal/dev/antigravity"
 	devflutter "github.com/kaduvelasco/lumina-tools/internal/dev/flutter"
 	devgolang "github.com/kaduvelasco/lumina-tools/internal/dev/golang"
 	"github.com/kaduvelasco/lumina-tools/internal/dev/ide"
@@ -337,10 +339,6 @@ func (m ModelV2) runActionV2(a actionID) tea.Cmd {
 		return exec(gnome.InstallCinnamonPrereqs)
 	case actCinnamonThemes:
 		return execInteractive(gnome.ManageCinnamonThemes)
-	case actXFCEPrereqs:
-		return exec(gnome.InstallXFCEPrereqs)
-	case actXFCEThemes:
-		return execInteractive(gnome.ManageXFCEThemes)
 	case actGnomeIcons:
 		return execInteractive(gnome.ManageIcons)
 	case actGnomeCursors:
@@ -354,6 +352,10 @@ func (m ModelV2) runActionV2(a actionID) tea.Cmd {
 		return execInteractive(devgolang.Manage)
 	case actFlutterManage:
 		return execInteractive(devflutter.Manage)
+	case actAndroidStudioManage:
+		return execInteractive(devandroid.Manage)
+	case actAntigravityManage:
+		return execInteractive(devanti.Manage)
 	case actLLMManage:
 		return execInteractive(llm.Select)
 	case actIDEManage:
@@ -370,37 +372,8 @@ func (m ModelV2) runActionV2(a actionID) tea.Cmd {
 	case actStackCompose:
 		return execInteractive(stackconfig.Compose)
 
-	case actStackStart:
-		composeDir := m.cfg.DockerComposeDir
-		return exec(func(ctx context.Context, exe *executor.Executor, w io.Writer) error {
-			return stack.Start(ctx, exe, w, composeDir)
-		})
-	case actStackStop:
-		composeDir := m.cfg.DockerComposeDir
-		return exec(func(ctx context.Context, exe *executor.Executor, w io.Writer) error {
-			return stack.Stop(ctx, exe, w, composeDir)
-		})
-	case actStackRestart:
-		composeDir := m.cfg.DockerComposeDir
-		return exec(func(ctx context.Context, exe *executor.Executor, w io.Writer) error {
-			return stack.Restart(ctx, exe, w, composeDir)
-		})
-	case actStackLogs:
-		composeDir := m.cfg.DockerComposeDir
-		return exec(func(ctx context.Context, exe *executor.Executor, w io.Writer) error {
-			return stack.Logs(ctx, exe, w, composeDir)
-		})
-	case actStackStats:
-		return exec(stack.Stats)
-	case actStackDB:
-		return exec(func(ctx context.Context, exe *executor.Executor, w io.Writer) error {
-			return stack.DBInfo(ctx, exe, w)
-		})
-	case actStackFixPerms:
-		workspacePath := m.cfg.WorkspacePath
-		return exec(func(ctx context.Context, exe *executor.Executor, w io.Writer) error {
-			return stack.FixPerms(ctx, exe, w, workspacePath)
-		})
+	case actStackStart, actStackStop, actStackRestart, actStackLogs, actStackStats, actStackDB, actStackFixPerms:
+		return m.execStack(a, exec)
 
 	case actAIContext:
 		return execInteractive(managerai.GenerateContext)
@@ -445,12 +418,46 @@ func (m ModelV2) runActionV2(a actionID) tea.Cmd {
 	}
 }
 
+// execStack handles the stack lifecycle actions that require capturing config
+// values in closures. Keeping them here avoids cluttering runActionV2 with
+// inline variable captures.
+func (m ModelV2) execStack(a actionID, exec func(func(context.Context, *executor.Executor, io.Writer) error) tea.Cmd) tea.Cmd {
+	dir := m.cfg.DockerComposeDir
+	ws := m.cfg.WorkspacePath
+	switch a {
+	case actStackStart:
+		return exec(func(ctx context.Context, exe *executor.Executor, w io.Writer) error {
+			return stack.Start(ctx, exe, w, dir)
+		})
+	case actStackStop:
+		return exec(func(ctx context.Context, exe *executor.Executor, w io.Writer) error {
+			return stack.Stop(ctx, exe, w, dir)
+		})
+	case actStackRestart:
+		return exec(func(ctx context.Context, exe *executor.Executor, w io.Writer) error {
+			return stack.Restart(ctx, exe, w, dir)
+		})
+	case actStackLogs:
+		return exec(func(ctx context.Context, exe *executor.Executor, w io.Writer) error {
+			return stack.Logs(ctx, exe, w, dir)
+		})
+	case actStackStats:
+		return exec(stack.Stats)
+	case actStackDB:
+		return exec(stack.DBInfo)
+	case actStackFixPerms:
+		return exec(func(ctx context.Context, exe *executor.Executor, w io.Writer) error {
+			return stack.FixPerms(ctx, exe, w, ws)
+		})
+	}
+	return nil
+}
+
 // ── movement helpers ──────────────────────────────────────────────────────────
 
 // visibleItems returns the items for the given section, applying filters:
 //   - gnomeOnly items are hidden when cfg.DE != "gnome"
 //   - cinnamonOnly items are hidden when cfg.DE != "cinnamon"
-//   - xfceOnly items are hidden when cfg.DE != "xfce"
 //   - distro-tagged items are hidden when cfg.Distro is set and does not match
 func (m ModelV2) visibleItems(sec int) []submenuEntry {
 	items := sections[sec].items
@@ -460,9 +467,6 @@ func (m ModelV2) visibleItems(sec int) []submenuEntry {
 			continue
 		}
 		if item.cinnamonOnly && m.cfg.DE != "cinnamon" {
-			continue
-		}
-		if item.xfceOnly && m.cfg.DE != "xfce" {
 			continue
 		}
 		if item.distro != "" && m.cfg.Distro != "" && item.distro != m.cfg.Distro {

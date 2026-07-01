@@ -6,6 +6,122 @@ O formato segue o padrão [Keep a Changelog](https://keepachangelog.com/pt-BR/1.
 
 ---
 
+## [2.2.5] — 2026-06-30
+
+### Corrigido
+
+#### Go — tarball de instalação hardcoded para linux/amd64 (`lumina dev go`)
+- `internal/dev/golang/golang.go`: nome do tarball construído com `fmt.Sprintf("%s.%s-%s.tar.gz", version, runtime.GOOS, runtime.GOARCH)` em vez de `version + ".linux-amd64.tar.gz"` — a instalação agora funciona em qualquer OS/arquitetura suportados pelo Go, sem exigir recompilação
+
+#### Go — corpo HTTP sem limite de tamanho (`lumina dev go`)
+- `latestVersion`: `json.NewDecoder(resp.Body)` substituído por `json.NewDecoder(io.LimitReader(resp.Body, 1<<20))` — resposta da API `go.dev/dl` limitada a 1 MiB; resposta malformada ou inesperadamente grande não ocupa memória ilimitada
+
+#### Escrita de arquivos de RC sem proteção contra corrupção (`golang.go`, `flutter.go`)
+- `removePathFromBashrc` em ambos os pacotes reescrita com `rewriteFile` (novo helper): grava em arquivo temporário no mesmo diretório e chama `os.Rename` — substituição atômica evita arquivo truncado em caso de falha de energia ou SIGKILL durante a escrita
+
+#### App — stderr não repassado em `dispatchApps` e `dispatchAI` (`internal/app/app.go`)
+- `dispatchApps` case `"web"`: `apps.ShowWebApps(ctx, nil, stdout)` → `apps.ShowWebApps(ctx, executor.New(stdout, stderr), stdout)` — executor `nil` causaria panic em qualquer caminho que o usasse
+- `dispatchAI`: assinatura corrigida de `stdout, _ io.Writer` para `stdout, stderr io.Writer`; `executor.New(stdout, stderr)` passado corretamente para `GenerateContext`/`ClearContext`
+
+#### App — stderr ignorado em `dispatchTheme` (`internal/app/app.go`)
+- `dispatchTheme`: `executor.New(stdout, stdout)` substituído por `executor.New(stdout, stderr)` — erros dos subprocessos de temas iam para stdout, misturados com saída normal
+
+#### App — `dispatchSystem` roteava "webapps" diretamente em vez de delegar (`internal/app/app.go`)
+- `case "webapps"` em `dispatchSystem` chamava `apps.ShowWebApps` diretamente, duplicando a lógica de `dispatchApps`; corrigido para delegar a `dispatchApps(ctx, []string{"web"}, stdin, stdout, stderr)`
+
+#### DB — mensagem de erro de container sem contexto (`internal/manager/db/common.go`)
+- `requireContainer`: erro genérico substituído por `fmt.Errorf("verificar container '%s': %w (Docker esta rodando?)", name, err)` — preserva o erro original via `%w` e adiciona contexto acionável ao usuário
+
+#### DB — credenciais visíveis na lista de processos (`internal/manager/db/backup.go`, `restore.go`)
+- Substituído o padrão de injeção inline de variáveis de ambiente no bash (`MYSQL_PWD=... mysql`) pelo padrão `--env-file`: credenciais gravadas em arquivo temporário com `writeTempSecret`, passadas via `--env-file` ao `mysqldump`/`mysql`, arquivo removido automaticamente ao final — senha nunca exposta na lista de processos do sistema
+
+#### DB — `writeTempSecret` aplicava `chmod` desnecessário (`internal/manager/db/common.go`)
+- `os.CreateTemp` já cria arquivos com permissões `0600` no Linux; a chamada redundante `os.Chmod` foi removida — elimina uma syscall extra e a tentação de usar o valor de retorno ignorado (`_ =`) como evidência de segurança
+
+#### Antigravity IDE — binário e ícone com nome/caminho errados (`internal/dev/antigravity/antigravity.go`)
+- `binaryName` era `"antigravity-ide"`, mas o executável real dentro do tarball oficial se chama `antigravity` — causava três falhas em cadeia: `isInstalled` nunca encontrava o binário (menu mostrava "não encontrado" mesmo após uma instalação bem-sucedida), o symlink `/usr/local/bin/antigravity-ide` apontava para um arquivo inexistente, e o `Exec=` do atalho `.desktop` estava quebrado
+- `Icon=` apontava para `resources/app/resources/linux/code.png` (caminho copiado da estrutura do VS Code) — o tarball do Antigravity empacota tudo em `resources/app.asar`, sem PNG solto em disco nesse caminho; substituído por um ícone real embutido (ver "Adicionado" abaixo)
+
+#### Antigravity IDE — atalho parava de abrir após a primeira execução (`internal/dev/antigravity/antigravity.go`)
+- Diagnosticado ao vivo (processos, `journalctl --user`): o binário extraído do tarball (`~/antigravity/antigravity`) não é a IDE — é um instalador de primeira execução ("IDE Wizard") que baixa a IDE completa e permanente para `~/.local/share/antigravity-ide/antigravity-ide`. O symlink e o atalho `.desktop` continuavam apontando para o wizard, que não reabre nenhuma janela depois que esse download termina
+- `createSymlink` substituído por `createLauncher`: em vez de um symlink direto, `/usr/local/bin/antigravity-ide` passa a ser um script wrapper que executa a IDE real quando ela já existe em `~/.local/share/antigravity-ide/antigravity-ide`, e cai para o wizard (`~/antigravity/antigravity`) caso contrário — cobre tanto a primeira execução quanto todas as seguintes
+- Aviso adicional exibido ao final da instalação avisando sobre a etapa de download da IDE completa na primeira execução
+- Descoberta relacionada, **não corrigida nesta versão**: "Desinstalar" continua removendo apenas `~/antigravity` (o wizard) — a IDE completa baixada em `~/.local/share/antigravity-ide` (~200 MB) e os dados de usuário/extensões (`~/.antigravity-ide`, `~/.gemini/antigravity-ide`, `~/.gemini/antigravity-backup`) permanecem no disco; a instalação agora avisa sobre isso no final
+
+#### Android Studio — bibliotecas de suporte 32-bit falhavam com `sudo: exit status 100` (`internal/dev/androidstudio/androidstudio.go`)
+- `installLibs` não executava `dpkg --add-architecture i386` antes do `apt-get update` — sem a arquitetura i386 habilitada, `apt-get` não localiza nenhum pacote `:i386`
+- `libncurses5:i386` substituído por `libncurses6:i386` — o pacote `libncurses5` foi removido/esvaziado nos repositórios do Ubuntu 22.04+ (afeta todas as distros-alvo do Lumina: Ubuntu 26.04, Mint 22+, Zorin 18.1, Pop!_OS 24.04+)
+- Como a falha nesse passo já era só um aviso (a instalação do Android Studio continua mesmo sem as libs 32-bit), o sintoma era só a mensagem final sem a causa raiz visível
+
+#### Pré-requisitos — grupos "Ferramentas de build" e "Flatpak + AppImage" sem suporte a Arch (`internal/dev/prereqs/catalogue.go`)
+- `buildPkgs`/`flatpakPkgs` só distinguiam Fedora de um `default` com nomes de pacote do Debian (`build-essential`, `libgtk-3-dev`, `liblzma-dev`, `libfuse2`) — em Arch, `pacman -S` falharia por esses pacotes não existirem nos repositórios; adicionado branch `distro.Arch` com os nomes corretos (`base-devel`, `ninja`, `pkgconf`, `gtk3`, `xz`, `fuse2`)
+- `removePkgs` (usada por base/build/flatpak/docker) não tinha branch para Arch — o `default` chamava `apt-get purge`, comando inexistente nessa distro; adicionado branch `distro.Arch` com `pacman -R --noconfirm`
+- `dockerPkgs` ganhou o mesmo branch (`docker`, `docker-compose`) para manter simetria com os nomes já usados por `installDocker`, já que agora a desinstalação passa por `pacman` de fato
+
+### Refatorado
+
+#### Go e Flutter — suporte a múltiplos shells no RC file (`golang.go`, `flutter.go`)
+- Novo helper `shellRCFile(home string) string` seleciona o arquivo RC do shell atual via `$SHELL`: `~/.zshrc` para zsh, `~/.config/fish/config.fish` para fish, `~/.bashrc` como padrão — `ensurePathInBashrc`, `ensureAndroidEnvInBashrc` e `ensureChromeEnvInBashrc` passam a escrever no shell correto
+- `removePathFromBashrc` verifica tanto `~/.bashrc` quanto `shellRCFile(home)` (via `dedupStrings`) para compatibilidade retroativa com instalações anteriores
+
+#### DB — helper `failWith` para tratamento de erros repetitivo (`internal/manager/db/`)
+- `failWith(stdout io.Writer, msg string, err error) error` extraído em `common.go`: exibe o erro via `ui.Err` e retorna o erro original — elimina 3 linhas repetidas em cada ponto de erro nos quatro arquivos de operação (backup, restore, remove, optimize)
+
+#### DB — constante `defaultContainer` (`internal/manager/db/`)
+- `const defaultContainer = "mariadb"` adicionado em `common.go`; os quatro arquivos de operação passam a usar a constante em vez de literais `"mariadb"` espalhados
+
+#### GNOME — `parseThemeCatalogue` como helper compartilhado (`internal/system/gnome/catalogue.go`)
+- Os loaders de catálogo (GNOME, Cinnamon) colapsados em chamadas de uma linha via `parseThemeCatalogue(once, raw, name, cache, cerr)` — lógica de `sync.Once` + unmarshal centralizada em um único lugar
+
+#### GNOME — `installPrereqsCommon` como helper compartilhado (`internal/system/gnome/common.go`)
+- Fluxo confirm→install→success extraído em `installPrereqsCommon(ctx, exe, stdout, title, packages, hint)` — `InstallCinnamonPrereqs` reduzido a uma chamada de uma linha; GNOME mantém fluxo próprio por ter etapa adicional de extensões Flatpak
+
+#### GNOME — `selectFlatpakTheme` simplificada (`internal/system/gnome/themes.go`)
+- Parâmetros `td string` e `_ []themeEntry` removidos da assinatura — `os.ReadDir` movido para os pontos de chamada; catálogo YAML não era usado dentro da função
+
+#### TUI — `execStack` extraído de `runActionV2` (`internal/tui/model_v2.go`)
+- Sete blocos `case` do stack com closures duplicadas colapsados em `case actStackStart, ..., actStackFixPerms: return m.execStack(a, exec)` — novo método `execStack` centraliza o dispatch e captura `composeDir`/`workspacePath` uma única vez
+
+#### GNOME — `installPackagesByFamily` com `default` explícito (`internal/system/gnome/common.go`)
+- `switch` sem `default` substituído por `return fmt.Errorf(...)` — falha explícita para distros não reconhecidas em vez de retornar `nil` silenciosamente
+
+### Adicionado
+
+#### Pré-requisitos — grupos "Ferramentas de build" e "Flatpak + AppImage" (`lumina dev pre`)
+- `internal/dev/prereqs/catalogue.go`: catálogo reorganizado por finalidade e ordenado do mais ao menos essencial — Pacotes base → **Ferramentas de build** (novo: `cmake`, `ninja(-build)`, `pkg-config`/`pkgconf`, `libgtk-3-dev`/`gtk3-devel`, `liblzma-dev`/`xz-devel`, compilador C/C++ — dependências para builds nativos e para `flutter build linux`) → **Flatpak + AppImage** (novo: `flatpak`, `flatpak-builder`, `appstream`, `libfuse2` + `appimagetool` baixado do GitHub Releases e instalado em `/usr/local/bin`, necessários para empacotar apps Flutter como Flatpak/AppImage) → Ferramentas DevStuff → GitHub CLI → Docker Engine → Node.js
+- Cobre o equivalente ao comando `apt install git curl cmake ninja-build pkg-config libgtk-3-dev liblzma-dev flatpak flatpak-builder appstream`, dividido nos grupos acima e adaptado por família de distro (Debian/Fedora/Arch); `libstdc++-dev` não é listado explicitamente porque já vem transitivamente via `build-essential`/`gcc-c++`/`base-devel`
+
+#### Ambiente de Desenvolvimento — gerenciar Android Studio (`lumina dev android-studio`)
+- `internal/dev/androidstudio` (novo pacote): menu Instalar/Reinstalar/Desinstalar; localiza o tarball `android-studio-*-linux.tar.gz` em `~/Downloads` (com seletor quando há múltiplos arquivos), extrai para `~/android-studio`, instala bibliotecas de suporte 32-bit por família de distro (Debian/Fedora), adiciona `~/android-studio/bin` ao PATH do shell atual (`~/.bashrc`/`~/.zshrc`/`config.fish`, conforme `$SHELL`) e cria atalho em `~/.local/share/applications`
+- Novo item "Gerenciar Android Studio" na TUI (seção "Ambiente de Desenvolvimento") e rota `lumina dev android-studio`
+
+#### Antigravity IDE — ícone real no menu de aplicativos
+- `internal/dev/antigravity/icon.svg` (novo, embutido via `//go:embed`, cópia de `docs/antigravity-color.svg`): instalado em `~/.local/share/icons/hicolor/scalable/apps/antigravity-ide.svg` durante a instalação e referenciado como `Icon=antigravity-ide` no `.desktop` — substitui o ícone genérico usado como fallback provisório; removido junto no "Desinstalar"
+
+#### Ambiente de Desenvolvimento — gerenciar Antigravity IDE (`lumina dev antigravity`)
+- `internal/dev/antigravity` (novo pacote): menu Instalar/Reinstalar/Desinstalar; verifica requisitos mínimos de `glibc` (>= 2.28) e `libstdc++`/GLIBCXX (>= 3.4.25) antes de instalar, com opção de prosseguir mesmo se não atendidos; localiza o tarball `Antigravity*.tar.gz` em `~/Downloads` (com seletor quando há múltiplos arquivos), extrai para `~/antigravity`, cria link simbólico em `/usr/local/bin/antigravity-ide` e atalho em `~/.local/share/applications`
+- Novo item "Gerenciar Antigravity IDE" na TUI (seção "Ambiente de Desenvolvimento") e rota `lumina dev antigravity`
+
+> Nota: diferente do catálogo genérico usado por `lumina dev ide` (detecção via `which` + gerenciador de pacotes), Android Studio e Antigravity IDE não têm pacote oficial via apt/dnf — cada um usa fluxo próprio de instalação a partir de tarball baixado manualmente em `~/Downloads`. Divergência intencional, não um débito a unificar.
+
+#### Testes — `shellQuote` e `listSQLFiles` (`internal/manager/db/common_test.go`)
+- `TestShellQuote`: 6 casos cobrindo string vazia, espaços e aspas simples aninhadas (única e múltiplas)
+- `TestListSQLFiles`: 4 casos — diretório inexistente, diretório vazio, filtragem de extensões não-`.sql` e subdiretórios com extensão `.sql` ignorados; usa `t.TempDir()` para isolamento automático
+
+### Removido
+
+#### Personalizar Linux — suporte a customização XFCE
+- `internal/system/gnome/xfce_prereqs.go` e `xfce_themes.yaml` removidos
+- `ManageXFCEThemes` e `loadXFCEThemeCatalogue` removidos de `themes.go` e `catalogue.go`
+- Rotas CLI `lumina theme xfce-pre` / `lumina theme xfce` removidas de `app.go`
+- Itens "Pré-requisitos XFCE" e "Temas XFCE", constantes `actXFCEPrereqs`/`actXFCEThemes` e filtro `xfceOnly` removidos da TUI
+- A pós-instalação do **Linux Mint 22.3 XFCE** (`lumina system pos mint-xfce`) foi mantida intacta
+
+#### Aplicativos Flatpak — Android Studio removido do catálogo
+- `com.google.AndroidStudio` removido de `internal/system/apps/catalogue.go` — a instalação da IDE passa a ser feita por `lumina dev android-studio` (ver "Adicionado" acima); a integração de SDK/cmdline-tools/sdkmanager/platform-tools continua gerenciada pelo `lumina dev flutter`
+
+---
+
 ## [2.2.4] — 2026-06-24
 
 ### Adicionado

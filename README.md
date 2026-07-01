@@ -59,7 +59,7 @@ Cada script é adaptado à distro alvo e realiza as seguintes etapas:
 
 ### Personalizar Linux (`lumina theme`)
 
-Suporta GNOME, Cinnamon e XFCE. A TUI detecta automaticamente o desktop ativo e exibe apenas os itens compatíveis — itens exclusivos de um desktop ficam ocultos nos demais.
+Suporta GNOME e Cinnamon. A TUI detecta automaticamente o desktop ativo e exibe apenas os itens compatíveis — itens exclusivos de um desktop ficam ocultos nos demais.
 
 | Funcionalidade | Desktop | Descrição |
 |---|:---:|---|
@@ -68,8 +68,6 @@ Suporta GNOME, Cinnamon e XFCE. A TUI detecta automaticamente o desktop ativo e 
 | Extensões GNOME | GNOME | Lista de extensões recomendadas com links de instalação |
 | Pré-requisitos Cinnamon | Cinnamon | murrine-engine (por distro), sassc, git |
 | Temas GTK Cinnamon | Cinnamon | 18 variantes: Graphite (Normal+Nord), Catppuccin (Mocha/Latte/Frappé/Macchiato), Dracula, Everforest (Hard/Medium/Soft), Material (Lighter/Oceanic/Palenight/Darker), Nightfox (Nightfox/Duskfox/Nordfox/Terafox/Carbonfox) |
-| Pré-requisitos XFCE | XFCE | murrine-engine (por distro), sassc, git, curl |
-| Temas XFCE | XFCE | 11 itens: XFWM4 Theme Collection (31 temas de window manager), Lavanda (Light/Dark), Graphite, POP, Orchis (Light/Dark), Layan (Light/Dark), WhiteSur (todas as variantes), ADW-GTK3 (GTK + xfwm4 combinados) |
 | Cursores | Todos | 4 temas: Layan, Sweet, Colloid, Future |
 | Ícones | Todos | 9 pacotes: Gruvbox Plus, Kora, Candy Icons, Flatery, Newaita, Dracula Icons, Tela Circle, Elementary XFCE, Tela Icons |
 | Flatpak | Todos | Aplicar tema GTK a todos os apps Flatpak via `flatpak override --user`; seletor lista todas as variantes instaladas em `~/.themes/` |
@@ -78,11 +76,13 @@ Suporta GNOME, Cinnamon e XFCE. A TUI detecta automaticamente o desktop ativo e 
 
 | Funcionalidade | Descrição |
 |---|---|
-| Pré-requisitos | Selecionar e instalar: pacotes base, ferramentas dev, GitHub CLI, Docker Engine e Node.js via nvm (multi-seleção) |
+| Pré-requisitos | Selecionar e instalar, do mais ao menos essencial: pacotes base, ferramentas de build (toolchain nativo + Flutter), Flatpak + AppImage (empacotamento), ferramentas dev, GitHub CLI, Docker Engine e Node.js via nvm (multi-seleção) |
 | Workspace | Criar estrutura de diretórios do workspace |
 | Stack PHP | Criar docker-compose.yml multi-versão PHP + Nginx + MariaDB; instala `phpcs`, `phpcbf`, `phpunit` e `composer` no container; gera wrappers em `~/.local/bin/` (`php`, `phpcs`, `phpcbf`, `phpunit`, `composer` e variantes por versão: `php82`, `phpunit83` etc.) |
 | Go | Instalar, atualizar ou remover o Go via tarball oficial (`go.dev/dl`) |
 | Flutter + Dart | Instalar, atualizar ou remover o Flutter (via git, branch stable) |
+| Android Studio | Instalar/reinstalar/remover a partir do tarball oficial baixado em `~/Downloads` — inclui bibliotecas de suporte 32-bit e atalho no menu de aplicativos |
+| Antigravity IDE | Instalar/reinstalar/remover a partir do tarball oficial baixado em `~/Downloads` — verifica requisitos de glibc/libstdc++, cria link em `/usr/local/bin` e atalho no menu de aplicativos |
 | LLMs | Instalar/remover Claude Code, Antigravity CLI, Codex CLI, OpenCode CLI |
 | IDEs | Instalar/remover Zed, Windsurf, VS Code, VSCodium, DBeaver CE |
 | Terminais | Instalar/remover Kitty, Alacritty, Black Box, GNOME Console, Starship Prompt — instalação integra entradas "Abrir aqui" ao Nautilus, Nemo e Dolphin |
@@ -236,8 +236,6 @@ lumina theme gnome          Gerenciar temas GTK GNOME (multi-seleção)
 lumina theme extensions     Exibir extensões GNOME recomendadas
 lumina theme cinnamon-pre   Instalar pré-requisitos Cinnamon
 lumina theme cinnamon       Gerenciar temas GTK Cinnamon (multi-seleção)
-lumina theme xfce-pre       Instalar pré-requisitos XFCE
-lumina theme xfce           Gerenciar temas XFCE (multi-seleção)
 lumina theme cursor         Gerenciar temas de cursor (multi-seleção)
 lumina theme icons          Gerenciar pacotes de ícones (multi-seleção)
 lumina theme flatpak        Aplicar tema GTK em apps Flatpak
@@ -249,6 +247,8 @@ lumina theme flatpak        Aplicar tema GTK em apps Flatpak
 lumina dev pre                Selecionar e instalar pré-requisitos (multi-seleção)
 lumina dev go                 Gerenciar o Go (instalar, atualizar ou remover)
 lumina dev flutter            Gerenciar Flutter + Dart (instalar, atualizar ou remover)
+lumina dev android-studio     Gerenciar Android Studio (instalar, reinstalar ou remover)
+lumina dev antigravity        Gerenciar Antigravity IDE (instalar, reinstalar ou remover)
 lumina dev llm                Gerenciar CLIs LLM (multi-seleção)
 lumina dev ide                Gerenciar IDEs (multi-seleção)
 lumina dev term               Gerenciar terminais (multi-seleção)
