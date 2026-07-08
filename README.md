@@ -78,7 +78,7 @@ Suporta GNOME e Cinnamon. A TUI detecta automaticamente o desktop ativo e exibe 
 |---|---|
 | Pré-requisitos | Selecionar e instalar, do mais ao menos essencial: pacotes base, ferramentas de build (toolchain nativo + Flutter), Flatpak + AppImage (empacotamento), ferramentas dev, GitHub CLI, Docker Engine e Node.js via nvm (multi-seleção) |
 | Workspace | Criar estrutura de diretórios do workspace |
-| Stack PHP | Criar docker-compose.yml multi-versão PHP + Nginx + MariaDB; instala `phpcs`, `phpcbf`, `phpunit` e `composer` no container; gera wrappers em `~/.local/bin/` (`php`, `phpcs`, `phpcbf`, `phpunit`, `composer` e variantes por versão: `php82`, `phpunit83` etc.) |
+| Stack PHP | Criar docker-compose.yml multi-versão PHP + Nginx + MariaDB; instala `phpcs`, `phpcbf`, `phpunit` e `composer` no container; gera wrappers em `~/.local/bin/` (`php`, `phpcs`, `phpcbf`, `phpunit`, `composer` e variantes por versão: `php82`, `phpunit83` etc.); com PHP ≥ 8.2 selecionado, pergunta o diretório de instalações Moodle e gera automaticamente as regras de roteador (`public/r.php`) exigidas pelo Moodle 5.1+ para as pastas marcadas |
 | Go | Instalar, atualizar ou remover o Go via tarball oficial (`go.dev/dl`) |
 | Flutter + Dart | Instalar, atualizar ou remover o Flutter (via git, branch stable) |
 | Android Studio | Instalar/reinstalar/remover a partir do tarball oficial baixado em `~/Downloads` — inclui bibliotecas de suporte 32-bit e atalho no menu de aplicativos |
@@ -97,6 +97,7 @@ Ambiente de desenvolvimento PHP com Docker (multi-versão PHP + Nginx + MariaDB)
 | Ciclo de vida | Iniciar, parar, reiniciar, visualizar logs e monitorar recursos em tempo real |
 | Ferramentas PHP | `phpcs`, `phpcbf`, `phpunit` (versão adequada ao PHP) e `composer` disponíveis no container e via wrappers em `~/.local/bin/` |
 | Permissões | Corrigir propriedade e permissões do workspace |
+| Roteamento Moodle | Marcar/desmarcar instalações Moodle 5.1+ sem recriar a stack — reescreve só o `nginx/default.conf`, valida com `nginx -t` e recarrega sem downtime |
 
 ### Gerenciar Banco de Dados (`lumina db`)
 
@@ -268,6 +269,7 @@ lumina stack log                               Visualizar logs em tempo real
 lumina stack status                            Status e uso de recursos
 lumina stack db                                Exibir dados de conexão do banco
 lumina stack fix-perm                          Corrigir permissões do workspace
+lumina stack moodle                            Configurar roteamento Moodle 5.1+ sem recriar a stack
 ```
 
 #### Gerenciar Banco de Dados

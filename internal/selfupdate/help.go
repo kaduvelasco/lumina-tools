@@ -81,6 +81,7 @@ var helpSections = []helpSection{
 		{"lumina stack status", "Status e uso de recursos"},
 		{"lumina stack db", "Dados de conexão do banco de dados"},
 		{"lumina stack fix-perm", "Corrigir permissões do workspace"},
+		{"lumina stack moodle", "Configurar roteamento Moodle 5.1+ sem recriar a stack"},
 	}},
 	{"DevManager — Banco de Dados", [][2]string{
 		{"lumina db backup", "Criar backup do banco de dados"},

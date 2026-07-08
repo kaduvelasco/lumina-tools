@@ -78,6 +78,26 @@ func Compose(ctx context.Context, exe *executor.Executor, stdin io.Reader, stdou
 
 	ui.PrintHeader(stdout, "Criar Stack Docker")
 
+	// Moodle 5.1+ router — só faz sentido com PHP >= 8.2 selecionado.
+	var moodleInstalls []string
+	moodleDir := cfg.Stack.MoodleDir
+	urlPrefix := ""
+	hasModernPHP := hasPHPAtLeast(versions, 82)
+
+	if !hasModernPHP {
+		ui.Info(stdout, "Moodle 5.1+ requer PHP 8.2 ou superior; nenhuma versão compatível foi selecionada — pulando configuração do roteador Moodle.")
+	} else {
+		dir, prefix, installs, promptErr := promptMoodleInstalls(ctx, stdin, stdout, workspace, moodleDir, cfg.Stack.MoodleInstalls)
+		if promptErr != nil {
+			return promptErr
+		}
+		moodleDir = dir
+		urlPrefix = prefix
+		moodleInstalls = installs
+	}
+
+	ui.PrintHeader(stdout, "Criar Stack Docker")
+
 	// DB credentials
 	fmt.Fprint(stdout, "\nUsuário do banco [admin]: ")
 	dbUser := strings.TrimSpace(prompt.ReadLine())
@@ -117,7 +137,6 @@ func Compose(ctx context.Context, exe *executor.Executor, stdin io.Reader, stdou
 	}
 
 	defaultPHP := "php" + phpSuffix(versions[0])
-	defaultVer := phpSuffix(versions[0])
 
 	// docker-compose.yml
 	compose := buildCompose(versions, workspace, os.Getuid())
@@ -142,8 +161,7 @@ func Compose(ctx context.Context, exe *executor.Executor, stdin io.Reader, stdou
 	}
 
 	// nginx/default.conf
-	nginxConf := strings.ReplaceAll(nginxConfTpl, "{{DEFAULT_PHP}}", defaultPHP)
-	nginxConf = strings.ReplaceAll(nginxConf, "{{DEFAULT_PHP_VER}}", defaultVer)
+	nginxConf := buildNginxConf(versions, moodleInstalls, urlPrefix)
 	if err := os.WriteFile(filepath.Join(dockerDir, "nginx", "default.conf"), []byte(nginxConf), 0o644); err != nil {
 		return fmt.Errorf("escrever nginx.conf: %w", err)
 	}
@@ -170,6 +188,10 @@ func Compose(ctx context.Context, exe *executor.Executor, stdin io.Reader, stdou
 	cfg.Stack.DBUser = dbUser
 	cfg.Stack.DBPass = dbPass
 	cfg.Stack.DBRootPass = dbRoot
+	if hasModernPHP {
+		cfg.Stack.MoodleDir = moodleDir
+		cfg.Stack.MoodleInstalls = strings.Join(moodleInstalls, " ")
+	}
 	if err := config.Save(cfg); err != nil {
 		ui.Warning(stdout, "Falha ao salvar configurações: "+err.Error())
 	}
@@ -182,11 +204,17 @@ func Compose(ctx context.Context, exe *executor.Executor, stdin io.Reader, stdou
 		versionCmds.WriteString("\n  php" + suffix + " / phpcs" + suffix + " / phpcbf" + suffix + " / phpunit" + suffix + " / composer" + suffix + "  → PHP " + v)
 	}
 
+	moodleSummary := ""
+	if len(moodleInstalls) > 0 {
+		moodleSummary = "\nMoodle 5.1+  : " + strings.Join(moodleInstalls, ", ") + " (roteador em " + moodleDir + ")"
+	}
+
 	ui.Success(stdout, "Stack gerada com sucesso.")
 	ui.Info(stdout, "Versões PHP  : "+strings.Join(versions, " ")+
 		"\nPHP padrão   : "+defaultPHP+
 		"\nUsuário DB   : "+dbUser+
 		"\nCredenciais  : "+envPath+" (chmod 600)"+
+		moodleSummary+
 		"\n\nComandos disponíveis em ~/.local/bin/:"+
 		"\n  php / phpcs / phpcbf / phpunit / composer  → container "+defaultPHP+
 		versionCmds.String())
@@ -210,6 +238,8 @@ func genPassword() string {
 	return s
 }
 
+// hasPHPAtLeast reports whether any version in versions is >= minSuffix once
+// formatted like phpSuffix (e.g. "8.2" -> 82).
 func buildCompose(versions []string, workspace string, uid int) string {
 	var phpServices, nginxDeps strings.Builder
 	for _, v := range versions {
@@ -421,7 +451,7 @@ const nginxConfTpl = `server {
     location / {
         try_files $uri $uri/ /index.php?$query_string;
     }
-
+{{MOODLE_LOCATIONS_DEFAULT}}
     location ~ \.php$ {
         include fastcgi_params;
         fastcgi_pass {{DEFAULT_PHP}}:9000;
@@ -444,7 +474,7 @@ server {
     location / {
         try_files $uri $uri/ /index.php?$query_string;
     }
-
+{{MOODLE_LOCATIONS_VERSIONED}}
     location ~ [^/]\.php(/|$) {
         fastcgi_split_path_info ^(.+\.php)(/.+)$;
         include fastcgi_params;

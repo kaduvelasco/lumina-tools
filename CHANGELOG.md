@@ -6,6 +6,25 @@ O formato segue o padrão [Keep a Changelog](https://keepachangelog.com/pt-BR/1.
 
 ---
 
+## [2.2.6] — 2026-07-07
+
+### Adicionado
+
+#### Suporte ao roteador do Moodle 5.1+ na "Criar Stack PHP" (`internal/stack/config/compose.go`)
+- A partir do Moodle 5.1, o Routing Engine (`public/r.php`) passou a ser obrigatório para o funcionamento do sistema; sem a regra de roteamento no webserver, instalações 5.1+ não funcionam
+- Quando pelo menos uma versão PHP ≥ 8.2 é selecionada, "Criar Stack PHP" agora pergunta o diretório base de instalações Moodle (padrão: `workspace/www/html/mdle`) e lista as subpastas encontradas, permitindo marcar quais são Moodle 5.1+ (`ui.RunMultiSelect`, mesmo padrão já usado para versões PHP)
+- Para cada instalação marcada, um bloco `location ^~ /<prefixo>/<pasta>/` é gerado em ambos os `server{}` do `nginx/default.conf` (o fixo em `localhost`/`127.0.0.1` e o dinâmico por subdomínio `phpNN.localhost`), com `try_files` encaminhando para `.../public/r.php$is_args$args` — o modificador `^~` é necessário porque, em nginx, um `location` regex (o `location ~ \.php$` genérico já existente) sempre tem precedência sobre um `location` de prefixo comum, o que faria a maioria das URLs do Moodle (terminadas em `.php`) ignorar silenciosamente a regra de roteamento
+- Diretório base e instalações marcadas são salvos em `config.yaml` (`StackConfig.MoodleDir`/`MoodleInstalls`) e vêm pré-selecionados na próxima execução, seguindo o mesmo padrão já usado para `PHPVersions`/`DBUser`
+- Se nenhuma versão PHP ≥ 8.2 for selecionada, ou se o diretório informado não existir/estiver fora de `workspace/www/html`, a configuração é pulada com um aviso — não bloqueia a criação do restante da stack
+
+#### "Configurar Roteamento Moodle" em Gerenciar Stack PHP (`internal/stack/config/moodle.go`, novo `MoodleRouter`)
+- Nova ação (`lumina stack moodle`) para marcar/desmarcar instalações Moodle 5.1+ **sem recriar a stack inteira** — útil quando novas instalações (`dev-502`, `core-501` etc.) são clonadas depois que a stack já está rodando
+- Reescreve somente `nginx/default.conf` a partir do estado já salvo (`cfg.Stack.PHPVersions`) mais a nova seleção de instalações; `docker-compose.yml`, `.env`, `Dockerfile` e `php.ini` não são tocados
+- Antes de aplicar, valida a sintaxe com `docker exec nginx nginx -t`; se inválida, reverte automaticamente o arquivo anterior e mostra o erro do nginx sem afetar o container em execução; se válida, recarrega com `nginx -s reload` (sem downtime). Se o container `nginx` não estiver rodando, só atualiza o arquivo em disco e avisa para iniciar a stack depois
+- Lógica de prompt (diretório + seleção de pastas) e geração do `nginx/default.conf` extraídas de `Compose` para funções compartilhadas (`promptMoodleInstalls`, `buildNginxConf`), reaproveitadas por ambos os fluxos sem duplicação
+
+---
+
 ## [2.2.5] — 2026-06-30
 
 ### Corrigido

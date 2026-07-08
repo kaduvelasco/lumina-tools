@@ -28,10 +28,12 @@ type Config struct {
 
 // StackConfig holds Docker dev stack settings populated during compose generation.
 type StackConfig struct {
-	PHPVersions string `yaml:"php_versions,omitempty"`
-	DBUser      string `yaml:"db_user,omitempty"`
-	DBPass      string `yaml:"db_pass,omitempty"`
-	DBRootPass  string `yaml:"db_root_pass,omitempty"`
+	PHPVersions    string `yaml:"php_versions,omitempty"`
+	DBUser         string `yaml:"db_user,omitempty"`
+	DBPass         string `yaml:"db_pass,omitempty"`
+	DBRootPass     string `yaml:"db_root_pass,omitempty"`
+	MoodleDir      string `yaml:"moodle_dir,omitempty"`
+	MoodleInstalls string `yaml:"moodle_installs,omitempty"`
 }
 
 // Load reads ~/.lumina/config.yaml and returns its content.

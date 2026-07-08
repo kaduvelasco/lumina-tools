@@ -29,6 +29,7 @@ const (
 	actStackStats
 	actStackDB
 	actStackFixPerms
+	actStackMoodle
 	// Dev tools
 	actGoManage
 	actFlutterManage
@@ -191,6 +192,7 @@ var sections = []section{
 			{title: "Status da Stack PHP", cmd: "lumina stack status", action: actStackStats},
 			{title: "Logs da Stack PHP", cmd: "lumina stack log", action: actStackLogs},
 			{title: "Ajustar permissões", cmd: "lumina stack fix-perm", action: actStackFixPerms},
+			{title: "Configurar Roteamento Moodle", cmd: "lumina stack moodle", action: actStackMoodle},
 		},
 	},
 	{

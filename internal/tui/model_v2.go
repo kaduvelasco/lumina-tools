@@ -371,6 +371,8 @@ func (m ModelV2) runActionV2(a actionID) tea.Cmd {
 		return exec(stackconfig.Workspace)
 	case actStackCompose:
 		return execInteractive(stackconfig.Compose)
+	case actStackMoodle:
+		return execInteractive(stackconfig.MoodleRouter)
 
 	case actStackStart, actStackStop, actStackRestart, actStackLogs, actStackStats, actStackDB, actStackFixPerms:
 		return m.execStack(a, exec)

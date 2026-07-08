@@ -199,7 +199,7 @@ func dispatchTheme(ctx context.Context, args []string, stdin io.Reader, stdout, 
 
 func dispatchStack(ctx context.Context, args []string, stdin io.Reader, stdout, stderr io.Writer) error {
 	if len(args) == 0 {
-		return fmt.Errorf("uso: lumina stack <config|start|end|log|status|db|fix-perm>")
+		return fmt.Errorf("uso: lumina stack <config|start|end|log|status|db|fix-perm|moodle>")
 	}
 	exe := executor.New(stdout, stderr)
 	switch args[0] {
@@ -237,8 +237,10 @@ func dispatchStack(ctx context.Context, args []string, stdin io.Reader, stdout, 
 			return stack.DBInfo(ctx, exe, stdout)
 		case "fix-perm":
 			return stack.FixPerms(ctx, exe, stdout, cfg.WorkspacePath)
+		case "moodle":
+			return stackconfig.MoodleRouter(ctx, exe, stdin, stdout)
 		default:
-			return fmt.Errorf("subcomando desconhecido: %s\nuso: lumina stack <config|start|end|log|status|db|fix-perm>", args[0])
+			return fmt.Errorf("subcomando desconhecido: %s\nuso: lumina stack <config|start|end|log|status|db|fix-perm|moodle>", args[0])
 		}
 	}
 }
