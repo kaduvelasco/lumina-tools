@@ -27,6 +27,30 @@ func TestHasPHPAtLeast(t *testing.T) {
 	}
 }
 
+func TestMoodleDefaultPHP(t *testing.T) {
+	tests := []struct {
+		name          string
+		versions      []string
+		wantContainer string
+		wantSuffix    string
+	}{
+		{"8.2 first, matches itself", []string{"8.2", "8.3"}, "php82", "82"},
+		{"8.1 first, skips to lowest compatible", []string{"8.1", "8.2"}, "php82", "82"},
+		{"8.1 first, only 8.3/8.4 compatible", []string{"8.1", "8.4", "8.3"}, "php83", "83"},
+		{"single compatible version", []string{"8.4"}, "php84", "84"},
+		{"none compatible, falls back to versions[0]", []string{"8.1"}, "php81", "81"},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			gotContainer, gotSuffix := moodleDefaultPHP(tt.versions)
+			if gotContainer != tt.wantContainer || gotSuffix != tt.wantSuffix {
+				t.Errorf("moodleDefaultPHP(%v) = (%q, %q), want (%q, %q)",
+					tt.versions, gotContainer, gotSuffix, tt.wantContainer, tt.wantSuffix)
+			}
+		})
+	}
+}
+
 func TestMoodleURLPrefix(t *testing.T) {
 	tests := []struct {
 		name       string
@@ -87,10 +111,13 @@ func TestBuildMoodleLocations_SingleInstall(t *testing.T) {
 	if !strings.Contains(got, "location ^~ /mdle/dev-501/ {") {
 		t.Errorf("missing ^~ prefix location for dev-501:\n%s", got)
 	}
-	if !strings.Contains(got, "try_files $uri $uri/ /mdle/dev-501/public/r.php$is_args$args;") {
+	if !strings.Contains(got, "try_files $uri /mdle/dev-501/public/r.php$is_args$args;") {
 		t.Errorf("missing try_files fallback to r.php:\n%s", got)
 	}
-	if !strings.Contains(got, "fastcgi_pass {{DEFAULT_PHP}}:9000;") {
+	if strings.Contains(got, "try_files $uri $uri/") {
+		t.Errorf("try_files should not include the $uri/ directory-match alternative (would resolve to the install's legacy root index.php instead of the router):\n%s", got)
+	}
+	if !strings.Contains(got, "fastcgi_pass {{MOODLE_PHP}}:9000;") {
 		t.Errorf("missing default dispatch body:\n%s", got)
 	}
 }
@@ -137,5 +164,27 @@ func TestBuildNginxConf_WithInstalls(t *testing.T) {
 	}
 	if strings.Count(got, "location ^~ /mdle/core-501/ {") != 2 {
 		t.Errorf("expected one ^~ block for core-501 in each of the two server{} blocks:\n%s", got)
+	}
+}
+
+func TestBuildNginxConf_MoodleFallbackDecoupledFromLegacyDefault(t *testing.T) {
+	// versions[0] is 8.1 — the legacy default must stay on it, but the Moodle
+	// blocks must never fall back below 8.2, regardless of selection order.
+	got := buildNginxConf([]string{"8.1", "8.3"}, []string{"dev-501"}, "mdle")
+
+	if strings.Contains(got, "{{") {
+		t.Errorf("unresolved placeholder left in generated config:\n%s", got)
+	}
+	if !strings.Contains(got, "fastcgi_pass php81:9000;") {
+		t.Errorf("legacy fixed-server dispatch should still use the first selected version (php81):\n%s", got)
+	}
+	if !strings.Contains(got, "set $p_ver 81;") {
+		t.Errorf("legacy versioned-server fallback should still use the first selected version (81):\n%s", got)
+	}
+	if !strings.Contains(got, "fastcgi_pass php83:9000;") {
+		t.Errorf("Moodle fixed-server dispatch should fall back to the lowest compatible version (php83):\n%s", got)
+	}
+	if !strings.Contains(got, "set $p_ver 83;") {
+		t.Errorf("Moodle versioned-server fallback should use the lowest compatible version (83):\n%s", got)
 	}
 }

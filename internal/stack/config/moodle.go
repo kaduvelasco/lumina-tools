@@ -60,6 +60,15 @@ func moodleURLPath(urlPrefix, folder string) string {
 // force nginx to stop at this block instead of falling through. phpRegex and
 // dispatch let the caller plug in either the fixed-container dispatch or the
 // subdomain-based one used by the two nginx server blocks.
+//
+// try_files intentionally omits the `$uri/` directory-match alternative
+// (unlike the plain PHP location below it): the install's root directory
+// always exists on disk, so `$uri/` would match it and hand the request to
+// nginx's `index` directive, which resolves to the install's own legacy root
+// index.php — the exact file Moodle 5.1+ rejects with "rootdirpublic" since
+// it's not being reached through public/r.php. Dropping `$uri/` forces every
+// request that isn't a real file under the install's tree straight into the
+// router, matching Moodle's own documented nginx recipe.
 func buildMoodleLocations(installs []string, urlPrefix, phpRegex, dispatch string) string {
 	if len(installs) == 0 {
 		return ""
@@ -69,7 +78,7 @@ func buildMoodleLocations(installs []string, urlPrefix, phpRegex, dispatch strin
 		path := moodleURLPath(urlPrefix, name)
 		fmt.Fprintf(&b, `
     location ^~ %s {
-        try_files $uri $uri/ %spublic/r.php$is_args$args;
+        try_files $uri %spublic/r.php$is_args$args;
 
         location ~ %s {
             %s
@@ -81,16 +90,42 @@ func buildMoodleLocations(installs []string, urlPrefix, phpRegex, dispatch strin
 }
 
 const moodleDefaultDispatch = `include fastcgi_params;
-            fastcgi_pass {{DEFAULT_PHP}}:9000;
+            fastcgi_pass {{MOODLE_PHP}}:9000;
             fastcgi_param SCRIPT_FILENAME $document_root$fastcgi_script_name;`
 
 const moodleVersionedDispatch = `fastcgi_split_path_info ^(.+\.php)(/.+)$;
             include fastcgi_params;
-            if ($p_ver = "") { set $p_ver {{DEFAULT_PHP_VER}}; }
+            if ($p_ver = "") { set $p_ver {{MOODLE_PHP_VER}}; }
             set $php_upstream php$p_ver:9000;
             fastcgi_pass $php_upstream;
             fastcgi_param SCRIPT_FILENAME $document_root$fastcgi_script_name;
             fastcgi_param PATH_INFO $fastcgi_path_info;`
+
+// moodleDefaultPHP returns the lowest selected PHP version that satisfies the
+// Moodle 5.1+ router (>= 8.2), as both the container name ("php82") and the
+// bare suffix ("82") — used as the fallback for Moodle location blocks when
+// $p_ver is empty, decoupled from the legacy default PHP version so an older
+// version picked as versions[0] never breaks the Moodle router. Falls back to
+// versions[0] if none qualifies, which should not happen in practice since
+// callers only offer the Moodle prompt when hasPHPAtLeast(versions, 82) is
+// already true.
+func moodleDefaultPHP(versions []string) (container, suffix string) {
+	best := 0
+	for _, v := range versions {
+		n, err := strconv.Atoi(phpSuffix(v))
+		if err != nil || n < 82 {
+			continue
+		}
+		if best == 0 || n < best {
+			best = n
+		}
+	}
+	if best == 0 {
+		return "php" + phpSuffix(versions[0]), phpSuffix(versions[0])
+	}
+	suffix = strconv.Itoa(best)
+	return "php" + suffix, suffix
+}
 
 // buildNginxConf renders the full nginx/default.conf content for the given
 // PHP versions and marked Moodle installs. Pure — no I/O.
@@ -106,6 +141,11 @@ func buildNginxConf(versions []string, moodleInstalls []string, urlPrefix string
 	nginxConf = strings.ReplaceAll(nginxConf, "{{MOODLE_LOCATIONS_VERSIONED}}", moodleVersionedBlocks)
 	nginxConf = strings.ReplaceAll(nginxConf, "{{DEFAULT_PHP}}", defaultPHP)
 	nginxConf = strings.ReplaceAll(nginxConf, "{{DEFAULT_PHP_VER}}", defaultVer)
+	if len(moodleInstalls) > 0 {
+		moodlePHP, moodleVer := moodleDefaultPHP(versions)
+		nginxConf = strings.ReplaceAll(nginxConf, "{{MOODLE_PHP}}", moodlePHP)
+		nginxConf = strings.ReplaceAll(nginxConf, "{{MOODLE_PHP_VER}}", moodleVer)
+	}
 	return nginxConf
 }
 

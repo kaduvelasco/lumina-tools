@@ -53,6 +53,25 @@ func FixPerms(ctx context.Context, exe *executor.Executor, stdout io.Writer, wor
 		}
 	}
 
+	// databases/ and logs/ hold container-managed data (MariaDB's own files,
+	// container log output) — only the top-level directory itself is chowned,
+	// non-recursively, so Go code (os.MkdirAll, running unprivileged) can keep
+	// creating new subdirectories there (e.g. logs/phpNN for a newly added PHP
+	// version) without needing sudo. Docker auto-creates these as root the
+	// first time a container bind-mounts a path that doesn't exist yet on the
+	// host, which is what leaves them root-owned instead of user-owned.
+	for _, d := range []string{workspace + "/databases", workspace + "/logs"} {
+		if _, statErr := os.Stat(d); statErr != nil {
+			continue
+		}
+		ui.Info(stdout, "Ajustando propriedade de "+d+" para "+user+"...")
+		if err := exe.Run(ctx, opts, "chown", user+":"+user, d); err != nil {
+			ui.Err(stdout, "Falha no chown "+d+": "+err.Error())
+			ui.WaitEnter(stdout)
+			return fmt.Errorf("chown %s: %w", d, err)
+		}
+	}
+
 	ui.Success(stdout, "Permissões corrigidas com sucesso.")
 	ui.WaitEnter(stdout)
 	return nil

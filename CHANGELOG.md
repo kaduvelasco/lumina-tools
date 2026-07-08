@@ -6,6 +6,30 @@ O formato segue o padrão [Keep a Changelog](https://keepachangelog.com/pt-BR/1.
 
 ---
 
+## [2.2.7] — 2026-07-08
+
+### Corrigido
+
+#### Fallback de PHP do roteador Moodle desacoplado do PHP padrão legado (`internal/stack/config/moodle.go`)
+- Antes, o fallback usado quando `$p_ver` chega vazio (acesso via `localhost`/`127.0.0.1` sem subdomínio, ou caso raro de captura não propagada) era o mesmo para os blocos Moodle e para o bloco de PHP legado: a primeira versão PHP selecionada em "Criar Stack PHP" (`versions[0]`), independente da ordem escolhida. Se PHP 8.1 fosse selecionado antes de 8.2/8.3, o roteador do Moodle 5.1+ caía em PHP 8.1 — incompatível
+- Novo `moodleDefaultPHP(versions)`: calcula, a partir das versões PHP realmente selecionadas, a **menor versão ≥ 8.2** disponível, e devolve tanto o nome do container (`php82`) quanto o sufixo (`82`); usado exclusivamente pelos blocos Moodle via novos placeholders `{{MOODLE_PHP}}`/`{{MOODLE_PHP_VER}}` (dissociados de `{{DEFAULT_PHP}}`/`{{DEFAULT_PHP_VER}}`, que continuam servindo só o bloco de PHP legado)
+- Diferente de fixar um valor único (ex.: sempre "82"), o cálculo dinâmico garante que o fallback aponte para um container que de fato foi selecionado — evita apontar para `php82` quando só 8.3/8.4 foram escolhidos
+- Não afeta o acesso explícito via `phpNN.localhost` (WordPress, sistemas PHP customizados, etc.): o fallback só entra em ação quando `$p_ver` está vazio; com o subdomínio informando a versão, o comportamento é idêntico ao anterior
+- Testes de tabela adicionados em `moodle_test.go`: `TestMoodleDefaultPHP` (seleção com/sem PHP 8.2 disponível, ordens variadas) e `TestBuildNginxConf_MoodleFallbackDecoupledFromLegacyDefault` (confirma que o bloco legado mantém `versions[0]` enquanto o bloco Moodle usa o piso mínimo compatível)
+
+#### `try_files` do roteador Moodle servia o `index.php` legado da raiz em vez do router (`internal/stack/config/moodle.go`)
+- Acessar a raiz de uma instalação Moodle 5.1+ (ex.: `/mdle/dev-501/`) resultava no erro do próprio Moodle `Error code: rootdirpublic` ("The Moodle root directory must not be publicly accessible")
+- Causa: `try_files $uri $uri/ {prefix}/public/r.php$is_args$args;` — a alternativa `$uri/` casava com o diretório raiz da instalação (que sempre existe em disco), fazendo o nginx aplicar a diretiva `index` do server e servir `{prefix}/index.php` (o stub legado da raiz do checkout) diretamente, sem nunca cair no fallback para `public/r.php`
+- Corrigido removendo `$uri/` do `try_files` gerado em `buildMoodleLocations` — passa a ser `try_files $uri {prefix}/public/r.php$is_args$args;`, igual à recomendação oficial do Moodle (docs.moodle.org) para quando o document root não aponta diretamente para `public/`
+- Teste em `moodle_test.go` (`TestBuildMoodleLocations_SingleInstall`) atualizado para garantir que `$uri/` nunca apareça no `try_files` gerado para blocos Moodle
+
+#### "Ajustar Permissões" não corrigia `databases/` e `logs/` (`internal/stack/perms.go`)
+- Quando um container faz bind mount de um caminho do host que ainda não existe, é o próprio `dockerd` (rodando como root) quem cria o diretório automaticamente — deixando `workspace/databases` dono de `root:root` em vez do usuário atual
+- `FixPerms` ("Ajustar Permissões" / `lumina stack fix-perm`) corrigia `www` (recursivo) e `docker/mariadb` (chmod), mas nunca tocava em `databases/` nem em `logs/`
+- Adicionado `chown` (não recursivo, só o diretório em si) de `workspace/databases` e `workspace/logs` para o usuário atual, quando existentes — suficiente para que `os.MkdirAll` (rodando sem privilégio) continue criando novas subpastas ali (ex.: `logs/phpNN` ao adicionar uma versão PHP), sem precisar de sudo. Não recursivo de propósito: o conteúdo interno (arquivos do MariaDB, logs escritos pelos containers) continua pertencendo ao UID interno do container, que não deve ser alterado
+
+---
+
 ## [2.2.6] — 2026-07-07
 
 ### Adicionado
