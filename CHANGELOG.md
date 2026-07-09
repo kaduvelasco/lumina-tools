@@ -6,6 +6,19 @@ O formato segue o padrão [Keep a Changelog](https://keepachangelog.com/pt-BR/1.
 
 ---
 
+## [2.2.9] — 2026-07-09
+
+### Corrigido
+
+#### Roteador Moodle ignorava o `rewrite` para `public/` em qualquer acesso direto a `.php` (`internal/stack/config/moodle.go`)
+- Acessar uma instalação Moodle 5.1+ sem incluir `/public/` na URL manualmente (ex.: `/mdle/dev-501/install.php`, ou qualquer página normal do Moodle: `index.php`, `course/view.php`, `login/index.php`, `webservice/rest/server.php`, ...) resultava em `File not found.` do PHP-FPM. Acessar incluindo `/public/` na URL chegava ao Moodle, mas disparava o próprio aviso do Moodle "Servidor web não configurado" (`rootdirpublic`), já que a URL exposta continha `/public/`
+- Causa raiz, confirmada empiricamente rodando nginx + PHP-FPM reais fora do container: para qualquer URI terminada em `.php`, o nginx resolve direto o `location ~ <phpRegex>` **aninhado** dentro do bloco `location ^~ {prefix}` — por ser o match mais específico, ele vence sem nunca executar o `rewrite`/`try_files` do bloco pai. Como todo ponto de entrada real do Moodle 5.1+ é um arquivo `.php` de verdade dentro de `public/`, esse caminho nunca era roteado: `$uri` permanecia sem o `/public/` e `SCRIPT_FILENAME` apontava para um caminho que só existe um nível abaixo
+- Corrigido replicando o mesmo `rewrite ... break` (agora com negative lookahead `(?!public/)` para não duplicar o segmento em requisições que já chegam com `/public/`) diretamente dentro do `location` aninhado, via novo placeholder `{{NESTED_REWRITE}}` nos templates `moodleDefaultDispatch`/`moodleVersionedDispatch`. No dispatch versionado (`phpNN.localhost`), o `rewrite` foi posicionado **depois** do `if`/`set` que resolve `$php_upstream` — colocá-lo antes quebra o dispatch dinâmico, pois `break` interrompe o processamento de qualquer diretiva do módulo de rewrite (`if`/`set`/`rewrite`) que venha depois dele na mesma location, também confirmado empiricamente (`nginx` logava `using uninitialized "php_upstream" variable`)
+- Validado de ponta a ponta com nginx + PHP-FPM reais (containers descartáveis, fora do stack do usuário): acesso direto a `.php` sem `/public/`, rota limpa via `r.php`, PATH_INFO (`webservice/rest/server.php/...`), múltiplas instalações isoladas entre si, e reconfirmação de que arquivos fora de `public/` (`config.php`) continuam bloqueados (fix da `[2.2.8]` intacto)
+- Teste `TestBuildMoodleLocations_SingleInstall` (`moodle_test.go`) atualizado para exigir o `rewrite` aninhado com o lookahead
+
+---
+
 ## [2.2.8] — 2026-07-09
 
 ### Corrigido

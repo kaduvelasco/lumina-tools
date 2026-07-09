@@ -112,7 +112,10 @@ func TestBuildMoodleLocations_SingleInstall(t *testing.T) {
 		t.Errorf("missing ^~ prefix location for dev-501:\n%s", got)
 	}
 	if !strings.Contains(got, `rewrite ^/mdle/dev-501/(.*)$ /mdle/dev-501/public/$1 break;`) {
-		t.Errorf("missing rewrite into public/ before try_files touches disk:\n%s", got)
+		t.Errorf("missing outer rewrite into public/ before try_files touches disk:\n%s", got)
+	}
+	if !strings.Contains(got, `rewrite ^/mdle/dev-501/(?!public/)(.*)$ /mdle/dev-501/public/$1 break;`) {
+		t.Errorf("missing nested rewrite inside the php location — direct .php requests (install.php, index.php, ...) never reach the outer rewrite, since nginx matches the nested regex location directly:\n%s", got)
 	}
 	if !strings.Contains(got, "try_files $uri /mdle/dev-501/public/r.php$is_args$args;") {
 		t.Errorf("missing try_files fallback to r.php:\n%s", got)

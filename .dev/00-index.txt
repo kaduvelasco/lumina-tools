@@ -1,7 +1,9 @@
 Iremos planejar uma reestruturação do lumina tools
+- Ele passará a se chamar "percy.gnl" 
+- o comando no CLI será "prcy"
 
 
-- O Lumina Tools suporta:
+- Suporte Linux:
 -- Distribuições baseadas no Ubuntu 24.04+
 -- Distribuições baseadas no Fedora 43+
 

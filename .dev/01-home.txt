@@ -1,14 +1,14 @@
 ╭───────────────────────────────────────────────────────────────────────────────╮
-│  ◈ lumina.tools  │  v1.0.0  │  Zorin OS         ● Conexão com internet ativa  │
+│  ◈ percy.gnl  │  v1.0.0  │  Zorin OS         ● Conexão com internet ativa     │
 ╰───────────────────────────────────────────────────────────────────────────────╯
 ╭───────────────────────────────────────────────────────────────────────────────╮
 │  1. Home * 2. Linux * 3. Dev Stuff * 4. Dev Manager                           │
 ╰───────────────────────────────────────────────────────────────────────────────╯
 ╭───────────────────────────────────────────────────────────────────────────────╮
-│  Bem vindo ao Lumina Tools                                                    │
+│  PERCY // O GENIAL * Pronto para configurar o seu dia.                        │
 │                                                                               │
 │  Versão: 1.0.0                                                                │
-│  github.com/oito2/lumina-tools                                                │
+│  github.com/oito2/percy-gnl                                                   │
 │                                                                               │
 │  > Atualizar                                                                  │
 │  > Configurar                                                                 │

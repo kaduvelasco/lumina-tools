@@ -62,8 +62,8 @@ func moodleURLPath(urlPrefix, folder string) string {
 // dispatch let the caller plug in either the fixed-container dispatch or the
 // subdomain-based one used by the two nginx server blocks.
 //
-// The rewrite maps every request under the install's URL prefix into its
-// public/ subtree *before* try_files ever touches disk. Without it, $uri
+// The outer rewrite maps every request under the install's URL prefix into
+// its public/ subtree *before* try_files ever touches disk. Without it, $uri
 // would resolve relative to the shared global root (the install's legacy
 // root, not public/) — meaning any file that happens to exist outside
 // public/ (config.php, composer.json, version.php, ...) would be served
@@ -72,6 +72,25 @@ func moodleURLPath(urlPrefix, folder string) string {
 // included) and exactly what Moodle 5.1+'s own installer/upgrade check
 // ("rootdirpublic") detects and refuses to proceed past. Routing everything
 // through public/ first closes both problems at once.
+//
+// That outer rewrite never runs for a request whose URI already ends in
+// .php: nginx resolves the nested `location ~ <phpRegex>` directly against
+// the *original* URI (it's the more specific match), bypassing the parent
+// block's rewrite/try_files entirely — confirmed empirically against a real
+// nginx+php-fpm pair, not just inferred from the docs. Since every real
+// Moodle entry point (install.php, index.php, course/view.php, ...) is a
+// genuine file requested with a .php URI, that path was completely unrouted:
+// $uri stayed e.g. "/mdle/dev-501/install.php", SCRIPT_FILENAME pointed at a
+// path that only exists one level down under public/, and PHP-FPM answered
+// "File not found." The dispatch templates below carry their own copy of the
+// same rewrite (via the {{NESTED_REWRITE}} placeholder, filled in here) so
+// the nested location normalizes the path itself instead of relying on the
+// parent ever being reached. The negative lookahead (?!public/) makes it a
+// no-op when the URI already has /public/ in it — necessary because a
+// request can also reach this nested location by falling through the outer
+// rewrite+try_files first (e.g. non-.php request that hits it after a
+// previous MOODLE_LOCATIONS pass), and rewriting twice would double the
+// segment into ".../public/public/...".
 //
 // try_files intentionally omits the `$uri/` directory-match alternative
 // (unlike the plain PHP location below it): the install's public/ directory
@@ -88,6 +107,8 @@ func buildMoodleLocations(installs []string, urlPrefix, phpRegex, dispatch strin
 	for _, name := range installs {
 		path := moodleURLPath(urlPrefix, name)
 		publicPath := path + "public/"
+		nestedRewrite := fmt.Sprintf(`rewrite ^%s(?!public/)(.*)$ %s$1 break;`, regexp.QuoteMeta(path), publicPath)
+		installDispatch := strings.ReplaceAll(dispatch, "{{NESTED_REWRITE}}", nestedRewrite)
 		fmt.Fprintf(&b, `
     location ^~ %s {
         rewrite ^%s(.*)$ %s$1 break;
@@ -97,19 +118,27 @@ func buildMoodleLocations(installs []string, urlPrefix, phpRegex, dispatch strin
             %s
         }
     }
-`, path, regexp.QuoteMeta(path), publicPath, publicPath, phpRegex, dispatch)
+`, path, regexp.QuoteMeta(path), publicPath, publicPath, phpRegex, installDispatch)
 	}
 	return b.String()
 }
 
-const moodleDefaultDispatch = `include fastcgi_params;
+const moodleDefaultDispatch = `{{NESTED_REWRITE}}
+            include fastcgi_params;
             fastcgi_pass {{MOODLE_PHP}}:9000;
             fastcgi_param SCRIPT_FILENAME $document_root$fastcgi_script_name;`
 
-const moodleVersionedDispatch = `fastcgi_split_path_info ^(.+\.php)(/.+)$;
-            include fastcgi_params;
-            if ($p_ver = "") { set $p_ver {{MOODLE_PHP_VER}}; }
+// if/set must stay ahead of {{NESTED_REWRITE}}: rewrite's "break" flag stops
+// processing of every later ngx_http_rewrite_module directive in this
+// location (if/set/rewrite itself), so $php_upstream would be left
+// uninitialized if the rewrite came first — confirmed empirically (nginx
+// logs "using uninitialized \"php_upstream\" variable" / "no host in
+// upstream" when ordered the other way around).
+const moodleVersionedDispatch = `if ($p_ver = "") { set $p_ver {{MOODLE_PHP_VER}}; }
             set $php_upstream php$p_ver:9000;
+            {{NESTED_REWRITE}}
+            fastcgi_split_path_info ^(.+\.php)(/.+)$;
+            include fastcgi_params;
             fastcgi_pass $php_upstream;
             fastcgi_param SCRIPT_FILENAME $document_root$fastcgi_script_name;
             fastcgi_param PATH_INFO $fastcgi_path_info;`
