@@ -265,6 +265,38 @@ func nginxContainerRunning(ctx context.Context, exe *executor.Executor) bool {
 	return strings.TrimSpace(out) == "true"
 }
 
+// nginxSeesFile reports whether the "nginx" container's bind-mounted
+// nginx/default.conf currently matches want.
+//
+// This exists because "running" isn't the same as "actually seeing the file
+// we just wrote" (found 2026-07-09). docker-compose bind-mounts
+// nginx/default.conf by path, but the kernel binds that mount to the
+// *inode* current at container-creation time. If the file on disk later
+// gets replaced by one with a different inode — e.g. the user deletes and
+// regenerates the whole docker-compose directory (`rm -rf` + "Criar Stack
+// PHP" again) while an nginx container from a *previous* stack is still
+// up — the running container keeps serving the old, now-orphaned inode's
+// content. `docker restart`/a host reboot doesn't fix this either: neither
+// recreates the container, so the stale bind mount survives both. Only
+// actually recreating the container (`docker compose up -d --force-recreate
+// nginx`, or a full `down`+`up`) re-resolves the mount.
+// Without this check, `docker exec nginx nginx -t` and `nginx -s reload`
+// would run inside that same stale mount namespace and "successfully"
+// validate/reload the *old* content — MoodleRouter would report "Roteamento
+// atualizado e aplicado sem downtime." while nothing observable actually
+// changed. See CHANGELOG [2.2.9] and the lumina-tools project vault
+// (decisions.md, 2026-07-09) for the full incident writeup. Trailing
+// newlines are ignored in the comparison since they don't affect nginx's
+// behavior and `cat`/exe.Output round-tripping isn't guaranteed to preserve
+// them byte-for-byte.
+func nginxSeesFile(ctx context.Context, exe *executor.Executor, want string) bool {
+	out, err := exe.Output(ctx, executor.Options{}, "docker", "exec", "nginx", "cat", "/etc/nginx/conf.d/default.conf")
+	if err != nil {
+		return false
+	}
+	return strings.TrimRight(out, "\n") == strings.TrimRight(want, "\n")
+}
+
 // MoodleRouter reconfigures which Moodle 5.1+ installs get router (r.php)
 // location blocks in the already-generated nginx/default.conf, without
 // touching docker-compose.yml, .env, the PHP Dockerfile or php.ini. Meant
@@ -327,6 +359,14 @@ func MoodleRouter(ctx context.Context, exe *executor.Executor, stdin io.Reader, 
 
 	if !nginxContainerRunning(ctx, exe) {
 		ui.Info(stdout, "nginx/default.conf atualizado em disco. Inicie a stack para aplicar.")
+	} else if !nginxSeesFile(ctx, exe, newContent) {
+		ui.Err(stdout, "O container nginx está rodando, mas ainda enxerga uma versão antiga do nginx/default.conf "+
+			"(bind mount desatualizado — comum depois de apagar/recriar a pasta da stack com o container antigo "+
+			"ainda de pé). Reiniciar o container ou o computador não resolve; é preciso recriá-lo:\n\n"+
+			"  cd "+cfg.DockerComposeDir+" && docker compose up -d --force-recreate nginx\n\n"+
+			"O arquivo em disco já está atualizado — rode o comando acima e tente de novo.")
+		ui.WaitEnter(stdout)
+		return fmt.Errorf("bind mount do nginx desatualizado")
 	} else {
 		var out bytes.Buffer
 		testErr := exe.Run(ctx, executor.Options{Stdout: &out, Stderr: &out}, "docker", "exec", "nginx", "nginx", "-t")

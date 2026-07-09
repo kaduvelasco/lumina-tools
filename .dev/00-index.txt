@@ -22,6 +22,8 @@ Nova Interface:
 3. Um painel para a Área principal
 4. Um painel para o rodapé
 
+* Todos os inputs e elementos de formulário devem usar o charm huh (https://github.com/charmbracelet/huh)
+
 Existem arquivos .txt para cada uma das interfaces principais
 
 

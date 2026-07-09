@@ -23,10 +23,12 @@
 -- Iniciar
 -- Parar
 -- Reiniciar
+-- Recriar (novo)(recria os containers forçando a usar novas configuraçõesJá)
 -- Status
 -- Logs
 -- Ajustar permissões
 -- Roteamento Moodle
+
 
 02. Banco de Dados
 - Utiliza a interface 03 com as opções

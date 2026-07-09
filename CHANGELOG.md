@@ -6,6 +6,19 @@ O formato segue o padrão [Keep a Changelog](https://keepachangelog.com/pt-BR/1.
 
 ---
 
+## [2.3.0] — 2026-07-09
+
+### Adicionado
+
+#### `MoodleRouter` detecta bind mount obsoleto do nginx antes de confiar em `nginx -t`/`-s reload` (`internal/stack/config/moodle.go`)
+- Depois de publicar a `[2.2.9]`, o usuário continuou vendo o bug do roteador Moodle mesmo com o `nginx/default.conf` já corrigido em disco. Causa: não era o código do roteador — o container `nginx` já estava rodando (criado antes da pasta `docker/` ser apagada e recriada), e o bind mount de arquivo único do Docker (`./nginx/default.conf:/etc/nginx/conf.d/default.conf`) fica preso ao **inode** que existia no momento em que o container foi criado. Reescrever o arquivo (mesmo caminho, inode novo — ex.: depois de `rm -rf docker/` + "Criar Stack PHP" de novo) não é visto pelo container já rodando; nem `docker restart`, nem reiniciar o host, resolvem isso, porque nenhum dos dois recria o container. Só `docker compose up -d --force-recreate nginx` (ou um `down`+`up` completo) força o Docker a religar o bind mount contra o arquivo atual
+- Consequência prática (agora corrigida): `docker exec nginx nginx -t` e `docker exec nginx nginx -s reload`, chamados por `MoodleRouter`, rodavam **dentro** desse mesmo namespace de mount potencialmente obsoleto — ambos validavam e recarregavam o conteúdo antigo com sucesso, e o Lumina reportava "Roteamento atualizado e aplicado sem downtime." mesmo quando nada mudou de fato observável — um falso positivo silencioso
+- Corrigido com novo helper `nginxSeesFile`: depois de escrever `newContent` em disco e confirmar que o container está rodando, compara o conteúdo que o container realmente enxerga (`docker exec nginx cat /etc/nginx/conf.d/default.conf`) contra o que acabou de ser escrito, **antes** de rodar `nginx -t`/`-s reload`. Se divergir, interrompe o fluxo (sem tentar reload, seria inútil) e mostra o comando exato para resolver: `docker compose up -d --force-recreate nginx`. Diferente da rota de config inválida (que restaura `oldContent`), aqui o arquivo em disco **não** é revertido — ele já está correto, só o container que ainda não o enxerga
+- Validado contra o ambiente real do usuário: simulado o cenário exato do incidente (substituir `nginx/default.conf` via `mv`, trocando o inode, sem recriar o container) e confirmado que `nginxSeesFile` detecta a divergência corretamente; confirmado também que retorna verdadeiro logo após um `--force-recreate`, sem falso positivo
+- `nginxContainerRunning`/`nginxSeesFile` seguem sem teste automatizado (mesmo débito já registrado para `internal/stack/perms.go`: o pacote `executor` não tem infraestrutura de mock, só é possível validar rodando contra Docker de verdade)
+
+---
+
 ## [2.2.9] — 2026-07-09
 
 ### Corrigido
