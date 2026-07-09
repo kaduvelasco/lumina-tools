@@ -1,0 +1,13 @@
+╭───────────────────────────────────────────────────────────────────────────────╮
+│  ◈ lumina.tools  │  v1.0.0                     01. Título da opção escolhida  │
+╰───────────────────────────────────────────────────────────────────────────────╯
+╭───────────────────────────────────────────────────────────────────────────────╮
+│ {{Programa}} já instalado!             |  Enter: confirmar  |  q: cancelar    │
+╰───────────────────────────────────────────────────────────────────────────────╯
+
+* Ao apertar q ou esc voltar diretamente para a tela anterior, sem confirmação, se o comando foi executado via terminal, sem interface TUI, encerra.
+
+* Mensagens possíveis mapeadas (pode existir alguma que ainda não vi)
+{{PROGRAMA}} já instalado!
+Instalar {{PROGRAMA}}?
+

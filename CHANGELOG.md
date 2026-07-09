@@ -6,6 +6,19 @@ O formato segue o padrão [Keep a Changelog](https://keepachangelog.com/pt-BR/1.
 
 ---
 
+## [2.2.8] — 2026-07-09
+
+### Corrigido
+
+#### Roteador Moodle expunha arquivos fora de `public/` como estáticos (`internal/stack/config/moodle.go`)
+- O `try_files $uri {prefix}public/r.php$is_args$args;` gerado por `buildMoodleLocations` resolvia `$uri` relativo à raiz global do nginx (`root /var/www/html`), ou seja, relativo à raiz **legada** da instalação Moodle — não a `public/`. Qualquer arquivo existente fora de `public/` (ex.: `config.php`, `composer.json`, `version.php`) era servido estaticamente pelo nginx quando acessado diretamente, sem passar pelo roteador
+- Além de derrubar o check "rootdirpublic" do instalador/atualizador do Moodle 5.1+ ("Servidor web não configurado... não impede acesso a arquivos fora de /public"), isso era uma exposição real de código-fonte — incluindo, potencialmente, as credenciais de banco em `config.php`
+- Corrigido adicionando `rewrite ^{prefix}(.*)$ {prefix}public/$1 break;` antes do `try_files`, remapeando toda requisição sob o prefixo da instalação para dentro de `public/` antes de qualquer checagem em disco — nada fora de `public/` é mais resolvido pelo nginx, nem estático nem via roteador. `$request_uri` (usado por `r.php` para decidir o roteamento) não é afetado por `rewrite ... break`, então o comportamento de dispatch do roteador continua correto
+- Escopo isolado por instalação: o bloco `^~ {prefix}` só é gerado para pastas explicitamente marcadas como Moodle 5.1+ em `promptMoodleInstalls`; instalações Moodle anteriores a 5.1 e qualquer outra aplicação PHP na mesma árvore continuam caindo no `location /` genérico, sem `rewrite` e sem alteração de comportamento
+- Teste em `moodle_test.go` (`TestBuildMoodleLocations_SingleInstall`) atualizado para exigir a presença do `rewrite` gerado
+
+---
+
 ## [2.2.7] — 2026-07-08
 
 ### Corrigido

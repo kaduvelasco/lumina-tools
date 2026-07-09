@@ -1,0 +1,27 @@
+╭───────────────────────────────────────────────────────────────────────────────╮
+│  ◈ lumina.tools  │  v1.0.0  │  Zorin OS         ● Conexão com internet ativa  │
+╰───────────────────────────────────────────────────────────────────────────────╯
+╭───────────────────────────────────────────────────────────────────────────────╮
+│  1. Home * 2. Linux * 3. Dev Stuff * 4. Dev Manager                           │
+╰───────────────────────────────────────────────────────────────────────────────╯
+╭───────────────────────────────────────────────────────────────────────────────╮
+│  Bem vindo ao Lumina Tools                                                    │
+│                                                                               │
+│  Versão: 1.0.0                                                                │
+│  github.com/oito2/lumina-tools                                                │
+│                                                                               │
+│  > Atualizar                                                                  │
+│  > Configurar                                                                 │
+│  > Ajuda                                                                      │
+│  > Desistalar                                                                 │
+│  > Sair                                                                       │
+╰───────────────────────────────────────────────────────────────────────────────╯
+╭───────────────────────────────────────────────────────────────────────────────╮
+│  1-4  Menu  │  ↑/↓  Navegar  │  Enter  Executar  │  t  Tema  │  q  Sair       │
+╰───────────────────────────────────────────────────────────────────────────────╯
+
+1. Atualiza    :: Usa a interface 02 com a mensagem "Atualizar Lumina Tools?"
+2. Configurar  :: Usa o arquivo "interface99.txt". Vamos passar a usar o charm huh (https://github.com/charmbracelet/huh)
+3. Ajuda       :: Vamos usar o bubbles (https://github.com/charmbracelet/bubbles) um viewport com o conteúfo em markdown e "rolavel"
+4. Desistalar  :: Usa a interface 02
+5. Sair        :: Encerra a TUI, com confirmação estilo interface 2

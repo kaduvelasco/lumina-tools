@@ -7,6 +7,7 @@ import (
 	"io"
 	"os"
 	"path/filepath"
+	"regexp"
 	"strconv"
 	"strings"
 
@@ -61,14 +62,24 @@ func moodleURLPath(urlPrefix, folder string) string {
 // dispatch let the caller plug in either the fixed-container dispatch or the
 // subdomain-based one used by the two nginx server blocks.
 //
+// The rewrite maps every request under the install's URL prefix into its
+// public/ subtree *before* try_files ever touches disk. Without it, $uri
+// would resolve relative to the shared global root (the install's legacy
+// root, not public/) — meaning any file that happens to exist outside
+// public/ (config.php, composer.json, version.php, ...) would be served
+// as a static file straight off disk, bypassing the router entirely. That's
+// both a real information-disclosure bug (config.php source, credentials
+// included) and exactly what Moodle 5.1+'s own installer/upgrade check
+// ("rootdirpublic") detects and refuses to proceed past. Routing everything
+// through public/ first closes both problems at once.
+//
 // try_files intentionally omits the `$uri/` directory-match alternative
-// (unlike the plain PHP location below it): the install's root directory
+// (unlike the plain PHP location below it): the install's public/ directory
 // always exists on disk, so `$uri/` would match it and hand the request to
-// nginx's `index` directive, which resolves to the install's own legacy root
-// index.php — the exact file Moodle 5.1+ rejects with "rootdirpublic" since
-// it's not being reached through public/r.php. Dropping `$uri/` forces every
-// request that isn't a real file under the install's tree straight into the
-// router, matching Moodle's own documented nginx recipe.
+// nginx's `index` directive, which resolves to public/index.php directly
+// instead of going through the router. Dropping `$uri/` forces every request
+// that isn't a real file under public/ straight into r.php, matching
+// Moodle's own documented nginx recipe.
 func buildMoodleLocations(installs []string, urlPrefix, phpRegex, dispatch string) string {
 	if len(installs) == 0 {
 		return ""
@@ -76,15 +87,17 @@ func buildMoodleLocations(installs []string, urlPrefix, phpRegex, dispatch strin
 	var b strings.Builder
 	for _, name := range installs {
 		path := moodleURLPath(urlPrefix, name)
+		publicPath := path + "public/"
 		fmt.Fprintf(&b, `
     location ^~ %s {
-        try_files $uri %spublic/r.php$is_args$args;
+        rewrite ^%s(.*)$ %s$1 break;
+        try_files $uri %sr.php$is_args$args;
 
         location ~ %s {
             %s
         }
     }
-`, path, path, phpRegex, dispatch)
+`, path, regexp.QuoteMeta(path), publicPath, publicPath, phpRegex, dispatch)
 	}
 	return b.String()
 }

@@ -1,0 +1,17 @@
+╭───────────────────────────────────────────────────────────────────────────────╮
+│  ◈ lumina.tools  │  v1.0.0                           Configurar Lumina Tools  │
+╰───────────────────────────────────────────────────────────────────────────────╯
+╭───────────────────────────────────────────────────────────────────────────────╮
+│ Workspace:       /srv/workspace/                                              │
+│ Docker Compose:  /srv/workspace/docker                                        │
+│ Tema:            Gruvbox                                                      │
+│ Escopo Flatpak:  system                                                       │
+│ Distribuição:    Zorin OS                                                     │
+│ Ambiente:        GNOME                                                        │
+╰───────────────────────────────────────────────────────────────────────────────╯
+╭───────────────────────────────────────────────────────────────────────────────╮
+│ Enter: configurar  |  q: cancelar                                             │
+╰───────────────────────────────────────────────────────────────────────────────╯
+
+* Ao apertar q ou esc voltar diretamente para a tela anterior, sem confirmação, se o comando foi executado via terminal, sem interface TUI, encerra.
+

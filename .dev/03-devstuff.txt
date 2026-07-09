@@ -1,0 +1,67 @@
+╭───────────────────────────────────────────────────────────────────────────────╮
+│  ◈ lumina.tools  │  v1.0.0  │  Zorin OS         ● Conexão com internet ativa  │
+╰───────────────────────────────────────────────────────────────────────────────╯
+╭───────────────────────────────────────────────────────────────────────────────╮
+│  1. Home * 2. Linux * 3. Dev Stuff * 4. Dev Manager                           │
+╰───────────────────────────────────────────────────────────────────────────────╯
+╭───────────────────────────────────────────────────────────────────────────────╮
+│  Dev Stuff                                                                    │
+│                                                                               │
+│  > Pré-requisitos                                                             │
+│  > Criar Workspace                                                            │
+│  > Docker - Nginx + PHP + MariaDB                                             │
+│  > Linguagens e SDKs                                                          │
+│  > LLM, MCP e Terminais                                                       │
+│  > IDEs                                                                       │
+╰───────────────────────────────────────────────────────────────────────────────╯
+╭───────────────────────────────────────────────────────────────────────────────╮
+│  1-4  Menu  │  ↑/↓  Navegar  │  Enter  Executar  │  t  Tema  │  q  Sair       │
+╰───────────────────────────────────────────────────────────────────────────────╯
+
+01. Pré-requisitos
+- Utiliza a interface 01 com as opções:
+-- Pacote base
+-- Ferramentas de build
+-- Flatpak + AppImage
+-- Ferramentas DevStuff
+-- Github Cli
+-- Docker Engine
+-- Node.js
+
+02. Criar workspace
+- Precisamos resolver a melhor opção entre as interfaces.
+- Penso em usar o charm huh (https://github.com/charmbracelet/huh) nessa tela
+- Importante, o workspace deve ser único, não iremos trabalhar com múltiplos workspaces. Verifique se é necessário ajustes
+- Se já existir, somente informar que já foi criado
+
+03. Docker - Nginx + PHP + MariaDB
+- Usar a interface 01b
+
+04. Linguagens e SDKs
+- Usar a interface 01 com as opções
+-- Go
+-- Flutter + Dart
+** Muda a lógica atual onde são separados. Se marcado instala/atualiza. Se não marcado Desistala ou não faz nada
+
+05. LLM, MCP e Terminais
+- Usar a interface 01 com as opções
+-- CLI - Claude Code
+-- CLI - Antigravity
+-- CLI - Codex
+-- CLI - OpenCode
+-- MCP - Lumina Vault
+-- MCP - Lumina Moodle Dev
+-- Terminal - Kitty
+-- Terminal - Alacrity
+-- Terminal - Black Box
+-- Terminal - Gnome Console
+-- Terminal - StarShip
+
+06. IDEs
+- Usar a interface 01 com as opções
+-- Android Studio
+-- Antigravity IDE
+-- Zed Editor
+-- VSCode
+-- VSCodium
+** Windsurf será removido

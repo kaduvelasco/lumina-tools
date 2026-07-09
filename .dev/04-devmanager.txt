@@ -1,0 +1,61 @@
+╭───────────────────────────────────────────────────────────────────────────────╮
+│  ◈ lumina.tools  │  v1.0.0  │  Zorin OS         ● Conexão com internet ativa  │
+╰───────────────────────────────────────────────────────────────────────────────╯
+╭───────────────────────────────────────────────────────────────────────────────╮
+│  1. Home * 2. Linux * 3. Dev Stuff * 4. Dev Manager                           │
+╰───────────────────────────────────────────────────────────────────────────────╯
+╭───────────────────────────────────────────────────────────────────────────────╮
+│  Dev Manager                                                                  │
+│                                                                               │
+│  > Stack PHP                                                                  │
+│  > Banco de Dados                                                             │
+│  > Repositórios                                                               │
+│  > Contexto IA                                                                │
+│  > Permissões                                                                 │
+│  > Guias de publicação                                                        │
+╰───────────────────────────────────────────────────────────────────────────────╯
+╭───────────────────────────────────────────────────────────────────────────────╮
+│  1-4  Menu  │  ↑/↓  Navegar  │  Enter  Executar  │  t  Tema  │  q  Sair       │
+╰───────────────────────────────────────────────────────────────────────────────╯
+
+01. Stack PHP
+- Utiliza a interface 03 com as opções
+-- Iniciar
+-- Parar
+-- Reiniciar
+-- Status
+-- Logs
+-- Ajustar permissões
+-- Roteamento Moodle
+
+02. Banco de Dados
+- Utiliza a interface 03 com as opções
+-- Backup
+-- Restore
+-- Otimizar
+-- Otimizar para Moodle
+** Remover não fará mais parte do lumina tools
+
+03. Repositórios
+- Utiliza a interface 03 com as opções
+-- Clonar repositório
+-- Aplicar identidade global
+-- Iniciar repositório nesta pasta
+-- Aplicar identificação
+-- Criar/Atualizar .gitignore
+-- Criar código de conduta
+
+04. Contexto de IA
+- Utiliza a interface 03 com as opções
+-- Aplicar/Atualizar contextos de IA
+-- Remover contextos de IA
+
+05. Permissões
+- Utiliza a interface 02 com a mensagem "Aplicar Fix?"
+
+06. Guias de publicação
+- Nova funcionalidade
+- Utiliza a interface 03 onde cada opção é um arquivo .md dentro da pasta /.lumina/guides
+- Ao selecionar uma opção, vamos usar o bubbles (https://github.com/charmbracelet/bubbles) um viewport com o conteúdo em markdown e "rolavel" para mostrar o conteúdo.
+- O Lumina Tools não cria esses arquivos, somente verifica se na pasta de instalação (onde estão as configurações) existe a pasta guides
+- O Lumina deve verificar a existência dessa pasta sempre que for iniciado ou atualizado/instalado, se não existir, cria. Se existir, não faz nada

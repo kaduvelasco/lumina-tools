@@ -1,0 +1,48 @@
+╭───────────────────────────────────────────────────────────────────────────────╮
+│  ◈ lumina.tools  │  v1.0.0  │  Zorin OS         ● Conexão com internet ativa  │
+╰───────────────────────────────────────────────────────────────────────────────╯
+╭───────────────────────────────────────────────────────────────────────────────╮
+│  1. Home * 2. Linux * 3. Dev Stuff * 4. Dev Manager                           │
+╰───────────────────────────────────────────────────────────────────────────────╯
+╭───────────────────────────────────────────────────────────────────────────────╮
+│  Gerenciamento Linux                                                          │
+│                                                                               │
+│  > Atualizar Sistema                                                          │
+│  > Pós instalação (de acordo com a distro entre as suportadas                 │
+│  > Gerenciar Fontes                                                           │
+│  > Gerenciar Templates de Arquivos                                            │
+│  > Aplicativos - Flatpak                                                      │
+│  > Aplicativos - Linux Toys                                                   │
+│  > Aplicativos - MegaSync                                                     │
+│  > Aplicativos - WebApps                                                      │
+╰───────────────────────────────────────────────────────────────────────────────╯
+╭───────────────────────────────────────────────────────────────────────────────╮
+│  1-4  Menu  │  ↑/↓  Navegar  │  Enter  Executar  │  t  Tema  │  q  Sair       │
+╰───────────────────────────────────────────────────────────────────────────────╯
+
+01. Atualizar Sistema
+- Usa a interface 02 com a mensagem "Atualizar?"
+
+02. Pós instalação
+- Usa a interface 02
+- roda de acordo com a distro.
+- Se a distro não for suportada, mostra desabilitado
+
+03. Gerenciar Fontes
+- Usa a interface 01
+- Mantém as opções atuais
+
+04. Gerenciar Templates de Arquivos ::
+- Usa a interface 01
+- Mantém as opções atuais
+
+05. Aplicativos - Flatpak
+- Usa a interface 01
+- Não teremos mais as opções instalar e desistalar separados, verificar selecionado/não selecionado para isso
+
+06. Aplicativos - Linux Toys :: Utiliza a interface 02
+
+07. Aplicativos - MegaSync   :: Utiliza a interface 02
+
+08. Aplicativos - WebApps    :: Utiliza a interface 03, cada opção, um webapp  
+

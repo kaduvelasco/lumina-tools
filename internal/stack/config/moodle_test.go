@@ -111,11 +111,14 @@ func TestBuildMoodleLocations_SingleInstall(t *testing.T) {
 	if !strings.Contains(got, "location ^~ /mdle/dev-501/ {") {
 		t.Errorf("missing ^~ prefix location for dev-501:\n%s", got)
 	}
+	if !strings.Contains(got, `rewrite ^/mdle/dev-501/(.*)$ /mdle/dev-501/public/$1 break;`) {
+		t.Errorf("missing rewrite into public/ before try_files touches disk:\n%s", got)
+	}
 	if !strings.Contains(got, "try_files $uri /mdle/dev-501/public/r.php$is_args$args;") {
 		t.Errorf("missing try_files fallback to r.php:\n%s", got)
 	}
 	if strings.Contains(got, "try_files $uri $uri/") {
-		t.Errorf("try_files should not include the $uri/ directory-match alternative (would resolve to the install's legacy root index.php instead of the router):\n%s", got)
+		t.Errorf("try_files should not include the $uri/ directory-match alternative (would resolve to public/index.php directly instead of the router):\n%s", got)
 	}
 	if !strings.Contains(got, "fastcgi_pass {{MOODLE_PHP}}:9000;") {
 		t.Errorf("missing default dispatch body:\n%s", got)
