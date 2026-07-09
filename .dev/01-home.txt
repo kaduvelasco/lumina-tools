@@ -10,7 +10,7 @@
 │  Versão: 1.0.0                                                                │
 │  github.com/oito2/percy-gnl                                                   │
 │                                                                               │
-│  > Atualizar                                                                  │
+│  > Atualizar percy.gnl                                                        │
 │  > Configurar                                                                 │
 │  > Ajuda                                                                      │
 │  > Desistalar                                                                 │
@@ -20,7 +20,10 @@
 │  1-4  Menu  │  ↑/↓  Navegar  │  Enter  Executar  │  t  Tema  │  q  Sair       │
 ╰───────────────────────────────────────────────────────────────────────────────╯
 
-1. Atualiza    :: Usa a interface 02 com a mensagem "Atualizar Lumina Tools?"
+1. Atualizar percy.gnl
+- Usa a interface 02 com a mensagem "Atualizar PERCY // O GENIAL?"
+- Deve fazer um backup do config.yaml e restaurar este backup após a atualização
+
 2. Configurar  :: Usa o arquivo "interface99.txt". Vamos passar a usar o charm huh (https://github.com/charmbracelet/huh)
 3. Ajuda       :: Vamos usar o bubbles (https://github.com/charmbracelet/bubbles) um viewport com o conteúfo em markdown e "rolavel"
 4. Desistalar  :: Usa a interface 02

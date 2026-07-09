@@ -26,4 +26,7 @@ Nova Interface:
 
 Existem arquivos .txt para cada uma das interfaces principais
 
+** Aproveite esta revisão para verificar se todas as mensagens estão em um panel
+** Lembre-se que todos os elementos de formulário devem usar o charm huh
+
 

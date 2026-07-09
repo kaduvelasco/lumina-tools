@@ -92,13 +92,29 @@ func moodleURLPath(urlPrefix, folder string) string {
 // previous MOODLE_LOCATIONS pass), and rewriting twice would double the
 // segment into ".../public/public/...".
 //
-// try_files intentionally omits the `$uri/` directory-match alternative
-// (unlike the plain PHP location below it): the install's public/ directory
-// always exists on disk, so `$uri/` would match it and hand the request to
-// nginx's `index` directive, which resolves to public/index.php directly
-// instead of going through the router. Dropping `$uri/` forces every request
-// that isn't a real file under public/ straight into r.php, matching
-// Moodle's own documented nginx recipe.
+// try_files includes the `$uri/` directory-match alternative, matching
+// Moodle's own official multi-site nginx recipe. This was dropped in
+// [2.2.8] over a since-disproven security concern: the worry was that
+// `$uri/` matching an existing directory (the install's public/ itself,
+// or any subdirectory under it, e.g. public/my/) would hand the request to
+// nginx's `index` directive and serve that directory's index.php directly,
+// "instead of going through the router". But by the time try_files runs
+// here, the outer rewrite has already confined $uri to the public/ subtree
+// — there is no directory `$uri/` could ever match that lives outside
+// public/, so serving its index.php directly is exactly as safe as routing
+// through r.php first; both ultimately execute the same file.
+// Dropping `$uri/` had a real, user-facing regression instead: Moodle's
+// router (public/lib/classes/router.php) is a Slim Framework app with an
+// explicit route table — it does NOT implicitly resolve arbitrary
+// directory paths to their index.php the way a plain web server does.
+// Legacy-style pages Moodle still ships as real files (my/index.php,
+// course/index.php, admin/index.php, ...) have no matching Slim route, so
+// forcing every directory-style request through r.php made them all 404
+// with Slim's generic "resource could not be found" page — confirmed
+// empirically against a real Moodle 5.1 install (accessing /my/ after a
+// completed installation). Restoring `$uri/` lets nginx resolve these the
+// normal way, and r.php is only reached for paths matching no real file or
+// directory at all (Slim's own registered routes, clean/pretty URLs).
 func buildMoodleLocations(installs []string, urlPrefix, phpRegex, dispatch string) string {
 	if len(installs) == 0 {
 		return ""
@@ -112,7 +128,7 @@ func buildMoodleLocations(installs []string, urlPrefix, phpRegex, dispatch strin
 		fmt.Fprintf(&b, `
     location ^~ %s {
         rewrite ^%s(.*)$ %s$1 break;
-        try_files $uri %sr.php$is_args$args;
+        try_files $uri $uri/ %sr.php$is_args$args;
 
         location ~ %s {
             %s

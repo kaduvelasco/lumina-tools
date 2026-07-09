@@ -117,11 +117,8 @@ func TestBuildMoodleLocations_SingleInstall(t *testing.T) {
 	if !strings.Contains(got, `rewrite ^/mdle/dev-501/(?!public/)(.*)$ /mdle/dev-501/public/$1 break;`) {
 		t.Errorf("missing nested rewrite inside the php location — direct .php requests (install.php, index.php, ...) never reach the outer rewrite, since nginx matches the nested regex location directly:\n%s", got)
 	}
-	if !strings.Contains(got, "try_files $uri /mdle/dev-501/public/r.php$is_args$args;") {
-		t.Errorf("missing try_files fallback to r.php:\n%s", got)
-	}
-	if strings.Contains(got, "try_files $uri $uri/") {
-		t.Errorf("try_files should not include the $uri/ directory-match alternative (would resolve to public/index.php directly instead of the router):\n%s", got)
+	if !strings.Contains(got, "try_files $uri $uri/ /mdle/dev-501/public/r.php$is_args$args;") {
+		t.Errorf("missing try_files with $uri/ directory-match + fallback to r.php — without $uri/, legacy directory-style pages (my/, course/, admin/, ...) 404 against Moodle's Slim router, which has no route registered for them:\n%s", got)
 	}
 	if !strings.Contains(got, "fastcgi_pass {{MOODLE_PHP}}:9000;") {
 		t.Errorf("missing default dispatch body:\n%s", got)

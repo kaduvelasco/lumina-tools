@@ -6,6 +6,26 @@ O formato segue o padrão [Keep a Changelog](https://keepachangelog.com/pt-BR/1.
 
 ---
 
+## [2.3.2] — 2026-07-09
+
+### Corrigido
+
+#### Roteador Moodle expunha `/public/` no `SCRIPT_NAME`... (ver `[2.3.1]`) — páginas de diretório (`my/`, `course/`, `admin/`, ...) davam 404 depois da instalação (`internal/stack/config/moodle.go`)
+- Depois de completar uma instalação Moodle 5.1+ com sucesso (fixes `[2.2.9]`–`[2.3.1]`), navegar para páginas de diretório como `/mdle/dev-501/my/` ou a raiz do site com query string (`/mdle/dev-501/?redirect=0`) retornava um 404 genérico do Slim Framework ("The requested resource could not be found") em vez da página real
+- Causa raiz: o roteador do Moodle 5.1+ (`public/lib/classes/router.php`) é uma aplicação Slim Framework com uma tabela de rotas explícita — ele **não** resolve implicitamente qualquer caminho de diretório para o `index.php` correspondente, do jeito que um servidor web comum faz. Páginas legadas que o Moodle ainda distribui como arquivos reais (`my/index.php`, `course/index.php`, `admin/index.php`, ...) não têm rota registrada no Slim. O `try_files $uri {prefix}public/r.php$is_args$args;` gerado por `buildMoodleLocations`, ao **omitir** a alternativa `$uri/` (decisão da `[2.2.8]`), forçava toda requisição no formato de diretório a cair no `r.php`/Slim — inclusive essas páginas legadas sem rota, resultando em 404 duro
+- A remoção do `$uri/` na `[2.2.8]` partiu de uma preocupação de segurança que se mostrou **equivocada**: o medo era que `$uri/` casasse com um diretório (o próprio `public/` da instalação, ou qualquer subpasta dele, ex. `public/my/`) e entregasse a requisição para a diretiva `index` do nginx, servindo o `index.php` daquele diretório diretamente "em vez de passar pelo roteador". Mas, no momento em que o `try_files` roda, o `rewrite` externo já confinou `$uri` à subárvore `public/` — não existe diretório que `$uri/` possa casar que fique fora de `public/`, então servir o `index.php` direto é exatamente tão seguro quanto rotear via `r.php` primeiro; nos dois casos o mesmo arquivo acaba executando
+- Corrigido restaurando `$uri/` no `try_files` gerado (`try_files $uri $uri/ {prefix}public/r.php$is_args$args;`), igual à receita oficial multi-site do Moodle que já tínhamos consultado antes. `r.php` volta a ser alcançado só para caminhos que não correspondem a nenhum arquivo/diretório real — exatamente as rotas "bonitas"/registradas no Slim
+- Validado de ponta a ponta com nginx + PHP-FPM reais (containers descartáveis) e depois contra o ambiente real do usuário: `/my/` resolve para `my/index.php` sem passar por `r.php`; a raiz do site (com e sem query string) serve `index.php` direto; `install.php` continua funcionando; e reconfirmado que arquivos fora de `public/` (`config.php` real, com credenciais) continuam inacessíveis — só o stub seguro dentro de `public/config.php` responde
+- Teste `TestBuildMoodleLocations_SingleInstall` (`moodle_test.go`) invertido: agora exige `try_files $uri $uri/ ...` em vez de proibir `$uri/`
+
+### Observações
+
+#### Moodle 5.1+ exige `$CFG->routerconfigured = true;` manualmente no `config.php` de cada instalação
+- Achado durante a mesma investigação, mas **fora do escopo do que o Lumina gera**: o roteador do Moodle (`install_guess_wwwroot()`/`router.php`, ambos em `public/lib/`) só trata a URL como "bonita" (sem precisar do `/r.php` literal) quando `$CFG->routerconfigured` está `true` no `config.php` da instalação — configuração documentada em docs.moodle.org (página "Configuring the Router"), não relacionada ao nginx. Sem essa linha, o Moodle usa `/r.php` como base path do Slim, e qualquer navegação por URL limpa (`/my/`, `/course/2`, etc.) cai em 404, mesmo com o nginx corretamente configurado
+- Como o Lumina não gera nem gerencia o `config.php` do Moodle (o usuário baixa e extrai o Moodle por conta própria em `internal/stack/config/moodle.go`'s árvore de instalações), essa linha precisa ser adicionada manualmente pelo usuário no `config.php` de **cada** instalação Moodle 5.1+, uma vez, depois da instalação. Não implementado nenhum lembrete automático no Lumina para isso ainda — avaliar se vale adicionar uma mensagem informativa em `promptMoodleInstalls`/`MoodleRouter` numa sessão futura, a pedido do usuário
+
+---
+
 ## [2.3.1] — 2026-07-09
 
 ### Corrigido
