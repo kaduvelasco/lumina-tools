@@ -6,6 +6,19 @@ O formato segue o padrão [Keep a Changelog](https://keepachangelog.com/pt-BR/1.
 
 ---
 
+## [2.3.1] — 2026-07-09
+
+### Corrigido
+
+#### Roteador Moodle expunha `/public/` no `SCRIPT_NAME`, derrubando o check `install_guess_wwwroot()` (`internal/stack/config/moodle.go`)
+- Depois dos fixes de roteamento (`[2.2.9]`), o instalador do Moodle passou a carregar e a etapa de escolha de idioma funcionava normalmente, mas a etapa seguinte ("Confirm paths" / configuração de caminhos) voltava a mostrar o aviso "Servidor web não configurado — Seu servidor web não está configurado para impedir o acesso a arquivos fora do diretório /public" (`rootdirpublic`)
+- Causa raiz: `public/install.php` calcula `$CFG->wwwroot` via `install_guess_wwwroot()`, que deriva a URL base a partir de `SCRIPT_NAME` — não de `REQUEST_URI` (que fica limpo, sem `/public/`, por já ser um comportamento nativo do nginx). Como o nginx computa `SCRIPT_NAME` a partir do `$uri` já reescrito internamente pelo roteador (necessário para achar o arquivo certo em disco, ver `[2.2.9]`), `SCRIPT_NAME` sempre trazia `/mdle/dev-501/public/install.php` — terminando em `/public`, disparando o próprio check do Moodle contra si mesmo, independente da URL que o navegador realmente mostrava
+- Corrigido com um novo `map $fastcgi_script_name $moodle_clean_script_name` (`moodleScriptNameMap`, emitido uma única vez no topo do `nginx/default.conf`, fora dos blocos `server{}` — válido porque o arquivo é incluído no contexto `http{}` da imagem base do nginx): captura tudo antes de `/public/` e tudo depois, remontando sem o segmento. `fastcgi_param SCRIPT_NAME $moodle_clean_script_name;` adicionado aos dois dispatches Moodle (`moodleDefaultDispatch`/`moodleVersionedDispatch`), cobrindo tanto acesso direto a `.php` quanto o fallback via `r.php` — um único `map` genérico serve todas as instalações, sem precisar gerar um por pasta
+- Validado de ponta a ponta contra o ambiente real do usuário: `SCRIPT_NAME` confirmado limpo (`/mdle/dev-501/install.php`, sem `/public/`) tanto no acesso direto quanto no fallback via `r.php`; simulado o POST real do formulário de idioma do instalador (mesmos campos ocultos que o navegador envia) e confirmado que a tela "Confirm paths" carrega sem nenhuma menção a `rootdirpublic`/"Servidor web não configurado"
+- Testes atualizados/adicionados em `moodle_test.go`: `TestBuildMoodleLocations_SingleInstall` exige `fastcgi_param SCRIPT_NAME $moodle_clean_script_name;`; `TestBuildNginxConf_NoInstalls` exige que o `map` **não** apareça sem instalações marcadas; `TestBuildNginxConf_WithInstalls` exige exatamente um `map` (não um por instalação) posicionado antes do primeiro `server{}`
+
+---
+
 ## [2.3.0] — 2026-07-09
 
 ### Adicionado

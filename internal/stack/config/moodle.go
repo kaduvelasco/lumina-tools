@@ -123,10 +123,21 @@ func buildMoodleLocations(installs []string, urlPrefix, phpRegex, dispatch strin
 	return b.String()
 }
 
+// SCRIPT_NAME is left pointing at the internal, public/-inclusive path by
+// default (nginx derives it from the already-rewritten $uri), and that alone
+// breaks Moodle: install.php guesses $CFG->wwwroot from SCRIPT_NAME and
+// refuses to proceed once it ends in "/public" (its own check for a
+// misconfigured web server) — confirmed empirically against a real Moodle
+// checkout, not just the generic file-exposure risk from CHANGELOG [2.2.8].
+// $moodle_clean_script_name (map defined once in nginxConfTpl, see
+// moodleScriptNameMap) strips the "/public" segment back out for every
+// Moodle location, regardless of whether the request arrived here directly
+// (install.php, index.php, ...) or via the r.php fallback.
 const moodleDefaultDispatch = `{{NESTED_REWRITE}}
             include fastcgi_params;
             fastcgi_pass {{MOODLE_PHP}}:9000;
-            fastcgi_param SCRIPT_FILENAME $document_root$fastcgi_script_name;`
+            fastcgi_param SCRIPT_FILENAME $document_root$fastcgi_script_name;
+            fastcgi_param SCRIPT_NAME $moodle_clean_script_name;`
 
 // if/set must stay ahead of {{NESTED_REWRITE}}: rewrite's "break" flag stops
 // processing of every later ngx_http_rewrite_module directive in this
@@ -141,7 +152,23 @@ const moodleVersionedDispatch = `if ($p_ver = "") { set $p_ver {{MOODLE_PHP_VER}
             include fastcgi_params;
             fastcgi_pass $php_upstream;
             fastcgi_param SCRIPT_FILENAME $document_root$fastcgi_script_name;
-            fastcgi_param PATH_INFO $fastcgi_path_info;`
+            fastcgi_param PATH_INFO $fastcgi_path_info;
+            fastcgi_param SCRIPT_NAME $moodle_clean_script_name;`
+
+// moodleScriptNameMap is emitted once at the top of nginx/default.conf
+// (outside both server{} blocks — map is only valid at http context, and
+// this file gets spliced into http{} via the base image's `include
+// conf.d/*.conf`) whenever at least one Moodle install is configured. It
+// captures everything before "/public/" and everything after, and glues
+// them back together without it — see moodleDefaultDispatch's doc comment
+// for why this is needed. A single generic regex handles every install's
+// prefix uniformly, so this never needs to be generated per-install.
+const moodleScriptNameMap = `map $fastcgi_script_name $moodle_clean_script_name {
+    "~^(?<prefix>/.+)/public/(?<rest>.*)$"  "$prefix/$rest";
+    default $fastcgi_script_name;
+}
+
+`
 
 // moodleDefaultPHP returns the lowest selected PHP version that satisfies the
 // Moodle 5.1+ router (>= 8.2), as both the container name ("php82") and the
@@ -178,7 +205,13 @@ func buildNginxConf(versions []string, moodleInstalls []string, urlPrefix string
 	moodleDefaultBlocks := buildMoodleLocations(moodleInstalls, urlPrefix, `\.php$`, moodleDefaultDispatch)
 	moodleVersionedBlocks := buildMoodleLocations(moodleInstalls, urlPrefix, `[^/]\.php(/|$)`, moodleVersionedDispatch)
 
+	scriptNameMap := ""
+	if len(moodleInstalls) > 0 {
+		scriptNameMap = moodleScriptNameMap
+	}
+
 	nginxConf := nginxConfTpl
+	nginxConf = strings.ReplaceAll(nginxConf, "{{MOODLE_SCRIPT_NAME_MAP}}", scriptNameMap)
 	nginxConf = strings.ReplaceAll(nginxConf, "{{MOODLE_LOCATIONS_DEFAULT}}", moodleDefaultBlocks)
 	nginxConf = strings.ReplaceAll(nginxConf, "{{MOODLE_LOCATIONS_VERSIONED}}", moodleVersionedBlocks)
 	nginxConf = strings.ReplaceAll(nginxConf, "{{DEFAULT_PHP}}", defaultPHP)

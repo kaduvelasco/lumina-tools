@@ -126,6 +126,9 @@ func TestBuildMoodleLocations_SingleInstall(t *testing.T) {
 	if !strings.Contains(got, "fastcgi_pass {{MOODLE_PHP}}:9000;") {
 		t.Errorf("missing default dispatch body:\n%s", got)
 	}
+	if !strings.Contains(got, "fastcgi_param SCRIPT_NAME $moodle_clean_script_name;") {
+		t.Errorf("missing SCRIPT_NAME override — without it Moodle's install_guess_wwwroot() sees \"/public\" in SCRIPT_NAME and refuses to proceed past the paths stage:\n%s", got)
+	}
 }
 
 func TestBuildMoodleLocations_MultipleInstalls(t *testing.T) {
@@ -157,6 +160,9 @@ func TestBuildNginxConf_NoInstalls(t *testing.T) {
 	if strings.Contains(got, "location ^~") {
 		t.Errorf("no Moodle installs marked, but a ^~ location block was generated:\n%s", got)
 	}
+	if strings.Contains(got, "$moodle_clean_script_name") {
+		t.Errorf("no Moodle installs marked, but the SCRIPT_NAME map was still emitted:\n%s", got)
+	}
 }
 
 func TestBuildNginxConf_WithInstalls(t *testing.T) {
@@ -170,6 +176,12 @@ func TestBuildNginxConf_WithInstalls(t *testing.T) {
 	}
 	if strings.Count(got, "location ^~ /mdle/core-501/ {") != 2 {
 		t.Errorf("expected one ^~ block for core-501 in each of the two server{} blocks:\n%s", got)
+	}
+	if strings.Count(got, "map $fastcgi_script_name $moodle_clean_script_name") != 1 {
+		t.Errorf("expected exactly one generic SCRIPT_NAME map (shared by every install, not generated per-install):\n%s", got)
+	}
+	if mapIdx, serverIdx := strings.Index(got, "map $fastcgi_script_name"), strings.Index(got, "server {"); mapIdx < 0 || mapIdx > serverIdx {
+		t.Errorf("SCRIPT_NAME map must appear before the first server{} block (map is only valid at http context):\n%s", got)
 	}
 }
 

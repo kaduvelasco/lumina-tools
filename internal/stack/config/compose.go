@@ -439,7 +439,7 @@ networks:
     driver: bridge
 `
 
-const nginxConfTpl = `server {
+const nginxConfTpl = `{{MOODLE_SCRIPT_NAME_MAP}}server {
     listen 80;
     server_name localhost 127.0.0.1;
     root /var/www/html;
